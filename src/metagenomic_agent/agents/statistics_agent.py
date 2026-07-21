@@ -197,29 +197,80 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
     biomarker_path = biomarker_dir / "biomarkers.tsv"
     biomarker_path.write_text("\n".join(biomarker_rows) + "\n", encoding="utf-8")
+
+    methods = [
+        "shannon_alpha",
+        "bray_curtis_beta",
+        "mannwhitney_u",
+        "benjamini_hochberg_fdr",
+    ]
+    cfg_stats = (state.get("config") or {}).get("statistics") or {}
+    enable_lefse = bool(cfg_stats.get("lefse_like", True))
+    enable_ancom = bool(cfg_stats.get("ancom_like", True))
+    lefse_rows: list[dict[str, Any]] = []
+    ancom_rows: list[dict[str, Any]] = []
+    if len(group_names) >= 2:
+        from metagenomic_agent.stats.lefse_like import lefse_like
+        from metagenomic_agent.stats.compositional import ancom_like
+
+        if enable_lefse:
+            lefse_rows = lefse_like(matrix, groups)
+            methods.append("lefse_like_cohen_d")
+            lefse_path = biomarker_dir / "lefse_like.tsv"
+            lines = ["genus\tgroup\tlda_score\tlog2fc\tp_value"]
+            for r in lefse_rows:
+                lines.append(
+                    f"{r['genus']}\t{r['group']}\t{r['lda_score']}\t{r['log2fc']:.4f}\t{r['p_value']:.4g}"
+                )
+            lefse_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        if enable_ancom:
+            ancom_rows = ancom_like(matrix, groups)
+            methods.append("clr_mwu_bh_ancom_like")
+            ancom_path = biomarker_dir / "ancom_like.tsv"
+            lines = ["genus\tclr_mean_a\tclr_mean_b\tp_value\tq_value\tdirection"]
+            for r in ancom_rows:
+                lines.append(
+                    f"{r['genus']}\t{r['clr_mean_a']:.4f}\t{r['clr_mean_b']:.4f}\t"
+                    f"{r['p_value']:.4g}\t{r['q_value']:.4g}\t{r['direction']}"
+                )
+            ancom_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # Persist genus matrix for downstream viz
+    mat_path = outdir / "genus_matrix.tsv"
+    all_taxa = sorted({t for ab in matrix.values() for t in ab})
+    mat_lines = ["sample\t" + "\t".join(all_taxa)]
+    for sid in sorted(matrix):
+        mat_lines.append(sid + "\t" + "\t".join(str(matrix[sid].get(t, 0.0)) for t in all_taxa))
+    mat_path.write_text("\n".join(mat_lines) + "\n", encoding="utf-8")
+
     (outdir / "notes.txt").write_text("\n".join(notes) + "\n", encoding="utf-8")
 
     stats = {
         "alpha_diversity": str(alpha_path),
         "beta_diversity": str(beta_path),
+        "genus_matrix": str(mat_path),
         "biomarkers": str(biomarker_path),
+        "lefse_like": str(biomarker_dir / "lefse_like.tsv") if lefse_rows else None,
+        "ancom_like": str(biomarker_dir / "ancom_like.tsv") if ancom_rows else None,
         "n_biomarkers": len(biomarkers),
         "biomarker_list": biomarkers[:20],
+        "lefse_list": lefse_rows[:20],
+        "ancom_list": ancom_rows[:20],
         "groups": groups,
-        "methods": [
-            "shannon_alpha",
-            "bray_curtis_beta",
-            "mannwhitney_u",
-            "benjamini_hochberg_fdr",
-        ],
+        "methods": methods,
         "notes": notes,
         "disclaimer": (
-            "Differential abundance uses Mann-Whitney U + BH-FDR as a lightweight default. "
-            "For publication, re-run with ANCOM-BC / Maaslin2 / LEfSe on the exported abundance tables."
+            "Default differential abundance: Mann-Whitney U + BH-FDR. "
+            "Also exports lefse_like (Cohen's d proxy) and ancom_like (CLR+MWU). "
+            "These are lightweight Python approximations — for journal submission prefer "
+            "official LEfSe / ANCOM-BC / MaAsLin2 on exported tables."
         ),
     }
     (outdir / "statistics_summary.json").write_text(
-        __import__("json").dumps({k: v for k, v in stats.items() if k != "biomarker_list"}, indent=2),
+        __import__("json").dumps(
+            {k: v for k, v in stats.items() if k not in {"biomarker_list", "lefse_list", "ancom_list"}},
+            indent=2,
+        ),
         encoding="utf-8",
     )
-    return {"statistics": stats, "_statistics_state": stats}
+    return {"statistics": stats, "_statistics_state": stats, "artifacts": {**state.get("artifacts", {}), "statistics": stats}}

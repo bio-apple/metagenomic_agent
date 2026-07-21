@@ -62,8 +62,19 @@ def _score_entry(query: str, entry: dict[str, Any]) -> float:
     return float(hits) + bonus
 
 
-def retrieve(db: str, query: str, top_k: int = 5) -> list[dict[str, Any]]:
-    """Retrieve curated records from a named biological database."""
+def retrieve(db: str, query: str, top_k: int = 5, mode: str = "keyword") -> list[dict[str, Any]]:
+    """Retrieve curated records from a named biological database.
+
+    mode: keyword (default) | semantic (TF-IDF over curated corpus)
+    """
+    if mode == "semantic":
+        from metagenomic_agent.rag.embeddings import semantic_retrieve
+
+        hits = semantic_retrieve(query, top_k=top_k, db=None if db == "all" else db.lower().strip())
+        if db.lower().strip() not in {"all", "refseq"}:
+            hits = [h for h in hits if h.get("database") == db.lower().strip()]
+        return hits[:top_k]
+
     db_key = db.lower().strip()
     if db_key == "refseq":
         # RefSeq stub mirrors NCBI taxonomy + GTDB species names until local BLAST DB is configured

@@ -1,4 +1,4 @@
-"""LangGraph: playbooks/contracts → HITL → swarm → validate → self-heal → critic → literature → viz → report."""
+"""LangGraph orchestration with PI review loop."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
-from metagenomic_agent.agents import critic_agent, literature_agent, supervisor, visualization_agent
+from metagenomic_agent.agents import critic_agent, literature_agent, pi_agent, supervisor, visualization_agent
 from metagenomic_agent.agents.hitl import hitl_checkpoint
 from metagenomic_agent.evaluation.quality_score import write_quality_report
 from metagenomic_agent.execution.dag_export import export_workflow_dag
@@ -46,6 +46,12 @@ def _route_after_critic(state: AgentState) -> Literal["self_heal", "literature"]
     return "literature"
 
 
+def _route_after_pi(state: AgentState) -> Literal["self_heal", "visualization"]:
+    if state.get("pi_replan"):
+        return "self_heal"
+    return "visualization"
+
+
 def _self_heal(state: AgentState) -> dict:
     actions: list[str] = []
     errors = list(state.get("artifacts", {}).get("errors") or [])
@@ -66,6 +72,9 @@ def _self_heal(state: AgentState) -> dict:
         actions.append("downgrade_assembler")
     if "glm" in recs or "microcafe" in recs or "long" in recs:
         actions.append("switch_taxonomy_tool")
+    if state.get("pi_replan"):
+        actions.append("switch_taxonomy_tool")
+        actions.append("loosen_qc")
 
     actions = list(dict.fromkeys(actions))
     new_dag, cfg_patch = apply_self_heal(list(state.get("dag", [])), actions, state.get("config"))
@@ -78,6 +87,7 @@ def _self_heal(state: AgentState) -> dict:
         "dag": new_dag,
         "config": new_config,
         "artifacts": artifacts,
+        "pi_replan": False,
         "retry_count": int(state.get("retry_count", 0)) + 1,
         "messages": state.get("messages", [])
         + [f"Self-heal actions: {actions or ['retry']}; retry={int(state.get('retry_count', 0)) + 1}"],
@@ -118,6 +128,7 @@ def build_graph():
     g.add_node("self_heal", _self_heal)
     g.add_node("critic", critic_agent.run)
     g.add_node("literature", literature_agent.run)
+    g.add_node("pi_review", pi_agent.run)
     g.add_node("visualization", visualization_agent.run)
     g.add_node("report", report_agent.run)
 
@@ -134,7 +145,10 @@ def build_graph():
     )
     g.add_edge("self_heal", "execute_swarm")
     g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
-    g.add_edge("literature", "visualization")
+    g.add_edge("literature", "pi_review")
+    g.add_conditional_edges(
+        "pi_review", _route_after_pi, {"self_heal": "self_heal", "visualization": "visualization"}
+    )
     g.add_edge("visualization", "report")
     g.add_edge("report", END)
     return g.compile()

@@ -87,3 +87,4 @@ class AgentState(TypedDict):
     report_path: NotRequired[str | None]
     error: NotRequired[str | None]
     run_id: NotRequired[str | None]
+    pi_replan: NotRequired[bool]

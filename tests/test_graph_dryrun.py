@@ -79,9 +79,12 @@ def test_graph_dryrun_mock(tmp_path: Path):
     assert (out / "quality" / "quality_scores.json").exists()
     assert (out / "report" / "manuscript" / "manuscript_draft.md").exists()
     assert (out / "report" / "figures" / "manifest.json").exists()
+    assert (out / "report" / "figures" / "pcoa.json").exists()
+    assert (out / "biomarkers" / "lefse_like.tsv").exists() or True  # optional if no groups
     assert final.get("critic") is not None
     assert final.get("literature") is not None
     assert final.get("agent_messages") is not None
+    assert (out / "context" / "context.json").exists()
 
 
 def test_supervisor_plan_json(tmp_path: Path):

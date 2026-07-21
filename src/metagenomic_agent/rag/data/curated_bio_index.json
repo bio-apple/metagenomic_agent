@@ -2,50 +2,445 @@
   "version": "0.6.0",
   "databases": {
     "gtdb": [
-      {"id": "s__Faecalibacterium_prausnitzii", "name": "Faecalibacterium prausnitzii", "rank": "species", "phylum": "Bacillota", "notes": "Butyrate producer; depleted in IBD cohorts", "aliases": ["Faecalibacterium"]},
-      {"id": "s__Escherichia_coli", "name": "Escherichia coli", "rank": "species", "phylum": "Pseudomonadota", "notes": "Includes AIEC pathotypes linked to IBD mucosa", "aliases": ["Escherichia"]},
-      {"id": "s__Akkermansia_muciniphila", "name": "Akkermansia muciniphila", "rank": "species", "phylum": "Verrucomicrobiota", "notes": "Mucin degrader; metabolic health associations", "aliases": ["Akkermansia"]},
-      {"id": "s__Bacteroides_fragilis", "name": "Bacteroides fragilis", "rank": "species", "phylum": "Bacteroidota", "notes": "Polysaccharide utilization; immunomodulation", "aliases": ["Bacteroides"]},
-      {"id": "s__Bifidobacterium_longum", "name": "Bifidobacterium longum", "rank": "species", "phylum": "Actinomycetota", "notes": "Early-life colonizer; SCFA support", "aliases": ["Bifidobacterium"]}
+      {
+        "id": "s__Faecalibacterium_prausnitzii",
+        "name": "Faecalibacterium prausnitzii",
+        "rank": "species",
+        "phylum": "Bacillota",
+        "notes": "Butyrate producer; depleted in IBD cohorts",
+        "aliases": [
+          "Faecalibacterium"
+        ]
+      },
+      {
+        "id": "s__Escherichia_coli",
+        "name": "Escherichia coli",
+        "rank": "species",
+        "phylum": "Pseudomonadota",
+        "notes": "Includes AIEC pathotypes linked to IBD mucosa",
+        "aliases": [
+          "Escherichia"
+        ]
+      },
+      {
+        "id": "s__Akkermansia_muciniphila",
+        "name": "Akkermansia muciniphila",
+        "rank": "species",
+        "phylum": "Verrucomicrobiota",
+        "notes": "Mucin degrader; metabolic health associations",
+        "aliases": [
+          "Akkermansia"
+        ]
+      },
+      {
+        "id": "s__Bacteroides_fragilis",
+        "name": "Bacteroides fragilis",
+        "rank": "species",
+        "phylum": "Bacteroidota",
+        "notes": "Polysaccharide utilization; immunomodulation",
+        "aliases": [
+          "Bacteroides"
+        ]
+      },
+      {
+        "id": "s__Bifidobacterium_longum",
+        "name": "Bifidobacterium longum",
+        "rank": "species",
+        "phylum": "Actinomycetota",
+        "notes": "Early-life colonizer; SCFA support",
+        "aliases": [
+          "Bifidobacterium"
+        ]
+      },
+      {
+        "id": "s__Roseburia_intestinalis",
+        "name": "Roseburia intestinalis",
+        "rank": "species",
+        "phylum": "Bacillota",
+        "notes": "Butyrate producer; fiber response",
+        "aliases": [
+          "Roseburia"
+        ]
+      },
+      {
+        "id": "s__Prevotella_copri",
+        "name": "Prevotella copri",
+        "rank": "species",
+        "phylum": "Bacteroidota",
+        "notes": "Diet-associated Prevotella",
+        "aliases": [
+          "Prevotella"
+        ]
+      },
+      {
+        "id": "s__Ruminococcus_gnavus",
+        "name": "Ruminococcus gnavus",
+        "rank": "species",
+        "phylum": "Bacillota",
+        "notes": "Often enriched in IBD",
+        "aliases": [
+          "Ruminococcus"
+        ]
+      },
+      {
+        "id": "s__Blautia_wexlerae",
+        "name": "Blautia wexlerae",
+        "rank": "species",
+        "phylum": "Bacillota",
+        "notes": "Common gut Blautia",
+        "aliases": [
+          "Blautia"
+        ]
+      },
+      {
+        "id": "s__Clostridium_butyricum",
+        "name": "Clostridium butyricum",
+        "rank": "species",
+        "phylum": "Bacillota",
+        "notes": "Butyrate-producing Clostridium",
+        "aliases": [
+          "Clostridium"
+        ]
+      },
+      {
+        "id": "s__Lactobacillus_acidophilus",
+        "name": "Lactobacillus acidophilus",
+        "rank": "species",
+        "phylum": "Bacillota",
+        "notes": "Probiotic-associated",
+        "aliases": [
+          "Lactobacillus"
+        ]
+      },
+      {
+        "id": "s__Klebsiella_pneumoniae",
+        "name": "Klebsiella pneumoniae",
+        "rank": "species",
+        "phylum": "Pseudomonadota",
+        "notes": "Opportunistic pathogen; AMR relevance",
+        "aliases": [
+          "Klebsiella"
+        ]
+      },
+      {
+        "id": "s__Enterococcus_faecalis",
+        "name": "Enterococcus faecalis",
+        "rank": "species",
+        "phylum": "Bacillota",
+        "notes": "Gut enterococcus; opportunistic",
+        "aliases": [
+          "Enterococcus"
+        ]
+      },
+      {
+        "id": "s__Fusobacterium_nucleatum",
+        "name": "Fusobacterium nucleatum",
+        "rank": "species",
+        "phylum": "Fusobacteriota",
+        "notes": "Linked to colorectal cancer contexts",
+        "aliases": [
+          "Fusobacterium"
+        ]
+      },
+      {
+        "id": "s__Desulfovibrio_piger",
+        "name": "Desulfovibrio piger",
+        "rank": "species",
+        "phylum": "Thermodesulfobacteriota",
+        "notes": "Sulfate reducer; IBD associations",
+        "aliases": [
+          "Desulfovibrio"
+        ]
+      }
     ],
     "ncbi_taxonomy": [
-      {"id": "216851", "name": "Faecalibacterium prausnitzii", "rank": "species", "lineage": "Bacteria;Bacillota;Clostridia;Eubacteriales;Oscillospiraceae"},
-      {"id": "562", "name": "Escherichia coli", "rank": "species", "lineage": "Bacteria;Pseudomonadota;Gammaproteobacteria;Enterobacterales;Enterobacteriaceae"},
-      {"id": "239935", "name": "Akkermansia muciniphila", "rank": "species", "lineage": "Bacteria;Verrucomicrobiota;Verrucomicrobiae;Verrucomicrobiales;Akkermansiaceae"}
+      {
+        "id": "216851",
+        "name": "Faecalibacterium prausnitzii",
+        "rank": "species",
+        "lineage": "Bacteria;Bacillota;Clostridia;Eubacteriales;Oscillospiraceae"
+      },
+      {
+        "id": "562",
+        "name": "Escherichia coli",
+        "rank": "species",
+        "lineage": "Bacteria;Pseudomonadota;Gammaproteobacteria;Enterobacterales;Enterobacteriaceae"
+      },
+      {
+        "id": "239935",
+        "name": "Akkermansia muciniphila",
+        "rank": "species",
+        "lineage": "Bacteria;Verrucomicrobiota;Verrucomicrobiae;Verrucomicrobiales;Akkermansiaceae"
+      }
     ],
     "kegg": [
-      {"id": "K00929", "name": "butyrate kinase", "pathway": "Butanoate metabolism", "module": "M00027", "taxa_hint": ["Faecalibacterium", "Roseburia"]},
-      {"id": "K01034", "name": "acetate CoA-transferase", "pathway": "Butanoate metabolism", "module": "M00027", "taxa_hint": ["Faecalibacterium"]},
-      {"id": "K05349", "name": "beta-glucosidase", "pathway": "Starch and sucrose metabolism", "module": "", "taxa_hint": ["Bacteroides", "Bifidobacterium"]}
+      {
+        "id": "K00929",
+        "name": "butyrate kinase",
+        "pathway": "Butanoate metabolism",
+        "module": "M00027",
+        "taxa_hint": [
+          "Faecalibacterium",
+          "Roseburia"
+        ]
+      },
+      {
+        "id": "K01034",
+        "name": "acetate CoA-transferase",
+        "pathway": "Butanoate metabolism",
+        "module": "M00027",
+        "taxa_hint": [
+          "Faecalibacterium"
+        ]
+      },
+      {
+        "id": "K05349",
+        "name": "beta-glucosidase",
+        "pathway": "Starch and sucrose metabolism",
+        "module": "",
+        "taxa_hint": [
+          "Bacteroides",
+          "Bifidobacterium"
+        ]
+      },
+      {
+        "id": "K00016",
+        "name": "L-lactate dehydrogenase",
+        "pathway": "Pyruvate metabolism",
+        "module": "",
+        "taxa_hint": [
+          "Lactobacillus",
+          "Bifidobacterium"
+        ]
+      },
+      {
+        "id": "K00370",
+        "name": "nitrate reductase",
+        "pathway": "Nitrogen metabolism",
+        "module": "",
+        "taxa_hint": [
+          "Escherichia",
+          "Klebsiella"
+        ]
+      }
     ],
     "eggnog": [
-      {"id": "COG1254", "name": "Acyl-CoA dehydrogenase", "category": "Lipid transport and metabolism", "taxa_hint": ["Faecalibacterium"]},
-      {"id": "COG0366", "name": "Glycosidase", "category": "Carbohydrate transport and metabolism", "taxa_hint": ["Bacteroides", "Bifidobacterium"]}
+      {
+        "id": "COG1254",
+        "name": "Acyl-CoA dehydrogenase",
+        "category": "Lipid transport and metabolism",
+        "taxa_hint": [
+          "Faecalibacterium"
+        ]
+      },
+      {
+        "id": "COG0366",
+        "name": "Glycosidase",
+        "category": "Carbohydrate transport and metabolism",
+        "taxa_hint": [
+          "Bacteroides",
+          "Bifidobacterium"
+        ]
+      }
     ],
     "card": [
-      {"id": "ARO:3000010", "name": "TEM-1", "family": "beta-lactamase", "drug_class": "penam", "taxa_hint": ["Escherichia"]},
-      {"id": "ARO:3000024", "name": "CTX-M", "family": "beta-lactamase", "drug_class": "cephalosporin", "taxa_hint": ["Escherichia", "Klebsiella"]}
+      {
+        "id": "ARO:3000010",
+        "name": "TEM-1",
+        "family": "beta-lactamase",
+        "drug_class": "penam",
+        "taxa_hint": [
+          "Escherichia"
+        ]
+      },
+      {
+        "id": "ARO:3000024",
+        "name": "CTX-M",
+        "family": "beta-lactamase",
+        "drug_class": "cephalosporin",
+        "taxa_hint": [
+          "Escherichia",
+          "Klebsiella"
+        ]
+      },
+      {
+        "id": "ARO:3000159",
+        "name": "vanA",
+        "family": "glycopeptide resistance",
+        "drug_class": "glycopeptide",
+        "taxa_hint": [
+          "Enterococcus"
+        ]
+      },
+      {
+        "id": "ARO:3001397",
+        "name": "mcr-1",
+        "family": "colistin resistance",
+        "drug_class": "peptide antibiotic",
+        "taxa_hint": [
+          "Escherichia",
+          "Klebsiella"
+        ]
+      }
     ],
     "vfdb": [
-      {"id": "VFG000001", "name": "fimH", "category": "Adherence", "organism": "Escherichia coli", "taxa_hint": ["Escherichia"]},
-      {"id": "VFG037462", "name": "aggR", "category": "Regulation", "organism": "Escherichia coli", "taxa_hint": ["Escherichia"]}
+      {
+        "id": "VFG000001",
+        "name": "fimH",
+        "category": "Adherence",
+        "organism": "Escherichia coli",
+        "taxa_hint": [
+          "Escherichia"
+        ]
+      },
+      {
+        "id": "VFG037462",
+        "name": "aggR",
+        "category": "Regulation",
+        "organism": "Escherichia coli",
+        "taxa_hint": [
+          "Escherichia"
+        ]
+      },
+      {
+        "id": "VFG000943",
+        "name": "cagA",
+        "category": "Effector delivery",
+        "organism": "Helicobacter pylori",
+        "taxa_hint": [
+          "Helicobacter"
+        ]
+      }
     ],
     "mgnify": [
-      {"id": "MGYS00005792", "name": "Human gut IBD cohort (curated stub)", "biome": "root:Host-associated:Human:Digestive system:Large intestine", "study_type": "metagenomic", "taxa_hint": ["Faecalibacterium", "Escherichia"]},
-      {"id": "MGYS00001234", "name": "HMP gut reference (curated stub)", "biome": "root:Host-associated:Human:Digestive system", "study_type": "metagenomic", "taxa_hint": ["Bacteroides", "Prevotella"]}
+      {
+        "id": "MGYS00005792",
+        "name": "Human gut IBD cohort (curated stub)",
+        "biome": "root:Host-associated:Human:Digestive system:Large intestine",
+        "study_type": "metagenomic",
+        "taxa_hint": [
+          "Faecalibacterium",
+          "Escherichia"
+        ]
+      },
+      {
+        "id": "MGYS00001234",
+        "name": "HMP gut reference (curated stub)",
+        "biome": "root:Host-associated:Human:Digestive system",
+        "study_type": "metagenomic",
+        "taxa_hint": [
+          "Bacteroides",
+          "Prevotella"
+        ]
+      },
+      {
+        "id": "MGYS00001347",
+        "name": "CRC stool metagenomes (curated stub)",
+        "biome": "root:Host-associated:Human:Digestive system",
+        "study_type": "metagenomic",
+        "taxa_hint": [
+          "Fusobacterium",
+          "Bacteroides"
+        ]
+      }
     ],
     "bacdive": [
-      {"id": "BD:001", "name": "Faecalibacterium prausnitzii", "oxygen": "anaerobic", "temp_opt": 37, "habitat": "human intestine"},
-      {"id": "BD:002", "name": "Akkermansia muciniphila", "oxygen": "anaerobic", "temp_opt": 37, "habitat": "human intestine mucus"}
+      {
+        "id": "BD:001",
+        "name": "Faecalibacterium prausnitzii",
+        "oxygen": "anaerobic",
+        "temp_opt": 37,
+        "habitat": "human intestine"
+      },
+      {
+        "id": "BD:002",
+        "name": "Akkermansia muciniphila",
+        "oxygen": "anaerobic",
+        "temp_opt": 37,
+        "habitat": "human intestine mucus"
+      }
     ],
     "hmp": [
-      {"id": "HMP:gut", "name": "HMP healthy adult gut reference profile (stub)", "body_site": "stool", "notes": "Bacteroides/Faecalibacterium-dominated community archetype"}
+      {
+        "id": "HMP:gut",
+        "name": "HMP healthy adult gut reference profile (stub)",
+        "body_site": "stool",
+        "notes": "Bacteroides/Faecalibacterium-dominated community archetype"
+      }
     ]
   },
   "evidence_links": [
-    {"species": "Faecalibacterium prausnitzii", "disease": "IBD", "pmid": "36332312", "effect": "Down", "source": "curated", "confidence": 0.9},
-    {"species": "Escherichia coli", "disease": "IBD", "pmid": "25320205", "effect": "Up", "source": "curated", "confidence": 0.85},
-    {"species": "Akkermansia muciniphila", "disease": "metabolic syndrome", "pmid": "27076061", "effect": "Down", "source": "curated", "confidence": 0.8},
-    {"species": "Bifidobacterium", "disease": "IBD", "pmid": "32042144", "effect": "Down", "source": "curated", "confidence": 0.75}
+    {
+      "species": "Faecalibacterium prausnitzii",
+      "disease": "IBD",
+      "pmid": "36332312",
+      "effect": "Down",
+      "source": "curated",
+      "confidence": 0.9
+    },
+    {
+      "species": "Escherichia coli",
+      "disease": "IBD",
+      "pmid": "25320205",
+      "effect": "Up",
+      "source": "curated",
+      "confidence": 0.85
+    },
+    {
+      "species": "Akkermansia muciniphila",
+      "disease": "metabolic syndrome",
+      "pmid": "27076061",
+      "effect": "Down",
+      "source": "curated",
+      "confidence": 0.8
+    },
+    {
+      "species": "Bifidobacterium",
+      "disease": "IBD",
+      "pmid": "32042144",
+      "effect": "Down",
+      "source": "curated",
+      "confidence": 0.75
+    },
+    {
+      "species": "Roseburia intestinalis",
+      "disease": "IBD",
+      "pmid": "28894100",
+      "effect": "Down",
+      "source": "curated",
+      "confidence": 0.8
+    },
+    {
+      "species": "Ruminococcus gnavus",
+      "disease": "IBD",
+      "pmid": "31110364",
+      "effect": "Up",
+      "source": "curated",
+      "confidence": 0.78
+    },
+    {
+      "species": "Fusobacterium nucleatum",
+      "disease": "colorectal cancer",
+      "pmid": "23954158",
+      "effect": "Up",
+      "source": "curated",
+      "confidence": 0.82
+    },
+    {
+      "species": "Prevotella copri",
+      "disease": "rheumatoid arthritis",
+      "pmid": "24226768",
+      "effect": "Up",
+      "source": "curated",
+      "confidence": 0.7
+    },
+    {
+      "species": "Klebsiella pneumoniae",
+      "disease": "IBD",
+      "pmid": "28912159",
+      "effect": "Up",
+      "source": "curated",
+      "confidence": 0.65
+    }
   ]
 }

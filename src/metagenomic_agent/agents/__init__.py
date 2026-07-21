@@ -5,6 +5,7 @@ from metagenomic_agent.agents import (
     critic_agent,
     function_agent,
     literature_agent,
+    pi_agent,
     qc_agent,
     statistics_agent,
     supervisor,
@@ -37,5 +38,6 @@ __all__ = [
     "critic_agent",
     "literature_agent",
     "visualization_agent",
+    "pi_agent",
     "report_agent",
 ]

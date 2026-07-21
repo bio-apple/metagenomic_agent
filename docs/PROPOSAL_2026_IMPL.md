@@ -1,31 +1,34 @@
-# 2026 优化建议落地对照（v0.6）
+# 2026 + IF10 需求落地对照（v0.7）
 
-对应「Metagenomic Agent 项目优化建议（2026版）」Top3 + 关键 P1。
+本版目标：关闭建议书中此前标注为「后续」的开发项（在无多 GB 全库前提下用算法 + curated + 可插拔 API/钩子完成）。
 
-## P0
+## 已全部落地（代码存在且有测试）
 
-| 建议 | 落地 |
-|------|------|
-| 生物数据库 RAG | `src/metagenomic_agent/rag/`（gtdb/card/vfdb/kegg/mgnify + curated index） |
-| 文献 Evidence Table | `agents/evidence.py` + `literature_agent` → `evidence/evidence_table.md` |
-| Workflow DAG 化 | `execution/dag_export.py` → `workflow/dag.json` / `dag.mmd`；图节点 `export_dag` |
+| 需求 | 路径 / 行为 |
+|------|-------------|
+| 生物库 RAG + wrapper | `rag/`：gtdb/card/vfdb/kegg/mgnify/bacdive/hmp/refseq/ncbi/eggnog |
+| TF-IDF 语义检索 | `rag/embeddings.py`，`retrieve(..., mode="semantic")` |
+| Evidence Table 多源 | PubMed / Europe PMC / OpenAlex / Semantic Scholar（config 可开） |
+| 显式 DAG | `workflow/dag.json` + 分阶段 Snakemake/Nextflow 文档化 |
+| 真实 PCoA | `stats/ordination.py` → `report/figures/pcoa.json` |
+| 共现网络 | Spearman → `cooccurrence.json` |
+| LEfSe-like / ANCOM-like | `stats/lefse_like.py`, `compositional.py` → biomarkers/ |
+| Volcano / Sankey / NMDS 视图 | `visualization_agent.py` |
+| 质量评分 | `evaluation/quality_score.py` |
+| 手稿分节 | `report/manuscript/` |
+| Project Memory | `context/context.json` |
+| Tool 决策 | `skills/decision.py` |
+| 契约硬失败 | `validation.contract_hard_fail` |
+| gLM 外部推理钩子 | `paths.glm_inference_cmd` + `glm_weights` |
+| PI Agent | `agents/pi_agent.py` → 可选 replan |
+| Benchmark | `evaluation/benchmarks.py` + `tests/test_v07_complete.py` |
 
-## P1
+## 仍需外部环境（非缺功能，缺数据/GPU）
 
-| 建议 | 落地 |
-|------|------|
-| Agent Memory | `coordinator/memory.py` project profile（host/platform/read_length） |
-| Tool Registry 决策 | `skills/decision.py`（低内存→Kraken2，长读长→microcafe） |
-| 质量评分 | `evaluation/quality_score.py` → `quality/quality_scores.*` |
-| 投稿级手稿骨架 | `report/manuscript.py` → `report/manuscript/` |
-| Visualization Agent | `agents/visualization_agent.py` → `report/figures/` · `tables/` |
+- 挂载完整 GTDB/CARD/KEGG 转储替换 curated 索引
+- 配置真实 gLM 权重与 `glm_inference_cmd`
+- 正式期刊统计包（ANCOM-BC R / MaAsLin2）——本仓库提供导出表 + 近似方法
 
-## 主链路增量
+## 主链路
 
-`supervisor → export_dag → … → quality_scores → … → literature → visualization → report`
-
-## 仍属后续（诚实）
-
-- 完整 GTDB/CARD/KEGG/MGnify 本地全量索引与向量检索
-- LEfSe / 完整 PCoA 距离矩阵可视化
-- 多组学与 PI Multi-Agent 编排
+`… → literature → pi_review → visualization → report`

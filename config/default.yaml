@@ -39,6 +39,7 @@ paths:
   eggnog: "database/eggnog"
   diamond_db: ""
   glm_weights: ""
+  glm_inference_cmd: ""  # e.g. "python scripts/run_glm.py --weights {weights} --r1 {r1} --out {output}"
 
 pipeline:
   enable_host_filter: true
@@ -59,8 +60,8 @@ llm:
 literature:
   pubmed: true
   europe_pmc: true
-  openalex: false
-  semantic_scholar: false
+  openalex: true
+  semantic_scholar: true
   online: true  # set false / use mock mode to skip remote literature APIs
   rag: true
 
@@ -68,10 +69,15 @@ project:
   name: ""
   host: human
   platform: NovaSeq / Illumina
-  # read_length inferred from FASTQ when possible
 
 report:
   manuscript_template: Microbiome  # Nature | Cell | ISME Journal | Microbiome | Gut Microbes
+
+pi:
+  max_replans: 1
+
+rag:
+  mode: keyword  # keyword | semantic
 
 validation:
   min_read_retention: 0.3
@@ -79,6 +85,7 @@ validation:
   min_mag_completeness: 50
   max_mag_contamination: 10
   require_gut_markers: true
+  contract_hard_fail: false  # true → abort swarm on contract ERROR
   gut_marker_genera:
     - Bacteroides
     - Faecalibacterium
@@ -92,3 +99,5 @@ hitl:
 
 statistics:
   demo_mode: false  # if true (or mock without groups), use explicit synthetic case/control matrix
+  lefse_like: true
+  ancom_like: true

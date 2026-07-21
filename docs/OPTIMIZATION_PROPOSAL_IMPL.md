@@ -40,6 +40,6 @@
 
 ## 尚未纳入本 MVP（后续）
 
-- 真实 gLM 权重与 GPU 推理服务绑定
-- 长读长公开数据集的正式基准报告
-- 契约硬失败默认中止（当前可走 HITL / Critic 警告路径）
+- ~~真实 gLM 权重与 GPU 推理服务绑定~~ → v0.7：`paths.glm_inference_cmd` 外部钩子（权重仍由用户提供）
+- ~~长读长公开数据集的正式基准报告~~ → v0.7：`evaluation/benchmarks.py`（mock/curated 基准；公开大数据集需自备）
+- ~~契约硬失败默认中止~~ → v0.7：`validation.contract_hard_fail`

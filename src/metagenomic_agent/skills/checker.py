@@ -94,11 +94,21 @@ def contract_check(state: AgentState) -> dict[str, Any]:
             + (" ..." if len(errors) > 5 else "")
         )
         updates["hitl_pending"] = hitl
-        # Do not hard-abort here; HITL node decides. Mark for critic/report.
         artifacts_err = list(artifacts.get("errors") or [])
-        # Only treat as blocking errors if skill is truly unsatisfiable (e.g. missing r1)
         blocking = [e for e in errors if "Missing required artifact 'r1'" in e["message"]]
-        if blocking:
+        hard = bool((state.get("config") or {}).get("validation", {}).get("contract_hard_fail", False))
+        if hard:
+            # Hard-fail: block execution path via error + HITL reject signal
+            updates["error"] = "contract_hard_fail: " + "; ".join(e["message"] for e in errors[:5])
+            updates["hitl_resolved"] = False
+            updates["artifacts"] = {
+                **updates["artifacts"],
+                "errors": artifacts_err
+                + [{"node": "contract_check", "error": e["message"], "classified": "logic"} for e in errors],
+                "contract_hard_fail": True,
+            }
+            updates["messages"] = messages + ["Contract HARD FAIL — aborting swarm execution"]
+        elif blocking:
             updates["artifacts"] = {
                 **updates["artifacts"],
                 "errors": artifacts_err
