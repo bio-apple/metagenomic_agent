@@ -54,6 +54,8 @@ literature:
 validation:
   min_read_retention: 0.3
   max_host_fraction: 0.95
+  min_mag_completeness: 50
+  max_mag_contamination: 10
   require_gut_markers: true
   gut_marker_genera:
     - Bacteroides
@@ -64,4 +66,7 @@ validation:
     - Akkermansia
 
 hitl:
-  auto_confirm: true
+  auto_confirm: true  # set false to require interactive confirmation; CLI --yes overrides to true
+
+statistics:
+  demo_mode: false  # if true (or mock without groups), use explicit synthetic case/control matrix

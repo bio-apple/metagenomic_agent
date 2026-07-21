@@ -39,8 +39,13 @@ def run(
         raise typer.BadParameter("mode must be mock, local, conda, or docker")
 
     outdir.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(config, overrides={"mode": mode, "hitl": {"auto_confirm": yes or True}})
+    cfg = load_config(config, overrides={"mode": mode})
     cfg["mode"] = mode
+    # --yes forces auto-confirm; otherwise honor config.hitl.auto_confirm (default false for safety)
+    auto = bool(yes) if yes else bool(cfg.get("hitl", {}).get("auto_confirm", False))
+    cfg.setdefault("hitl", {})["auto_confirm"] = auto
+
+    import uuid
 
     initial: AgentState = {
         "user_query": query,
@@ -54,6 +59,7 @@ def run(
         "dag": [],
         "artifacts": {},
         "messages": [],
+        "agent_messages": [],
         "validation": None,
         "critic": None,
         "literature": None,
@@ -61,9 +67,11 @@ def run(
         "retry_count": 0,
         "max_retries": int(cfg.get("max_retries", 2)),
         "hitl_pending": [],
-        "hitl_auto_confirm": bool(yes or cfg.get("hitl", {}).get("auto_confirm", True)),
+        "hitl_auto_confirm": auto,
+        "hitl_resolved": False,
         "report_path": None,
         "error": None,
+        "run_id": str(uuid.uuid4())[:8],
     }
 
     rprint(Panel.fit(f"[bold]Metagenomic Research Agent[/bold]\nmode={mode}\nquery={query}"))

@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import json
+import shlex
 from pathlib import Path
 from typing import Any
 
 from jinja2 import Template
 
 from metagenomic_agent.report.interpreter import interpret
+
+
+def shlex_quote(s: str) -> str:
+    return shlex.quote(s)
 
 HTML_TEMPLATE = Template(
     """<!DOCTYPE html>
@@ -200,23 +205,52 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
     report_dir.mkdir(exist_ok=True)
     (report_dir / "report.html").write_text(html, encoding="utf-8")
     (report_dir / "interpretation.md").write_text(interpretation, encoding="utf-8")
-    (report_dir / "methods.md").write_text(
-        "# Methods\n\n"
-        "Orchestrated by Metagenomic Research Agent (LangGraph).\n\n"
-        "- QC: fastp (+ host filter)\n"
-        "- Taxonomy: Kraken2/Bracken, MetaPhlAn4\n"
-        "- Assembly: MEGAHIT → MetaBAT2 → GTDB-Tk (optional)\n"
-        "- Function: KEGG/eggNOG/CAZy/CARD/VFDB\n"
-        "- Statistics: Shannon, Bray-Curtis, fold-change biomarkers\n"
-        "- Critic + Literature reasoning\n",
-        encoding="utf-8",
+
+    from metagenomic_agent import __version__
+
+    dag = state.get("dag") or []
+    dag_lines = "\n".join(
+        f"- `{n.get('id')}` → agent=`{n.get('agent')}` tools={n.get('tools')} status={n.get('status')}"
+        for n in dag
+    ) or "- (empty)"
+    stats_methods = (stats.get("methods") if isinstance(stats, dict) else None) or []
+    self_heal = (state.get("artifacts") or {}).get("self_heal_actions") or []
+    methods_md = (
+        f"# Methods\n\n"
+        f"Software: metagenomic-agent **v{__version__}**  \n"
+        f"Mode: `{state.get('mode')}`  \n"
+        f"Plan source: `{state.get('artifacts', {}).get('plan_source', 'n/a')}`  \n"
+        f"Run id: `{state.get('run_id', 'n/a')}`\n\n"
+        f"## Executed DAG\n\n{dag_lines}\n\n"
+        f"## Analytical methods (as run)\n\n"
+        f"- QC: fastp; host removal: Bowtie2/Kneaddata when configured\n"
+        f"- Taxonomy: Kraken2/Bracken and/or MetaPhlAn\n"
+        f"- Assembly/MAGs (if planned): MEGAHIT or metaSPAdes → MetaBAT2/MaxBin2 → DAS-Tool-style consensus → CheckM2 → GTDB-Tk\n"
+        f"- Function: DIAMOND / profile tables (KEGG/eggNOG/CAZy/CARD/VFDB labels)\n"
+        f"- Statistics: {', '.join(stats_methods) if stats_methods else 'shannon / bray-curtis / Mann-Whitney U + BH-FDR'}\n"
+        f"- Self-heal actions: {self_heal or 'none'}\n\n"
+        f"## Limitations (honest reporting)\n\n"
+        f"- Default differential abundance is Mann-Whitney U + Benjamini–Hochberg FDR; "
+        f"for journal submission prefer ANCOM-BC / MaAsLin2 / LEfSe on exported tables.\n"
+        f"- Nextflow/Snakemake configs are generated for handoff; primary orchestration is LangGraph unless "
+        f"`execution.engine` is set and the binary is available.\n"
+        f"- Mock mode synthesizes tool outputs for software demos and CI — do not treat mock abundances as biological truth.\n"
     )
+    (report_dir / "methods.md").write_text(methods_md, encoding="utf-8")
+
+    meta = state.get("metadata_path")
+    cfg_note = ""
     reproduce = report_dir / "reproduce.sh"
     reproduce.write_text(
         "#!/usr/bin/env bash\nset -euo pipefail\n"
-        f"meta-agent run --input {state.get('input_path')} --outdir {state.get('outdir')} "
-        f"--mode {state.get('mode')} --yes "
-        f"--query {json.dumps(state.get('user_query', ''))}\n",
+        f"# metagenomic-agent v{__version__} run_id={state.get('run_id', '')}\n"
+        f"meta-agent run \\\n"
+        f"  --input {shlex_quote(str(state.get('input_path')))} \\\n"
+        f"  --outdir {shlex_quote(str(state.get('outdir')))} \\\n"
+        f"  --mode {shlex_quote(str(state.get('mode')))} \\\n"
+        f"  --query {shlex_quote(str(state.get('user_query', '')))} \\\n"
+        + (f"  --metadata {shlex_quote(str(meta))} \\\n" if meta else "")
+        + "  --yes\n",
         encoding="utf-8",
     )
     reproduce.chmod(0o755)

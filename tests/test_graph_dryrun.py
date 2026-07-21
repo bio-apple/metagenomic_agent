@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from metagenomic_agent.config_loader import load_config
+from metagenomic_agent.evaluation import evaluate_run, precision_at_k
 from metagenomic_agent.graph import run_pipeline
 from metagenomic_agent.state import AgentState
 
@@ -8,7 +9,14 @@ from conftest import write_tiny_fastq
 
 
 def _initial(fq: Path, out: Path, query: str) -> AgentState:
-    cfg = load_config(overrides={"mode": "mock", "pipeline": {"enable_assembly": False}})
+    cfg = load_config(
+        overrides={
+            "mode": "mock",
+            "pipeline": {"enable_assembly": False},
+            "hitl": {"auto_confirm": True},
+            "statistics": {"demo_mode": True},
+        }
+    )
     return {
         "user_query": query,
         "input_path": str(fq),
@@ -21,6 +29,7 @@ def _initial(fq: Path, out: Path, query: str) -> AgentState:
         "dag": [],
         "artifacts": {},
         "messages": [],
+        "agent_messages": [],
         "validation": None,
         "critic": None,
         "literature": None,
@@ -29,8 +38,10 @@ def _initial(fq: Path, out: Path, query: str) -> AgentState:
         "max_retries": 2,
         "hitl_pending": [],
         "hitl_auto_confirm": True,
+        "hitl_resolved": False,
         "report_path": None,
         "error": None,
+        "run_id": "test0001",
     }
 
 
@@ -54,10 +65,16 @@ def test_graph_dryrun_mock(tmp_path: Path):
     assert (out / "diversity_analysis" / "alpha_diversity.tsv").exists()
     assert (out / "biomarkers" / "biomarkers.tsv").exists()
     assert (out / "literature_summary" / "literature_summary.md").exists()
+    assert (out / "report" / "methods.md").exists()
+    assert "Mann-Whitney" in (out / "report" / "methods.md").read_text() or "mannwhitney" in (
+        out / "report" / "methods.md"
+    ).read_text().lower()
+    assert (out / "report" / "reproduce.sh").exists()
+    assert "--query" in (out / "report" / "reproduce.sh").read_text()
+    assert (out / "logs" / "events.jsonl").exists()
     assert final.get("critic") is not None
     assert final.get("literature") is not None
-    assert "qc_host" in final.get("artifacts", {})
-    assert "taxonomy" in final.get("artifacts", {})
+    assert final.get("agent_messages") is not None
 
 
 def test_supervisor_plan_json(tmp_path: Path):
@@ -68,3 +85,15 @@ def test_supervisor_plan_json(tmp_path: Path):
     final = run_pipeline(_initial(fq, out, "Find microbial signatures associated with inflammatory disease."))
     assert (out / "supervisor_plan.json").exists()
     assert final.get("tasks")
+
+
+def test_golden_evaluation(tmp_path: Path):
+    fq = tmp_path / "fastq"
+    write_tiny_fastq(fq / "gut_R1.fastq")
+    write_tiny_fastq(fq / "gut_R2.fastq")
+    out = tmp_path / "out"
+    run_pipeline(_initial(fq, out, "IBD biomarkers"))
+    report = evaluate_run(out, golden={"biomarker_genera": ["Faecalibacterium", "Escherichia"]})
+    assert report["passed"]
+    assert report["biomarker_precision_at_5"] >= 0.0
+    assert precision_at_k(["Faecalibacterium", "X"], ["Faecalibacterium"], k=1) == 1.0

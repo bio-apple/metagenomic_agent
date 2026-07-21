@@ -65,12 +65,27 @@ def run_binning(
     binners = binners or ["metabat2", "maxbin2"]
     if ctx.mode == "mock":
         mock = mock_tools.write_assembly(outdir, sample_id)
+        checkm = outdir / f"{sample_id}.checkm2.tsv"
+        checkm.write_text(
+            "Name\tCompleteness\tContamination\n"
+            f"{sample_id}.bin.1\t92.5\t1.8\n",
+            encoding="utf-8",
+        )
+        # Simulate multi-binner consensus directory
+        consensus = outdir / "bins" / "das_tool_consensus"
+        consensus.mkdir(parents=True, exist_ok=True)
+        src = outdir / "bins" / f"{sample_id}.bin.1.fa"
+        if src.exists():
+            (consensus / src.name).write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
         return {
             **mock,
             "binners": binners,
-            "checkm2": str(outdir / f"{sample_id}.checkm2.tsv"),
-            "completeness": 92.0,
-            "contamination": 2.1,
+            "checkm2": str(checkm),
+            "completeness": 92.5,
+            "contamination": 1.8,
+            "n_bins": int(mock.get("n_bins") or 1),
+            "das_tool_dir": str(consensus),
+            "bins_dir": str(consensus),
         }
 
     outdir.mkdir(parents=True, exist_ok=True)
@@ -93,10 +108,69 @@ def run_binning(
     if "maxbin2" in binners:
         maxbin_out = bins_dir / "maxbin"
         maxbin_out.mkdir(exist_ok=True)
-        # MaxBin2 typically needs abundance; in production wire coverage; here invoke stub-safe
+        # Coverage file required for real MaxBin2; write placeholder abundance for local/conda attempts
+        abun = outdir / f"{sample_id}.abundance.txt"
+        if not abun.exists():
+            abun.write_text("contig\tabundance\ncontig_1\t10\n", encoding="utf-8")
+        if ctx.mode == "mock":
+            (maxbin_out / f"{sample_id}.maxbin.001.fasta").write_text(
+                f">{sample_id}_maxbin\n{'ATGC' * 300}\n", encoding="utf-8"
+            )
+        elif ctx.mode in {"local", "conda"} and ctx.which("run_MaxBin.pl"):
+            ctx.run_tool(
+                "maxbin2",
+                [
+                    "run_MaxBin.pl",
+                    "-contig",
+                    contigs,
+                    "-abund",
+                    str(abun),
+                    "-out",
+                    str(maxbin_out / "bin"),
+                    "-thread",
+                    str(ctx.threads),
+                ],
+                check=False,
+            )
         produced["maxbin2_dir"] = str(maxbin_out)
 
+    # DAS Tool-style consensus (mock: prefer MetaBAT bins if present else MaxBin)
+    consensus = bins_dir / "das_tool_consensus"
+    consensus.mkdir(exist_ok=True)
+    src_dirs = [bins_dir / "metabat", bins_dir / "maxbin"]
+    n_bins = 0
+    for d in src_dirs:
+        if not d.exists():
+            continue
+        for fa in d.glob("*.fa*") if d.exists() else []:
+            target = consensus / fa.name
+            if not target.exists():
+                target.write_text(fa.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
+                n_bins += 1
+    if n_bins == 0 and (bins_dir / f"{sample_id}.bin.1.fa").exists():
+        n_bins = 1
+    produced["das_tool_dir"] = str(consensus)
+    produced["n_bins"] = n_bins or produced.get("n_bins", 1)
+    produced["bins_dir"] = str(consensus if n_bins else bins_dir)
     return produced
+
+
+def _parse_checkm_table(report: Path) -> tuple[float, float]:
+    if not report.exists():
+        return 0.0, 100.0
+    lines = report.read_text().splitlines()
+    best_c, best_x = 0.0, 100.0
+    for line in lines[1:]:
+        parts = line.strip().split("\t")
+        if len(parts) < 3:
+            continue
+        try:
+            c, x = float(parts[1]), float(parts[2])
+            if c > best_c:
+                best_c, best_x = c, x
+        except ValueError:
+            continue
+    return best_c, best_x
 
 
 def run_checkm2(bins_dir: str, outdir: Path, ctx: ToolContext, sample_id: str) -> dict[str, Any]:
@@ -108,18 +182,23 @@ def run_checkm2(bins_dir: str, outdir: Path, ctx: ToolContext, sample_id: str) -
             f"{sample_id}.bin.1\t92.5\t1.8\n",
             encoding="utf-8",
         )
-        return {"checkm2": str(report), "completeness": 92.5, "contamination": 1.8}
+        return {"checkm2": str(report), "completeness": 92.5, "contamination": 1.8, "n_bins": 1}
 
     argv = ["checkm2", "predict", "--input", bins_dir, "--output-directory", str(outdir / "checkm2_out"), "-x", "fa"]
     if ctx.mode in {"local", "conda"}:
         ctx.run_tool("checkm2", argv, check=False)
+        # Prefer quality_report.tsv if CheckM2 wrote it
+        candidate = outdir / "checkm2_out" / "quality_report.tsv"
+        if candidate.exists():
+            report.write_text(candidate.read_text(encoding="utf-8"), encoding="utf-8")
     else:
         vols = {bins_dir: "/bins", str(outdir): "/outdir"}
         inner = "checkm2 predict --input /bins --output-directory /outdir/checkm2_out -x fa"
         ctx.run_docker("checkm2", inner, vols)
     if not report.exists():
         report.write_text("Name\tCompleteness\tContamination\n", encoding="utf-8")
-    return {"checkm2": str(report)}
+    comp, cont = _parse_checkm_table(report)
+    return {"checkm2": str(report), "completeness": comp, "contamination": cont}
 
 
 def run_gtdbtk(bins_dir: str, outdir: Path, ctx: ToolContext, sample_id: str) -> dict[str, Any]:

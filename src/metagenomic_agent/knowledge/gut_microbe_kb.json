@@ -55,7 +55,21 @@
       "mechanism": "Butyrate-producing Firmicute supporting gut barrier function.",
       "phenotype": "Frequently reduced in inflammatory gut conditions.",
       "references": [
-        {"title": "Roseburia butyrate producers", "id": "kb:rose-1"}
+        {"title": "Roseburia butyrate producers", "id": "PMID:26992401"}
+      ]
+    },
+    "Blautia": {
+      "mechanism": "Acetogen involved in cross-feeding and bile acid metabolism.",
+      "phenotype": "Altered in metabolic syndrome and IBD cohorts.",
+      "references": [
+        {"title": "Blautia in human gut", "id": "PMID:31602369"}
+      ]
+    },
+    "Ruminococcus": {
+      "mechanism": "Complex carbohydrate degradation including resistant starch.",
+      "phenotype": "Strain-dependent associations with gut inflammation.",
+      "references": [
+        {"title": "Ruminococcus gnavus and IBD", "id": "PMID:31142855"}
       ]
     }
   }

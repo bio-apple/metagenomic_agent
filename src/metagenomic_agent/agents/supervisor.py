@@ -1,4 +1,4 @@
-"""Supervisor Agent — task planning and coordination."""
+"""Supervisor Agent — validated task planning and HITL hints."""
 
 from __future__ import annotations
 
@@ -8,8 +8,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel, Field, ValidationError
+
 from metagenomic_agent.coordinator.env_manager import probe_environment
 from metagenomic_agent.coordinator.memory import ContextMemory
+from metagenomic_agent.messaging import append_msg, emit
 from metagenomic_agent.state import AgentState, DagNode, TaskSpec
 
 KB_PATH = Path(__file__).resolve().parents[1] / "knowledge" / "best_practices.md"
@@ -36,6 +39,18 @@ AGENT_ALIASES = {
     "report agent": "report",
     "report": "report",
 }
+
+
+class PlannedTask(BaseModel):
+    name: str
+    agent: str
+    tools: list[str] = Field(default_factory=list)
+    params: dict[str, Any] = Field(default_factory=dict)
+    depends_on: list[str] = Field(default_factory=list)
+
+
+class PlanSchema(BaseModel):
+    tasks: list[PlannedTask]
 
 
 def _normalize_agent(name: str) -> str:
@@ -87,34 +102,16 @@ def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
             {
                 "name": "statistical_analysis",
                 "agent": "Statistics Agent",
-                "tools": ["vegan", "ancombc"],
+                "tools": ["shannon", "bray_curtis", "mannwhitney_bh"],
                 "params": {},
                 "depends_on": ["taxonomy_profile"],
             }
         )
     tasks.extend(
         [
-            {
-                "name": "quality_critique",
-                "agent": "Critic Agent",
-                "tools": [],
-                "params": {},
-                "depends_on": [t["name"] for t in tasks],
-            },
-            {
-                "name": "literature_reasoning",
-                "agent": "Literature Agent",
-                "tools": ["pubmed"],
-                "params": {},
-                "depends_on": ["quality_critique"],
-            },
-            {
-                "name": "report_generation",
-                "agent": "Report Agent",
-                "tools": [],
-                "params": {},
-                "depends_on": ["literature_reasoning"],
-            },
+            {"name": "quality_critique", "agent": "Critic Agent", "tools": [], "params": {}, "depends_on": [t["name"] for t in tasks]},
+            {"name": "literature_reasoning", "agent": "Literature Agent", "tools": ["pubmed", "rag"], "params": {}, "depends_on": ["quality_critique"]},
+            {"name": "report_generation", "agent": "Report Agent", "tools": [], "params": {}, "depends_on": ["literature_reasoning"]},
         ]
     )
     return tasks
@@ -125,7 +122,6 @@ def _tasks_to_dag(tasks: list[TaskSpec]) -> list[DagNode]:
     for t in tasks:
         agent = _normalize_agent(t["agent"])
         if agent in {"critic", "literature", "report"}:
-            # handled as dedicated graph nodes after swarm
             continue
         nodes.append(
             DagNode(
@@ -137,11 +133,30 @@ def _tasks_to_dag(tasks: list[TaskSpec]) -> list[DagNode]:
                 status="pending",
             )
         )
-    # fix depends_on to only reference swarm nodes
     swarm_ids = {n["id"] for n in nodes}
     for n in nodes:
         n["depends_on"] = [d for d in n["depends_on"] if d in swarm_ids]
     return nodes
+
+
+def _validate_tasks(raw: list[dict[str, Any]]) -> list[TaskSpec] | None:
+    try:
+        plan = PlanSchema.model_validate({"tasks": raw})
+    except ValidationError:
+        return None
+    tasks: list[TaskSpec] = []
+    for t in plan.tasks:
+        tasks.append(
+            TaskSpec(
+                name=t.name,
+                agent=t.agent,
+                tools=t.tools,
+                params=t.params,
+                depends_on=t.depends_on,
+                status="pending",
+            )
+        )
+    return tasks or None
 
 
 def _llm_plan(query: str, samples: list[dict], config: dict[str, Any]) -> list[TaskSpec] | None:
@@ -162,29 +177,18 @@ def _llm_plan(query: str, samples: list[dict], config: dict[str, Any]) -> list[T
         base_url=os.getenv("OPENAI_BASE_URL") or None,
     )
     kb = KB_PATH.read_text(encoding="utf-8")[:2500] if KB_PATH.exists() else ""
-    schema = {
-        "tasks": [
-            {
-                "name": "quality_control",
-                "agent": "QC Agent",
-                "tools": ["fastp"],
-                "params": {},
-                "depends_on": [],
-            }
-        ]
-    }
     resp = model.invoke(
         [
             SystemMessage(
                 content=(
                     "You are the Supervisor Agent for metagenomic research. "
                     "Plan tasks for QC, Taxonomy, Assembly, Function, Statistics, Critic, Literature, Report. "
-                    "Output JSON only."
+                    "Output JSON only with key tasks."
                 )
             ),
             HumanMessage(
                 content=f"Query: {query}\nSamples: {json.dumps(samples, ensure_ascii=False)}\nKB:\n{kb}\n"
-                f"Schema: {json.dumps(schema)}"
+                'Schema: {"tasks":[{"name":"...","agent":"...","tools":[],"params":{},"depends_on":[]}]}'
             ),
         ]
     )
@@ -193,23 +197,10 @@ def _llm_plan(query: str, samples: list[dict], config: dict[str, Any]) -> list[T
     if not match:
         return None
     data = json.loads(match.group(0))
-    tasks: list[TaskSpec] = []
-    for t in data.get("tasks", []):
-        tasks.append(
-            TaskSpec(
-                name=t["name"],
-                agent=t["agent"],
-                tools=list(t.get("tools", [])),
-                params=dict(t.get("params", {})),
-                depends_on=list(t.get("depends_on", [])),
-                status="pending",
-            )
-        )
-    return tasks or None
+    return _validate_tasks(list(data.get("tasks", [])))
 
 
 def plan(state: AgentState) -> dict:
-    """Supervisor entry: decompose scientific question into executable tasks."""
     config = state["config"]
     env = probe_environment()
     memory = ContextMemory(Path(state["outdir"]) / "context")
@@ -225,19 +216,26 @@ def plan(state: AgentState) -> dict:
     memory.update(tasks=tasks, dag=dag)
     memory.append_history(f"supervisor_plan:{source}:{len(tasks)}")
 
-    # Document-format task JSON for transparency
+    hitl: list[str] = []
+    if any(n["agent"] == "assembly" for n in dag):
+        hitl.append("Confirm assembly & binning strategy (MEGAHIT vs metaSPAdes; enable CheckM2/GTDB-Tk)?")
+    if any(n["agent"] == "statistics" for n in dag) and not any(s.get("group") for s in state.get("samples", [])):
+        hitl.append("Statistics planned but no sample groups in metadata — provide --metadata or confirm demo_mode?")
+
     task_json = {"tasks": [{"name": t["name"], "agent": t["agent"]} for t in tasks]}
     (Path(state["outdir"]) / "supervisor_plan.json").write_text(
         json.dumps(task_json, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
+    amsg = emit("supervisor", "executor", "plan", {"source": source, "n_tasks": len(tasks), "plan": task_json})
     return {
         "tasks": tasks,
         "dag": dag,
+        "hitl_pending": hitl,
         "artifacts": {**state.get("artifacts", {}), "env": env, "plan_source": source, "supervisor_plan": task_json},
         "messages": state.get("messages", []) + [f"Supervisor planned {len(tasks)} task(s) via {source}"],
+        "agent_messages": append_msg(state.get("agent_messages"), amsg),
     }
 
 
-# Backward-compatible alias used by older graph wiring
 decompose = plan

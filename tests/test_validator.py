@@ -59,7 +59,22 @@ def test_recovery_lowers_confidence():
     st["artifacts"]["taxonomy"]["S1"]["top_genera"] = ["Unknown"]
     bio = validate_biological(st)
     assert bio["ok"] is False
-    actions = plan_recovery(st, {"ok": True, "samples": {}}, bio)
+    actions = plan_recovery(st, {"ok": True, "samples": {}, "mags": {}}, bio)
     assert "lower_kraken_confidence" in actions
     new_dag = apply_recovery(st["dag"], actions)
     assert new_dag[0]["params"]["confidence"] == pytest.approx(0.03)
+
+
+def test_recovery_prefix_loosen_qc():
+    dag = [
+        {
+            "id": "qc",
+            "agent": "qc",
+            "tools": ["fastp"],
+            "params": {},
+            "depends_on": [],
+            "status": "done",
+        }
+    ]
+    new_dag = apply_recovery(dag, ["loosen_qc:S1"])
+    assert new_dag[0]["params"]["qualified_quality_phred"] == 15

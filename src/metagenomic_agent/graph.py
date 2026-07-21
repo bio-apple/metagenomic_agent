@@ -1,4 +1,4 @@
-"""LangGraph assembly with Validator + Self-Heal loop."""
+"""LangGraph assembly: HITL + Validator + Self-Heal + Critic + Literature + Report."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from typing import Literal
 from langgraph.graph import END, StateGraph
 
 from metagenomic_agent.agents import critic_agent, literature_agent, supervisor
+from metagenomic_agent.agents.hitl import hitl_checkpoint
 from metagenomic_agent.execution.executor import execute_swarm
 from metagenomic_agent.execution.self_heal import apply_self_heal, classify_from_errors, deep_merge_config
 from metagenomic_agent.input.parser import parse_input
@@ -14,6 +15,12 @@ from metagenomic_agent.report import generator as report_agent
 from metagenomic_agent.state import AgentState
 from metagenomic_agent.validators.loop import validate
 from metagenomic_agent.validators.recovery import apply_recovery, plan_recovery
+
+
+def _route_after_hitl(state: AgentState) -> Literal["execute_swarm", "report"]:
+    if state.get("error") or state.get("hitl_resolved") is False:
+        return "report"
+    return "execute_swarm"
 
 
 def _route_after_validate(state: AgentState) -> Literal["self_heal", "critic"]:
@@ -37,17 +44,15 @@ def _route_after_critic(state: AgentState) -> Literal["self_heal", "literature"]
 
 
 def _self_heal(state: AgentState) -> dict:
-    """Intermediate Logic Correction / Retry (architecture Validator Loop)."""
     actions: list[str] = []
     errors = list(state.get("artifacts", {}).get("errors") or [])
     actions.extend(classify_from_errors(errors))
-
     validation = state.get("validation") or {}
     if validation and not validation.get("passed"):
         actions.extend(
             plan_recovery(state, validation.get("technical") or {}, validation.get("biological") or {})
         )
-
+        actions.extend(validation.get("recovery_actions") or [])
     critic = state.get("critic") or {}
     recs = " ".join(critic.get("recommendations") or []).lower()
     if "metaphlan" in recs:
@@ -59,15 +64,11 @@ def _self_heal(state: AgentState) -> dict:
 
     actions = list(dict.fromkeys(actions))
     new_dag, cfg_patch = apply_self_heal(list(state.get("dag", [])), actions, state.get("config"))
-    # Also apply legacy recovery for taxonomy confidence etc.
     new_dag = apply_recovery(new_dag, actions)
     new_config = deep_merge_config(dict(state.get("config") or {}), cfg_patch)
-
-    # Clear prior errors for next attempt
     artifacts = dict(state.get("artifacts") or {})
     artifacts["errors"] = []
     artifacts["self_heal_actions"] = actions
-
     return {
         "dag": new_dag,
         "config": new_config,
@@ -82,6 +83,7 @@ def build_graph():
     g = StateGraph(AgentState)
     g.add_node("parse_input", parse_input)
     g.add_node("supervisor", supervisor.plan)
+    g.add_node("hitl", hitl_checkpoint)
     g.add_node("execute_swarm", execute_swarm)
     g.add_node("validate", validate)
     g.add_node("self_heal", _self_heal)
@@ -91,24 +93,16 @@ def build_graph():
 
     g.set_entry_point("parse_input")
     g.add_edge("parse_input", "supervisor")
-    g.add_edge("supervisor", "execute_swarm")
+    g.add_edge("supervisor", "hitl")
+    g.add_conditional_edges("hitl", _route_after_hitl, {"execute_swarm": "execute_swarm", "report": "report"})
     g.add_edge("execute_swarm", "validate")
-    g.add_conditional_edges(
-        "validate",
-        _route_after_validate,
-        {"self_heal": "self_heal", "critic": "critic"},
-    )
+    g.add_conditional_edges("validate", _route_after_validate, {"self_heal": "self_heal", "critic": "critic"})
     g.add_edge("self_heal", "execute_swarm")
-    g.add_conditional_edges(
-        "critic",
-        _route_after_critic,
-        {"self_heal": "self_heal", "literature": "literature"},
-    )
+    g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
     g.add_edge("literature", "report")
     g.add_edge("report", END)
     return g.compile()
 
 
 def run_pipeline(initial: AgentState) -> AgentState:
-    app = build_graph()
-    return app.invoke(initial)
+    return build_graph().invoke(initial)

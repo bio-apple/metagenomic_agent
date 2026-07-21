@@ -1,4 +1,4 @@
-"""Statistics Agent — diversity, differential abundance, biomarkers."""
+"""Statistics Agent — diversity + Mann-Whitney U with Benjamini-Hochberg FDR."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from typing import Any
 
 
 def _load_genus_matrix(taxonomy_profile: str | None, artifacts: dict[str, Any]) -> dict[str, dict[str, float]]:
-    """sample -> genus -> abundance"""
     matrix: dict[str, dict[str, float]] = defaultdict(dict)
     path = taxonomy_profile or artifacts.get("taxonomy_profile")
     if path and Path(path).exists():
@@ -17,10 +16,8 @@ def _load_genus_matrix(taxonomy_profile: str | None, artifacts: dict[str, Any]) 
             parts = line.strip().split("\t")
             if len(parts) >= 3:
                 sample, genus, abund = parts[0], parts[1], float(parts[2])
-                # prefer first tool occurrence
                 matrix[sample].setdefault(genus, abund)
         return matrix
-
     for sid, art in artifacts.get("taxonomy", {}).items():
         for path_key in ("kraken2_abundance", "metaphlan_abundance"):
             p = art.get(path_key)
@@ -51,15 +48,87 @@ def _bray_curtis(a: dict[str, float], b: dict[str, float]) -> float:
     return num / den
 
 
-def _mock_group_effect(sample_id: str, group: str | None, genus: str) -> float:
-    """Deterministic mock shift for IBD vs control demos."""
-    base = {"Bacteroides": 0.25, "Faecalibacterium": 0.18, "Escherichia": 0.04}.get(genus, 0.05)
-    if group and group.lower() in {"ibd", "disease", "case", "patient"}:
-        if genus == "Faecalibacterium":
-            return base * 0.4
-        if genus == "Escherichia":
-            return base * 2.5
-    return base
+def _mannwhitney_u(x: list[float], y: list[float]) -> tuple[float, float]:
+    """Two-sided Mann-Whitney U with normal approximation (no scipy dependency)."""
+    n1, n2 = len(x), len(y)
+    if n1 < 1 or n2 < 1:
+        return float("nan"), 1.0
+    combined = [(v, 0) for v in x] + [(v, 1) for v in y]
+    combined.sort(key=lambda t: t[0])
+    # average ranks for ties
+    ranks = [0.0] * len(combined)
+    i = 0
+    while i < len(combined):
+        j = i
+        while j < len(combined) and combined[j][0] == combined[i][0]:
+            j += 1
+        avg = (i + 1 + j) / 2.0
+        for k in range(i, j):
+            ranks[k] = avg
+        i = j
+    r1 = sum(ranks[k] for k, (_, g) in enumerate(combined) if g == 0)
+    u1 = r1 - n1 * (n1 + 1) / 2.0
+    u2 = n1 * n2 - u1
+    u = min(u1, u2)
+    mu = n1 * n2 / 2.0
+    sigma = math.sqrt(n1 * n2 * (n1 + n2 + 1) / 12.0) or 1.0
+    z = (u - mu) / sigma
+    # two-sided p from erfc
+    p = math.erfc(abs(z) / math.sqrt(2.0))
+    return u, max(0.0, min(1.0, p))
+
+
+def _bh_fdr(pvalues: list[float]) -> list[float]:
+    m = len(pvalues)
+    if m == 0:
+        return []
+    order = sorted(range(m), key=lambda i: pvalues[i])
+    adj = [0.0] * m
+    prev = 1.0
+    for rank, idx in enumerate(reversed(order), start=1):
+        i = m - rank  # 0-based rank from end
+        # standard BH: p * m / (rank) where rank is 1..m in ascending p order
+        r = m - i
+        val = min(prev, pvalues[order[r - 1]] * m / r)
+        adj[order[r - 1]] = val
+        prev = val
+    # Fix BH properly
+    order_asc = sorted(range(m), key=lambda i: pvalues[i])
+    q = [0.0] * m
+    running = 1.0
+    for i in range(m - 1, -1, -1):
+        idx = order_asc[i]
+        rank = i + 1
+        running = min(running, pvalues[idx] * m / rank)
+        q[idx] = min(1.0, running)
+    return q
+
+
+def _synthetic_demo_matrix(n_case: int = 3, n_ctrl: int = 3) -> tuple[dict[str, dict[str, float]], dict[str, str]]:
+    """Explicit demo data when demo_mode=true (not silent odd/even labeling)."""
+    matrix: dict[str, dict[str, float]] = {}
+    groups: dict[str, str] = {}
+    for i in range(n_case):
+        sid = f"case_{i+1}"
+        groups[sid] = "IBD"
+        matrix[sid] = {
+            "Bacteroides": 0.22,
+            "Faecalibacterium": 0.06,
+            "Escherichia": 0.12,
+            "Prevotella": 0.10,
+            "Other": 0.50,
+        }
+    for i in range(n_ctrl):
+        sid = f"ctrl_{i+1}"
+        groups[sid] = "Control"
+        matrix[sid] = {
+            "Bacteroides": 0.25,
+            "Faecalibacterium": 0.20,
+            "Escherichia": 0.03,
+            "Prevotella": 0.12,
+            "Other": 0.40,
+        }
+    return matrix, groups
 
 
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -71,26 +140,23 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     matrix = _load_genus_matrix(state.get("artifacts", {}).get("taxonomy_profile"), state.get("artifacts", {}))
     samples = state.get("samples", [])
     groups = {s["sample_id"]: (s.get("group") or "unknown") for s in samples}
+    demo_mode = bool(state.get("config", {}).get("statistics", {}).get("demo_mode", False))
+    notes: list[str] = []
 
-    # If single group and query mentions IBD, synthesize control/case labels for mock demos
-    if len(set(groups.values())) <= 1 and state.get("mode") == "mock":
-        for i, s in enumerate(samples):
-            groups[s["sample_id"]] = "IBD" if i % 2 == 0 else "Control"
-            # adjust matrix for demo biomarkers
-            sid = s["sample_id"]
-            if sid not in matrix:
-                matrix[sid] = {}
-            for g in ("Bacteroides", "Faecalibacterium", "Escherichia", "Prevotella"):
-                matrix[sid][g] = _mock_group_effect(sid, groups[sid], g)
+    real_groups = {g for g in groups.values() if g != "unknown"}
+    if len(real_groups) < 2:
+        if demo_mode or state.get("mode") == "mock":
+            matrix, groups = _synthetic_demo_matrix()
+            notes.append("demo_mode: used synthetic case/control matrix for differential demo (not real sample labels)")
+        else:
+            notes.append("Insufficient group labels for differential abundance; diversity-only")
 
-    # Alpha diversity
     alpha_lines = ["sample\tgroup\tshannon\trichness"]
     for sid, abund in matrix.items():
         alpha_lines.append(f"{sid}\t{groups.get(sid, 'unknown')}\t{_shannon(abund):.4f}\t{len(abund)}")
     alpha_path = outdir / "alpha_diversity.tsv"
     alpha_path.write_text("\n".join(alpha_lines) + "\n", encoding="utf-8")
 
-    # Beta diversity (pairwise Bray-Curtis)
     ids = sorted(matrix)
     beta_lines = ["sample_a\tsample_b\tbray_curtis"]
     for i, a in enumerate(ids):
@@ -99,32 +165,39 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     beta_path = outdir / "beta_diversity.tsv"
     beta_path.write_text("\n".join(beta_lines) + "\n", encoding="utf-8")
 
-    # Differential abundance / biomarkers (simple fold-change between groups)
-    group_names = sorted({g for g in groups.values() if g != "unknown"})
-    biomarker_rows = ["genus\tgroup_a\tgroup_b\tmean_a\tmean_b\tlog2fc\tdirection"]
+    biomarker_rows = ["genus\tgroup_a\tgroup_b\tmean_a\tmean_b\tlog2fc\tp_value\tq_value\tdirection"]
     biomarkers: list[dict[str, Any]] = []
+    group_names = sorted({g for g in groups.values() if g != "unknown"})
     if len(group_names) >= 2:
         ga, gb = group_names[0], group_names[1]
         taxa = set()
         for abund in matrix.values():
             taxa |= set(abund)
+        raw: list[tuple[str, float, float, float, float, float]] = []
         for genus in sorted(taxa):
             vals_a = [matrix[s][genus] for s, g in groups.items() if g == ga and genus in matrix[s]]
             vals_b = [matrix[s][genus] for s, g in groups.items() if g == gb and genus in matrix[s]]
-            if not vals_a or not vals_b:
+            if len(vals_a) < 2 or len(vals_b) < 2:
                 continue
             ma, mb = sum(vals_a) / len(vals_a), sum(vals_b) / len(vals_b)
             log2fc = math.log2((mb + 1e-9) / (ma + 1e-9))
-            if abs(log2fc) < 0.5:
+            _, p = _mannwhitney_u(vals_a, vals_b)
+            raw.append((genus, ma, mb, log2fc, p, 0.0))
+        qvals = _bh_fdr([r[4] for r in raw])
+        for (genus, ma, mb, log2fc, p, _), q in zip(raw, qvals):
+            if q > 0.25 and abs(log2fc) < 0.5:
                 continue
             direction = f"enriched_in_{gb}" if log2fc > 0 else f"enriched_in_{ga}"
-            biomarker_rows.append(f"{genus}\t{ga}\t{gb}\t{ma:.4f}\t{mb:.4f}\t{log2fc:.4f}\t{direction}")
+            biomarker_rows.append(
+                f"{genus}\t{ga}\t{gb}\t{ma:.4f}\t{mb:.4f}\t{log2fc:.4f}\t{p:.4g}\t{q:.4g}\t{direction}"
+            )
             biomarkers.append(
-                {"genus": genus, "log2fc": log2fc, "direction": direction, "mean_a": ma, "mean_b": mb}
+                {"genus": genus, "log2fc": log2fc, "p_value": p, "q_value": q, "direction": direction, "mean_a": ma, "mean_b": mb}
             )
 
     biomarker_path = biomarker_dir / "biomarkers.tsv"
     biomarker_path.write_text("\n".join(biomarker_rows) + "\n", encoding="utf-8")
+    (outdir / "notes.txt").write_text("\n".join(notes) + "\n", encoding="utf-8")
 
     stats = {
         "alpha_diversity": str(alpha_path),
@@ -133,10 +206,20 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "n_biomarkers": len(biomarkers),
         "biomarker_list": biomarkers[:20],
         "groups": groups,
-        "methods": ["shannon", "bray_curtis", "fold_change_proxy_ANCOM-BC/LEfSe"],
+        "methods": [
+            "shannon_alpha",
+            "bray_curtis_beta",
+            "mannwhitney_u",
+            "benjamini_hochberg_fdr",
+        ],
+        "notes": notes,
+        "disclaimer": (
+            "Differential abundance uses Mann-Whitney U + BH-FDR as a lightweight default. "
+            "For publication, re-run with ANCOM-BC / Maaslin2 / LEfSe on the exported abundance tables."
+        ),
     }
     (outdir / "statistics_summary.json").write_text(
         __import__("json").dumps({k: v for k, v in stats.items() if k != "biomarker_list"}, indent=2),
         encoding="utf-8",
     )
-    return {"statistics": stats, **{"_statistics_state": stats}}
+    return {"statistics": stats, "_statistics_state": stats}

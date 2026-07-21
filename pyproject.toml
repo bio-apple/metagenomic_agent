@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metagenomic-agent"
-version = "0.3.0"
-description = "Metagenomics AI Agent with MAGs, self-heal, and Linux production deployment"
+version = "0.4.0"
+description = "Metagenomics AI Agent optimized across agent, bioinformatics, engineering, and research roles"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -37,7 +37,7 @@ meta-agent = "metagenomic_agent.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-metagenomic_agent = ["knowledge/*.md", "report/templates/*.html"]
+metagenomic_agent = ["knowledge/*.md", "knowledge/*.json", "report/templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

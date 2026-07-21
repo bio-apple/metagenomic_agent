@@ -8,6 +8,7 @@ from typing import Any, Literal, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from metagenomic_agent import __version__
 from metagenomic_agent.config_loader import load_config
 from metagenomic_agent.graph import run_pipeline
 from metagenomic_agent.state import AgentState
@@ -15,7 +16,7 @@ from metagenomic_agent.state import AgentState
 app = FastAPI(
     title="Metagenomic Research Agent API",
     description="Autonomous AI agent system for end-to-end metagenomic analysis",
-    version="0.2.0",
+    version=__version__,
 )
 
 
@@ -53,6 +54,9 @@ def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
     outdir = Path(req.outdir).expanduser()
     outdir.mkdir(parents=True, exist_ok=True)
     cfg = load_config(req.config_path, overrides={"mode": req.mode})
+    cfg.setdefault("hitl", {})["auto_confirm"] = True
+
+    import uuid
 
     initial: AgentState = {
         "user_query": req.query,
@@ -66,6 +70,7 @@ def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
         "dag": [],
         "artifacts": {},
         "messages": [],
+        "agent_messages": [],
         "validation": None,
         "critic": None,
         "literature": None,
@@ -74,8 +79,10 @@ def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
         "max_retries": int(cfg.get("max_retries", 2)),
         "hitl_pending": [],
         "hitl_auto_confirm": True,
+        "hitl_resolved": False,
         "report_path": None,
         "error": None,
+        "run_id": str(uuid.uuid4())[:8],
     }
     try:
         final = run_pipeline(initial)
