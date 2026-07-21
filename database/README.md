@@ -1,22 +1,21 @@
 # Reference databases
 
-Place indexes here or set absolute paths in `config/default.yaml` → `paths.*`:
+将索引放在本目录，或在 `config/default.yaml` → `paths.*` 写绝对路径：
 
 ```text
 database/
-├── kraken_db/     # paths.kraken2_db
-├── gtdb/          # paths.gtdb
-└── eggnog/        # paths.eggnog
+├── kraken_db/      # paths.kraken2_db
+├── gtdb/           # paths.gtdb
+└── eggnog/         # paths.eggnog
 ```
 
 | Key | Purpose |
 |-----|---------|
-| `paths.host_index` | Host Bowtie2 index（Plan Validator 可能要求） |
+| `paths.host_index` | 宿主 Bowtie2 index |
 | `paths.metaphlan_db` | MetaPhlAn |
 | `paths.diamond_db` | DIAMOND |
-| `paths.glm_weights` | gLM 权重 |
-| `paths.glm_inference_cmd` | 外部 gLM 命令模板 |
+| `paths.glm_weights` / `glm_inference_cmd` | gLM |
 
-生物知识检索默认用包内 curated 索引（`src/metagenomic_agent/rag/data/curated_bio_index.json`），覆盖 **GTDB、NCBI Taxonomy、KEGG、UniProt、CARD、VFDB** 等 stub；可替换为本地全量库并保持同名字段。抗幻觉策略要求分类单元先在 GTDB/NCBI 锚定。工具领域路由见 `knowledge/tool_domain_kb.json`。
+包内 curated 生物索引：`src/metagenomic_agent/rag/data/curated_bio_index.json`（GTDB/NCBI/KEGG/UniProt/CARD/VFDB stub）。全量库可替换并保持字段名。`mock` 可不挂载库。
 
-`mock` 模式可不挂载数据库。详见 [docs/USAGE.md](../docs/USAGE.md)。
+CLI 与配置详见 [docs/USAGE.md](../docs/USAGE.md)。

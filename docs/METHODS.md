@@ -1,31 +1,44 @@
-# Methods note for manuscripts（v0.12）
+# Methods note（v0.12）
 
-用法见 [USAGE.md](USAGE.md)，架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+English note suitable for manuscript Methods. Operations: [USAGE.md](USAGE.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Multi-agent orchestration
+## Orchestration
 
-Analysis is coordinated by specialized agents rather than a single monolithic prompt. Visualization produces an interactive Plotly dashboard (composition, alpha/beta boxplots, PCoA, heatmap, volcano) with FDR *q*-value filtering of significant taxa, in addition to static figure JSON for archival.
+Analyses are run by specialized agents under LangGraph rather than a single free-form prompt:
 
-Pipeline graph:
+Router → Tool Specialist → Plan Validator → execution swarm (QC, taxonomy, optional assembly/function, statistics) → Critic / Literature → optional PI replan → Visualization / XAI → Report.
 
-`parse → router → supervisor → tool_specialist → plan_validator → export_dag → workflow_agent → contract → HITL → swarm → validate → quality → self-heal* → critic → literature → pi_review* → visualization → xai → report`
+Missing host-genome version, coordinate system, or sample groups are escalated (ask, not invent).
 
-## Summary-driven context
+## Compute environment
 
-Intermediate Fastq/Bam/Fasta files remain on disk. Agents and LLM prompts consume only statistical metadata via `context/pipeline_summary.json`.
+Bioinformatics tools are invoked through a typed sandbox preferring Docker/Apptainer biocontainers (CPU/memory limits; optional `linux/amd64` on Apple Silicon). Failures are classified (OOM, missing binary, architecture/library errors); a self-heal loop may retry with adjusted resources or containers and returns a user-facing summary.
 
-## Reproducibility
+## Analytical methods
 
-After analysis the agent writes `workflow/reproducible.nf`, `workflow/reproducible.smk`, `workflow/seeds.json`, `workflow/config_snapshot.yaml`, and `reproducibility/run_manifest.json`.
+| Step | Method |
+|------|--------|
+| QC / host | fastp; Bowtie2/Kneaddata when configured |
+| Taxonomy | Kraken2/MetaPhlAn; optional gLM; virus tools when routed |
+| MAGs (optional) | MEGAHIT/metaSPAdes → MetaBAT2 → CheckM2 |
+| Statistics | Shannon; Bray–Curtis; MWU + BH-FDR; optional LEfSe-like / CLR–MWU |
+| Ordination | Classical MDS (PCoA); Spearman co-occurrence |
+| Interpretation | Authority-bound RAG + evidence chains (abundance, p/q, DB IDs, PMIDs) |
+| Visualization | Interactive Plotly: composition, alpha/beta boxplots, PCoA, heatmap, volcano (FDR *q* filter) |
+| Provenance | Metadata-only LLM context; seeded `reproducible.nf`/`.smk` + `run_manifest.json` |
 
-## Interactive analytics
+## Hallucination mitigation
 
-Interactive views are written to `interactive_dashboard.html` and `report/figures/*.plotly.json`. Users can zoom, toggle legends, and slide FDR *q* to refresh the heatmap and volcano highlighting. The final HTML report embeds the same figure specs.
+Taxa must resolve in curated GTDB/NCBI indices before biological claims. Allowed claims attach measured abundance and/or differential statistics plus database and literature identifiers. LLM narrative may only paraphrase retrieved authority context.
 
-## Limitations to disclose
+## Reproducibility artifacts
 
-1. Default differential tests are lightweight; LEfSe-like/ANCOM-like are Python approximations.  
+`workflow/reproducible.nf`, `workflow/reproducible.smk`, `workflow/seeds.json`, `workflow/config_snapshot.yaml`, `reproducibility/run_manifest.json`, `meta_agent.cwl`.
+
+## Limitations
+
+1. Default differential tests are lightweight; LEfSe-like/ANCOM-like are Python approximations, not official packages.  
 2. Some routed tools may be registered without local installation.  
-3. XAI is abundance-separation attribution, not TreeSHAP.  
-4. Bio RAG uses curated stubs until full dumps are mounted; mock mode is for CI/demos.  
-5. Exported `.nf`/`.smk` wrap `meta-agent run` with executed-DAG provenance comments.
+3. XAI is abundance-separation attribution, not TreeSHAP on a fitted classifier.  
+4. Bio/workflow RAG use curated corpora until full dumps are mounted; mock mode is for software testing only.  
+5. Exported workflows wrap `meta-agent run` with executed-DAG provenance; native process graphs need local tools/DBs.

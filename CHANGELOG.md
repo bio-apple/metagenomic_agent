@@ -2,36 +2,22 @@
 
 ## 0.12.0
 
-- Interactive Plotly dashboard: composition, alpha/beta boxplots, PCoA, heatmap, volcano
-- FDR q slider to filter significant taxa on heatmap/volcano; embedded in final report
+- Interactive Plotly dashboard (composition, alpha/beta, PCoA, heatmap, volcano) with FDR *q* filter
+- Docs consolidated: single USAGE/ARCHITECTURE/METHODS set; removed redundant index
 
 ## 0.11.0
 
-- Summary-driven pipeline context: Q30 / reads / N50 / CheckM completeness only — never raw sequences in LLM window
-- Post-run reproducible export: `workflow/reproducible.nf` · `.smk`, `seeds.json`, `config_snapshot.yaml`
-- Extended reproducibility bundle with seed + summary references
+- Summary-driven LLM context (Q30/reads/N50/CheckM); no raw sequences in window
+- Post-run `reproducible.nf`/`.smk`, `seeds.json`, `config_snapshot.yaml`
 
 ## 0.10.0
 
-- Authority-bound RAG (GTDB, NCBI Taxonomy, KEGG, UniProt, CARD): ungrounded taxa blocked
-- Evidence chains: abundance / p·q-value / DB IDs / PMIDs on biological claims (`evidence/claims.*`)
-- Literature & interpreter constrained to retrieval context; UniProt curated + optional REST
+- Authority-bound RAG (GTDB/NCBI/KEGG/UniProt/CARD) + evidence chains
 
 ## 0.9.0
 
-- MCP-style sandboxed tool calls (`tools/sandbox.py`) with Docker/Apptainer backends
-- Platform/memory/CPU limits; Apple Silicon → amd64 container emulation guidance
-- Stronger stderr classification (arch/lib/missing binary) and user-facing heal summaries
-- Self-heal actions: switch_to_container, pin_platform_amd64, mock fallback
+- Container sandbox tool calls + self-healing (Docker/Apptainer, amd64 pin)
 
-## 0.8.0
+## 0.8.0 – 0.1.x
 
-- Router / Tool Specialist / Plan Validator; domain KB; workflow RAG; XAI
-
-## 0.7.0
-
-- PCoA/Spearman/LEfSe-like/ANCOM-like, TF-IDF RAG, PI, contract hard-fail, gLM hook
-
-## 0.6.0 – 0.1.x
-
-- Bio-RAG, contracts, Linux production, LangGraph MVP
+- Multi-agent Router/Specialist/Validator, XAI, bio-RAG, LangGraph MVP, Linux production path
