@@ -14,7 +14,11 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     outdir = Path(state["outdir"])
     ctx = ToolContext.from_config(state["config"], outdir, mode=state.get("mode"))
     params = (node or {}).get("params") or {}
-    assembler = (params.get("assembler") or "megahit").lower()
+    bio = (state.get("artifacts") or {}).get("bio_reasoning") or {}
+    assembler = (params.get("assembler") or bio.get("assembler_preference") or "megahit").lower()
+    # Complexity heuristic: high → MEGAHIT; low → metaSPAdes (unless explicitly set)
+    if not params.get("assembler") and bio.get("high_complexity") is False:
+        assembler = "metaspades"
     binners = list(params.get("binners") or ["metabat2", "maxbin2"])
     qc_arts = state.get("artifacts", {}).get("qc_host", {})
     per_sample: dict[str, Any] = {}

@@ -58,12 +58,26 @@ def _normalize_agent(name: str) -> str:
     return AGENT_ALIASES.get(name.strip().lower(), name.strip().lower())
 
 
-def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
+def _default_plan(
+    query: str, config: dict[str, Any], bio: dict[str, Any] | None = None
+) -> list[TaskSpec]:
     q = query.lower()
+    bio = bio or {}
     wants_biomarker = any(k in q for k in ("biomarker", "标志", "差异", "ibd", "disease", "对照", "control"))
     wants_assembly = any(k in q for k in ("mag", "assembly", "组装", "分箱", "bin"))
     wants_function = any(k in q for k in ("function", "pathway", "功能", "kegg", "resistance", "耐药"))
     pipe = config.get("pipeline", {})
+
+    # Biological Reasoning Layer overrides / strengthens heuristics
+    if bio.get("enable_statistics"):
+        wants_biomarker = True
+    if bio.get("enable_assembly"):
+        wants_assembly = True
+    if bio.get("enable_function"):
+        wants_function = True
+    if bio.get("study_goal") == "taxonomy_only":
+        wants_function = False
+        wants_biomarker = False
 
     tax_tools = list(pipe.get("taxonomy_tools") or []) or decide_taxonomy_tools(
         {
@@ -74,8 +88,12 @@ def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
             "prefer_accuracy": "accurate" in q or "高精度" in q,
         }
     )
+    qc_tools = ["fastp", "filter_host"]
+    if bio.get("enable_host_filter") is False:
+        qc_tools = ["fastp"]
+
     tasks: list[TaskSpec] = [
-        {"name": "quality_control", "agent": "QC Agent", "tools": ["fastp", "filter_host"], "params": {}, "depends_on": []},
+        {"name": "quality_control", "agent": "QC Agent", "tools": qc_tools, "params": {}, "depends_on": []},
         {
             "name": "taxonomy_profile",
             "agent": "Taxonomy Agent",
@@ -85,14 +103,16 @@ def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
         },
     ]
     if wants_assembly or pipe.get("enable_assembly", False):
+        assembler = bio.get("assembler_preference") or pipe.get("default_assembler", "megahit")
         tasks.append(
             {
                 "name": "assembly_binning",
                 "agent": "Assembly Agent",
                 "tools": ["megahit", "metaspades", "metabat2", "maxbin2", "checkm2", "gtdbtk"],
                 "params": {
-                    "assembler": pipe.get("default_assembler", "megahit"),
+                    "assembler": assembler,
                     "binners": pipe.get("binners", ["metabat2", "maxbin2"]),
+                    "complexity": "high" if bio.get("high_complexity") else "low",
                 },
                 "depends_on": ["quality_control"],
             }
@@ -103,7 +123,7 @@ def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
                 "name": "functional_annotation",
                 "agent": "Function Agent",
                 "tools": ["diamond", "eggnog"],
-                "params": {},
+                "params": {"disease_context": bio.get("disease_context")},
                 "depends_on": ["quality_control"],
             }
         )
@@ -113,7 +133,7 @@ def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
                 "name": "statistical_analysis",
                 "agent": "Statistics Agent",
                 "tools": ["shannon", "bray_curtis", "mannwhitney_bh"],
-                "params": {},
+                "params": {"expected_markers": bio.get("expected_markers") or []},
                 "depends_on": ["taxonomy_profile"],
             }
         )
@@ -235,21 +255,32 @@ def plan(state: AgentState) -> dict:
 
     tasks = _llm_plan(state["user_query"], samples, config)
     source = "llm"
+    bio = (state.get("artifacts") or {}).get("bio_reasoning") or {}
     if tasks is None:
-        tasks = _default_plan(state["user_query"], config)
-        source = "heuristic"
+        tasks = _default_plan(state["user_query"], config, bio=bio)
+        source = "heuristic+bio_reasoning" if bio else "heuristic"
+    elif bio:
+        # Soft-apply assembler / host preferences onto LLM plan
+        for t in tasks:
+            if _normalize_agent(t["agent"]) == "assembly" and bio.get("assembler_preference"):
+                t.setdefault("params", {})["assembler"] = bio["assembler_preference"]
+        source = "llm+bio_reasoning"
 
     dag = _tasks_to_dag(tasks)
-    memory.update(tasks=tasks, dag=dag, project=project)
+    memory.update(tasks=tasks, dag=dag, project=project, bio_reasoning=bio)
     memory.append_history(f"supervisor_plan:{source}:{len(tasks)}")
 
-    hitl: list[str] = []
+    hitl: list[str] = list(state.get("hitl_pending") or [])
     if any(n["agent"] == "assembly" for n in dag):
         hitl.append("Confirm assembly & binning strategy (MEGAHIT vs metaSPAdes; enable CheckM2/GTDB-Tk)?")
     if any(n["agent"] == "statistics" for n in dag) and not any(s.get("group") for s in state.get("samples", [])):
         hitl.append("Statistics planned but no sample groups in metadata — provide --metadata or confirm demo_mode?")
 
-    task_json = {"tasks": [{"name": t["name"], "agent": t["agent"]} for t in tasks]}
+    task_json = {
+        "tasks": [{"name": t["name"], "agent": t["agent"]} for t in tasks],
+        "bio_reasoning_goal": bio.get("study_goal"),
+        "bio_reasoning_assay": bio.get("recommended_assay"),
+    }
     (Path(state["outdir"]) / "supervisor_plan.json").write_text(
         json.dumps(task_json, indent=2, ensure_ascii=False), encoding="utf-8"
     )

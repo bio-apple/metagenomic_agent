@@ -2,6 +2,7 @@
 
 from metagenomic_agent.agents import (
     assembly_agent,
+    bio_reasoning_agent,
     critic_agent,
     function_agent,
     literature_agent,
@@ -34,6 +35,7 @@ __all__ = [
     "AGENT_REGISTRY",
     "supervisor",
     "router_agent",
+    "bio_reasoning_agent",
     "tool_specialist",
     "plan_validator",
     "workflow_agent",

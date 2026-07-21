@@ -6,6 +6,7 @@ from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
+from metagenomic_agent.agents import bio_reasoning_agent
 from metagenomic_agent.agents import (
     critic_agent,
     literature_agent,
@@ -128,12 +129,35 @@ def _quality_scores(state: AgentState) -> dict:
     report = write_quality_report(state)
     arts = dict(state.get("artifacts") or {})
     arts["quality_scores"] = report
-    # Refresh metadata summary after validation-adjacent QC scores
     summary_full = write_pipeline_summary({**state, "artifacts": arts})
     llm_ctx = summary_full.pop("_llm_context", "")
     arts["pipeline_summary"] = {k: v for k, v in summary_full.items() if not k.startswith("_")}
     arts["llm_context"] = llm_ctx
-    return {
+
+    # Multi-option HITL when host contamination is high
+    qc = arts.get("qc_host") or {}
+    high_host = [
+        sid for sid, v in qc.items() if float(v.get("host_fraction") or 0) >= 0.2
+    ]
+    hitl_options = list(arts.get("hitl_options") or [])
+    hitl_pending = list(state.get("hitl_pending") or [])
+    if high_host and not any(o.get("id") == "host_contamination" for o in hitl_options):
+        hitl_options.append(
+            {
+                "id": "host_contamination",
+                "question": f"样本 {', '.join(high_host)} 宿主污染偏高（≥20%）。请选择：",
+                "choices": [
+                    {"key": "A", "label": "继续分析", "action": "continue"},
+                    {"key": "B", "label": "加强宿主去除 / 重新 QC", "action": "strengthen_host"},
+                    {"key": "C", "label": "标记删除高污染样本", "action": "drop_flagged_samples"},
+                ],
+                "default": "A",
+            }
+        )
+        hitl_pending.append(f"[QC] high host fraction in {high_host} — choose A/B/C")
+        arts["hitl_options"] = hitl_options
+
+    out: dict = {
         "artifacts": arts,
         "messages": state.get("messages", [])
         + [
@@ -141,6 +165,9 @@ def _quality_scores(state: AgentState) -> dict:
             "Refreshed pipeline_summary for LLM context",
         ],
     }
+    if high_host:
+        out["hitl_pending"] = hitl_pending
+    return out
 
 
 def _xai(state: AgentState) -> dict:
@@ -157,6 +184,7 @@ def build_graph():
     g = StateGraph(AgentState)
     g.add_node("parse_input", parse_input)
     g.add_node("router", router_agent.run)
+    g.add_node("bio_reasoning", bio_reasoning_agent.run)
     g.add_node("supervisor", supervisor.plan)
     g.add_node("tool_specialist", tool_specialist.run)
     g.add_node("plan_validator", plan_validator.run)
@@ -167,6 +195,7 @@ def build_graph():
     g.add_node("execute_swarm", execute_swarm)
     g.add_node("validate", validate)
     g.add_node("quality_scores", _quality_scores)
+    g.add_node("hitl_runtime", hitl_checkpoint)
     g.add_node("self_heal", _self_heal)
     g.add_node("critic", critic_agent.run)
     g.add_node("literature", literature_agent.run)
@@ -177,7 +206,8 @@ def build_graph():
 
     g.set_entry_point("parse_input")
     g.add_edge("parse_input", "router")
-    g.add_edge("router", "supervisor")
+    g.add_edge("router", "bio_reasoning")
+    g.add_edge("bio_reasoning", "supervisor")
     g.add_edge("supervisor", "tool_specialist")
     g.add_edge("tool_specialist", "plan_validator")
     g.add_edge("plan_validator", "export_dag")
@@ -187,8 +217,9 @@ def build_graph():
     g.add_conditional_edges("hitl", _route_after_hitl, {"execute_swarm": "execute_swarm", "report": "report"})
     g.add_edge("execute_swarm", "validate")
     g.add_edge("validate", "quality_scores")
+    g.add_edge("quality_scores", "hitl_runtime")
     g.add_conditional_edges(
-        "quality_scores", _route_after_validate, {"self_heal": "self_heal", "critic": "critic"}
+        "hitl_runtime", _route_after_validate, {"self_heal": "self_heal", "critic": "critic"}
     )
     g.add_edge("self_heal", "execute_swarm")
     g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})

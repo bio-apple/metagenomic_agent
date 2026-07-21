@@ -80,6 +80,8 @@ def test_graph_dryrun_mock(tmp_path: Path):
     assert (out / "report" / "manuscript" / "manuscript_draft.md").exists()
     assert (out / "report" / "figures" / "manifest.json").exists()
     assert (out / "report" / "figures" / "pcoa.json").exists()
+    assert (out / "bio_reasoning.json").exists()
+    assert (out / "bio_reasoning.md").exists()
     assert (out / "router_decision.json").exists()
     assert (out / "plan_validation.json").exists()
     assert (out / "tool_specialist" / "tool_commands.json").exists()

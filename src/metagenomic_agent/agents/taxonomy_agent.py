@@ -106,7 +106,79 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             {"node": "taxonomy:post_contract", "error": v["message"], "classified": "logic"} for v in error_posts
         ]
     result["contract_post"] = post_violations
+
+    # Biological interpretation of top taxa (contamination vs enrichment hypotheses)
+    interpretation = _interpret_taxa(per_sample, state)
+    interp_path = outdir / "taxonomy_interpretation.md"
+    interp_path.write_text(interpretation["markdown"], encoding="utf-8")
+    result["taxonomy_interpretation"] = interpretation
+    result["taxonomy_interpretation_path"] = str(interp_path)
     return result
+
+
+CONTAMINANT_HINTS = {
+    "Pseudomonas": (
+        "常见于试剂/环境或水源污染，亦可见于部分环境富集；"
+        "需结合空白对照、试剂批次与宿主去除率判断 contamination vs biological enrichment。"
+    ),
+    "Staphylococcus": (
+        "可能为皮肤来源污染或真实定植；检查采样与提取流程，并对照阴性对照。"
+    ),
+    "Ralstonia": "高丰度时常提示试剂污染，建议核查试剂空白。",
+    "Bradyrhizobium": "试剂/环境常见背景菌，优先怀疑 contamination。",
+}
+
+GUT_MARKERS = {
+    "Faecalibacterium",
+    "Bacteroides",
+    "Prevotella",
+    "Bifidobacterium",
+    "Roseburia",
+    "Akkermansia",
+    "Escherichia",
+}
+
+
+def _interpret_taxa(per_sample: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
+    bio = (state.get("artifacts") or {}).get("bio_reasoning") or {}
+    disease = bio.get("disease_context")
+    notes: list[dict[str, Any]] = []
+    lines = ["# Taxonomy biological interpretation", ""]
+    if disease:
+        lines.append(f"Disease/phenotype context from Bio Reasoning: `{disease}`.")
+        lines.append("")
+
+    all_tops: list[str] = []
+    for sid, art in per_sample.items():
+        tops = list(art.get("top_genera") or [])
+        all_tops.extend(tops)
+        lines.append(f"## Sample `{sid}`")
+        lines.append(f"- Top genera: {', '.join(tops) if tops else '(none)'}")
+        for g in tops:
+            if g in CONTAMINANT_HINTS:
+                hyp = {
+                    "sample": sid,
+                    "genus": g,
+                    "hypotheses": ["contamination", "environmental_origin", "biological_enrichment"],
+                    "note": CONTAMINANT_HINTS[g],
+                }
+                notes.append(hyp)
+                lines.append(f"- **{g}** 需鉴别: {CONTAMINANT_HINTS[g]}")
+            elif g in GUT_MARKERS:
+                lines.append(f"- **{g}**: 常见肠道相关属；结合差异检验与证据链解读，勿直接断言因果。")
+        lines.append("")
+
+    expected = set(bio.get("expected_markers") or [])
+    found = expected & set(all_tops)
+    missing = expected - set(all_tops)
+    if expected:
+        lines.append("## Expected markers (from Bio Reasoning)")
+        lines.append(f"- Observed: {', '.join(sorted(found)) or '(none yet in top list)'}")
+        lines.append(f"- Not in top genera: {', '.join(sorted(missing)) or '(none)'}")
+        lines.append("")
+
+    lines.append("解释仅基于丰度排序与领域启发式，需结合 QC、空白对照与统计显著性。")
+    return {"notes": notes, "markdown": "\n".join(lines), "expected_observed": sorted(found)}
 
 
 def _append_abundance(rows: list[str], sample_id: str, path: str | None, tool: str) -> None:

@@ -75,6 +75,9 @@ S2	Control
 | 路径 | 说明 |
 |------|------|
 | `final_report.html` | 总报告（内嵌 Plotly 多图） |
+| `bio_reasoning.md` · `.json` | 规划前生物学推理 |
+| `taxonomy_interpretation.md` | 分类结果污染/富集假设 |
+| `functional_interpretation.md` | 功能通路机制笔记 |
 | `interactive_dashboard.html` | 交互仪表盘（q 滑块筛选显著菌） |
 | `quality_report.html` / `quality_status.json` | QC |
 | `taxonomy_profile.tsv` | 分类轮廓 |
