@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.20.0` · LangGraph 多智能体宏基因组分析 · 关键 HITL（含 Web/API 异步审批）。
+**版本** `0.21.0` · Metagenomic Research Copilot · HITL / Hybrid RAG / Chat API / 容器一键部署。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -34,9 +34,15 @@ Router → Planner → HITL → Executor (cluster → BioContainers + checkpoint
 | 文档 | 用途 |
 |------|------|
 | [docs/USAGE.md](docs/USAGE.md) | CLI / API / 配置 / 产物 |
+| [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md) | Linux 大内存机（≥256 GB）部署 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构与 Methods 要点 |
+| [docs/OPTIMIZATION.md](docs/OPTIMIZATION.md) | Copilot 短板闭环 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本历史 |
-| [database/README.md](database/README.md) | 参考库路径 |
+| [database/README.md](database/README.md) | 知识库 / 参考库路径 |
+
+```bash
+docker compose up --build   # API :8000  →  POST /analyze  /chat  /runs/.../hitl
+```
 
 ## License
 

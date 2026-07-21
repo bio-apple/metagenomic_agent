@@ -74,8 +74,10 @@ pipeline:
   enable_assembly: false
   enable_statistics: true
   enable_humann: false
+  enable_arg: true  # CARD/RGI + DeepARG (mock tables when tools absent)
+  enable_virus: true  # VirSorter2 + CheckV on contigs when assembly runs
   default_assembler: megahit  # megahit | metaspades
-  binners: ["metabat2", "maxbin2"]
+  binners: ["metabat2", "maxbin2", "concoct"]
 
 llm:
   provider: openai_compatible  # openai_compatible | ollama | vllm
@@ -114,7 +116,7 @@ pi:
   max_replans: 1
 
 rag:
-  mode: keyword  # keyword | semantic
+  mode: hybrid  # keyword | semantic | hybrid (keyword ∪ semantic re-rank)
   authority_dbs:
     - gtdb
     - ncbi_taxonomy

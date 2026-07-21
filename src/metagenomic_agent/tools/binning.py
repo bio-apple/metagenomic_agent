@@ -77,7 +77,7 @@ def run_binning(
         src = outdir / "bins" / f"{sample_id}.bin.1.fa"
         if src.exists():
             (consensus / src.name).write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
-        return {
+        out = {
             **mock,
             "binners": binners,
             "checkm2": str(checkm),
@@ -87,6 +87,14 @@ def run_binning(
             "das_tool_dir": str(consensus),
             "bins_dir": str(consensus),
         }
+        if "concoct" in binners:
+            concoct_out = outdir / "bins" / "concoct"
+            concoct_out.mkdir(parents=True, exist_ok=True)
+            (concoct_out / f"{sample_id}.concoct.1.fa").write_text(
+                f">{sample_id}_concoct\n{'ATGC' * 300}\n", encoding="utf-8"
+            )
+            out["concoct_dir"] = str(concoct_out)
+        return out
 
     outdir.mkdir(parents=True, exist_ok=True)
     bins_dir = outdir / "bins"
@@ -134,10 +142,45 @@ def run_binning(
             )
         produced["maxbin2_dir"] = str(maxbin_out)
 
+    if "concoct" in binners:
+        concoct_out = bins_dir / "concoct"
+        concoct_out.mkdir(exist_ok=True)
+        cov = outdir / f"{sample_id}.abundance.txt"
+        if not cov.exists():
+            cov.write_text("contig\tabundance\ncontig_1\t10\n", encoding="utf-8")
+        if ctx.mode == "mock":
+            (concoct_out / f"{sample_id}.concoct.1.fa").write_text(
+                f">{sample_id}_concoct\n{'ATGC' * 300}\n", encoding="utf-8"
+            )
+        elif ctx.mode in {"local", "conda"}:
+            ctx.run_tool(
+                "concoct",
+                [
+                    "concoct",
+                    "--composition_file",
+                    contigs,
+                    "--coverage_file",
+                    str(cov),
+                    "-b",
+                    str(concoct_out / "concoct"),
+                    "-t",
+                    str(ctx.threads),
+                ],
+                check=False,
+            )
+        else:
+            vols = {str(Path(contigs).parent): "/data", str(outdir): "/outdir"}
+            inner = (
+                f"concoct --composition_file /data/{Path(contigs).name} "
+                f"-b /outdir/bins/concoct/concoct -t {ctx.threads}"
+            )
+            ctx.run_docker("concoct", inner, vols)
+        produced["concoct_dir"] = str(concoct_out)
+
     # DAS Tool-style consensus (mock: prefer MetaBAT bins if present else MaxBin)
     consensus = bins_dir / "das_tool_consensus"
     consensus.mkdir(exist_ok=True)
-    src_dirs = [bins_dir / "metabat", bins_dir / "maxbin"]
+    src_dirs = [bins_dir / "metabat", bins_dir / "maxbin", bins_dir / "concoct"]
     n_bins = 0
     for d in src_dirs:
         if not d.exists():

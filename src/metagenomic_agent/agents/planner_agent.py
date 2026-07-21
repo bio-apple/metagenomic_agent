@@ -110,6 +110,16 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
     amsg = emit("planner", "executor", "plan", {"env": env, "n_steps": len(pipeline)})
     arts["planner"] = {**plan, "path": str(out / "planner_plan.json")}
+    from metagenomic_agent.knowledge.reasoning_log import log_decision
+
+    reason_patch = log_decision(
+        {**state, "artifacts": arts},
+        "planner",
+        f"Pipeline for {env}: {plan.get('recommended_assay')}",
+        f"{len(pipeline)} steps; assembler={plan.get('assembler')}; sops={len(plan.get('sops') or [])}",
+        n_steps=len(pipeline),
+    )
+    arts = {**arts, **(reason_patch.get("artifacts") or {})}
     return {
         "artifacts": arts,
         "messages": state.get("messages", []) + [f"Planner: {env} / {plan.get('recommended_assay')} / {len(pipeline)} steps"],

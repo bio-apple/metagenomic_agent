@@ -1,0 +1,21 @@
+# Orchestration API + optional volume mounts for data / results / reference DBs.
+# Bio tools still use mode=docker|apptainer (BioContainers) on the host or sibling runtime.
+services:
+  meta-agent:
+    build: .
+    image: metagenomic-agent:0.21
+    ports:
+      - "8000:8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-deepseek-chat}
+    volumes:
+      - ./config:/app/config:ro
+      - meta_results:/results
+      - ${META_DATA:-./tests/fixtures}:/data:ro
+      - ${META_REF:-./database}:/ref:ro
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000"]
+
+volumes:
+  meta_results:

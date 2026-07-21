@@ -20,7 +20,8 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     # Complexity heuristic: high → MEGAHIT; low → metaSPAdes (unless explicitly set)
     if not params.get("assembler") and bio.get("high_complexity") is False:
         assembler = "metaspades"
-    binners = list(params.get("binners") or ["metabat2", "maxbin2"])
+    pipe_bins = ((state.get("config") or {}).get("pipeline") or {}).get("binners")
+    binners = list(params.get("binners") or pipe_bins or ["metabat2", "maxbin2", "concoct"])
     qc_arts = state.get("artifacts", {}).get("qc_host", {})
     cache_cfg = (state.get("config") or {}).get("cache") or {}
     per_sample_ckpt = bool(cache_cfg.get("per_sample_assembly", True))
@@ -73,6 +74,13 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
                     check = binning.run_checkm2(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
                     gtdb = binning.run_gtdbtk(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
                     asm = {**asm, **bins, **check, **gtdb}
+                    pipe = (state.get("config") or {}).get("pipeline") or {}
+                    if pipe.get("enable_virus", False):
+                        from metagenomic_agent.tools import virus as virus_tools
+
+                        asm["virus"] = virus_tools.run_virus_suite(
+                            contigs, outdir / sid / "virus", ctx, sid
+                        )
                     write_assembly_checkpoint(asm_dir, asm)
             per_sample[sid] = asm
         except Exception as exc:  # noqa: BLE001

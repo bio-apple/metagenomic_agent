@@ -71,8 +71,12 @@ def _score_entry(query: str, entry: dict[str, Any]) -> float:
 def retrieve(db: str, query: str, top_k: int = 5, mode: str = "keyword") -> list[dict[str, Any]]:
     """Retrieve curated records from a named biological database.
 
-    mode: keyword (default) | semantic (TF-IDF over curated corpus)
+    mode: keyword (default) | semantic (TF-IDF) | hybrid (union + re-rank)
     """
+    mode = (mode or "keyword").lower().strip()
+    if mode == "hybrid":
+        return retrieve_hybrid(db, query, top_k=top_k)
+
     if mode == "semantic":
         from metagenomic_agent.rag.embeddings import semantic_retrieve
 
@@ -95,14 +99,38 @@ def retrieve(db: str, query: str, top_k: int = 5, mode: str = "keyword") -> list
     for e in entries:
         score = _score_entry(query, e)
         if score > 0:
-            scored.append({"database": db_key, "score": round(score, 3), **e})
+            scored.append({"database": db_key, "score": round(score, 3), "retrieval": "keyword", **e})
     scored.sort(key=lambda x: -x["score"])
     return scored[:top_k]
 
 
-def retrieve_multi(query: str, dbs: list[str] | None = None, top_k_per_db: int = 3) -> dict[str, list[dict[str, Any]]]:
+def retrieve_hybrid(db: str, query: str, top_k: int = 5) -> list[dict[str, Any]]:
+    """Union keyword + semantic hits, re-rank by max score, tag retrieval=hybrid."""
+    kw = retrieve(db, query, top_k=top_k, mode="keyword")
+    try:
+        sem = retrieve(db, query, top_k=top_k, mode="semantic")
+    except Exception:  # noqa: BLE001
+        sem = []
+    by_id: dict[str, dict[str, Any]] = {}
+    for h in kw + sem:
+        key = f"{h.get('database')}:{h.get('id') or h.get('name')}"
+        prev = by_id.get(key)
+        if not prev or float(h.get("score") or 0) > float(prev.get("score") or 0):
+            merged = dict(h)
+            merged["retrieval"] = "hybrid"
+            by_id[key] = merged
+    ranked = sorted(by_id.values(), key=lambda x: -float(x.get("score") or 0))
+    return ranked[:top_k]
+
+
+def retrieve_multi(
+    query: str,
+    dbs: list[str] | None = None,
+    top_k_per_db: int = 3,
+    mode: str = "keyword",
+) -> dict[str, list[dict[str, Any]]]:
     targets = dbs or ["gtdb", "ncbi_taxonomy", "kegg", "uniprot", "card", "vfdb", "mgnify", "eggnog"]
-    return {db: retrieve(db, query, top_k=top_k_per_db) for db in targets}
+    return {db: retrieve(db, query, top_k=top_k_per_db, mode=mode) for db in targets}
 
 
 def evidence_for_taxon(taxon: str, disease_hint: str = "") -> list[dict[str, Any]]:

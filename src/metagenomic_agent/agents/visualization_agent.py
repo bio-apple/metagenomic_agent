@@ -121,6 +121,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         encoding="utf-8",
     )
 
+    from metagenomic_agent.report.figure_legends import build_legends
     from metagenomic_agent.report.interactive import write_interactive_dashboard
 
     viz_cfg = ((state.get("config") or {}).get("visualization") or {})
@@ -128,6 +129,9 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     interactive = write_interactive_dashboard(
         {**state, "artifacts": {**(state.get("artifacts") or {}), "statistics": stats}},
         default_q=default_q,
+    )
+    legends = build_legends(
+        {**state, "statistics": stats, "artifacts": {**(state.get("artifacts") or {}), "statistics": stats}}
     )
 
     manifest = {
@@ -158,14 +162,20 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             "interactive_plotly_dashboard",
         ],
         "interactive": interactive,
+        "figure_legends": legends.get("path"),
     }
     (fig_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     return {
-        "artifacts": {**state.get("artifacts", {}), "visualization": manifest},
+        "artifacts": {
+            **state.get("artifacts", {}),
+            "visualization": manifest,
+            "figure_legends": legends,
+        },
         "messages": state.get("messages", [])
         + [
             f"Visualization Agent wrote {len(manifest['figures'])} figures; "
-            f"interactive dashboard → {interactive.get('dashboard_root')}"
+            f"interactive dashboard → {interactive.get('dashboard_root')}; "
+            f"legends → {legends.get('path')}"
         ],
     }

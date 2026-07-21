@@ -240,3 +240,85 @@ def decide_hitl(run_id: str, req: HitlDecideRequest) -> HitlDecideResponse:
         messages=list(final.get("messages") or [])[-30:],
         hitl_awaiting=awaiting,
     )
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(..., description="Metagenomics / study question")
+    outdir: Optional[str] = Field(None, description="Optional completed run outdir for grounded context")
+    top_k: int = Field(5, ge=1, le=20)
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    grounded_hits: list[dict[str, Any]]
+    literature_excerpt: Optional[str] = None
+    biomarkers: list[dict[str, Any]] = Field(default_factory=list)
+    disclaimer: str = (
+        "Answers are RAG-grounded and not clinical advice; verify against tables and PMIDs."
+    )
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(req: ChatRequest) -> ChatResponse:
+    """Lightweight ChatCopilot: hybrid RAG + optional run artifacts (no free-form hallucination)."""
+    from metagenomic_agent.rag import retrieve_multi
+    from metagenomic_agent.rag.authority import authority_context_block, ground_taxon
+
+    hits_map = retrieve_multi(req.question, top_k_per_db=2, mode="hybrid")
+    flat = [h for hits in hits_map.values() for h in hits]
+    flat.sort(key=lambda x: -float(x.get("score") or 0))
+    flat = flat[: req.top_k]
+
+    biomarkers: list[dict[str, Any]] = []
+    lit_excerpt = None
+    if req.outdir:
+        out = Path(req.outdir).expanduser()
+        bio = out / "biomarkers" / "biomarkers.tsv"
+        if bio.exists():
+            import csv
+
+            with bio.open(encoding="utf-8") as fh:
+                for row in csv.DictReader(fh, delimiter="\t"):
+                    biomarkers.append(dict(row))
+                    if len(biomarkers) >= 8:
+                        break
+        for cand in (
+            out / "literature_report.md",
+            out / "literature_summary" / "literature_report.md",
+        ):
+            if cand.exists():
+                lit_excerpt = cand.read_text(encoding="utf-8")[:2500]
+                break
+
+    # Build grounded answer from authority + hits (no unconstrained LLM required)
+    lines = [f"Q: {req.question}", "", "Grounded context:"]
+    for h in flat[:5]:
+        lines.append(
+            f"- [{h.get('database')}] {h.get('name') or h.get('id')}: "
+            f"{(h.get('notes') or h.get('pathway') or '')[:160]}"
+        )
+    # Try to ground first token that looks like a taxon
+    tokens = [t for t in req.question.replace(",", " ").split() if t[:1].isupper() and len(t) > 3]
+    for t in tokens[:3]:
+        g = ground_taxon(t)
+        if g.get("grounded"):
+            lines.append(f"- Taxon `{t}` → canonical `{g.get('canonical_name')}`")
+            ctx = authority_context_block(t)
+            if ctx:
+                lines.append(ctx[:400])
+    if biomarkers:
+        lines.append("")
+        lines.append("From run biomarkers:")
+        for b in biomarkers[:5]:
+            lines.append(
+                f"- {b.get('genus')}: {b.get('direction')} p={b.get('p_value')} q={b.get('q_value')}"
+            )
+    if not flat and not biomarkers:
+        lines.append("- No curated hits; refine the question or mount fuller database/ RAG dumps.")
+
+    return ChatResponse(
+        answer="\n".join(lines),
+        grounded_hits=flat,
+        literature_excerpt=lit_excerpt,
+        biomarkers=biomarkers,
+    )

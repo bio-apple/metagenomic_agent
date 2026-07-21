@@ -1,0 +1,102 @@
+# Overlay for Linux servers with RAM ≥ 256 GB.
+# Usage:
+#   meta-agent run -i /data/fastq -o /results/run1 -m apptainer \
+#     -c config/linux_server_gt256gb.yaml --metadata /data/meta.tsv -q "..."
+#
+# Copy to config/site.yaml and set absolute paths.* / slurm_* for your site.
+
+mode: apptainer  # or docker on single-node hosts with root
+
+execution:
+  engine: langgraph
+  skip_swarm_on_engine_ok: true
+
+sandbox:
+  prefer_container: true
+  platform: linux/amd64
+  allow_mock_fallback: false
+
+apptainer:
+  sif_dir: /scratch/containers  # change to /scratch/$USER/containers
+  pull_cache: true
+
+docker:
+  threads: 32
+  platform: linux/amd64
+
+linux:
+  # Leave ~32 GB for OS / page cache / other users on a 256–512 GB node
+  threads: 48
+  memory_gb: 360
+  max_threads: 96
+  max_memory_gb: 480   # MUST raise above default 256 on large-memory nodes
+  gpus: 0
+  scheduler: auto      # slurm | pbs | sge | local
+  prefer_shm: true
+  shm_db_root: /dev/shm
+  host_method: bowtie2
+  slurm: false
+  slurm_queue: normal
+  slurm_account: ""
+  slurm_time: "48:00:00"
+  pbs_queue: workq
+  sge_queue: all.q
+
+paths:
+  host_index: /ref/databases/host/hg38
+  kraken2_db: /ref/databases/kraken2
+  metaphlan_db: /ref/databases/metaphlan
+  gtdb: /ref/databases/gtdb
+  eggnog: /ref/databases/eggnog
+  diamond_db: ""
+  glm_weights: ""
+  glm_inference_cmd: ""
+
+pipeline:
+  enable_host_filter: true
+  taxonomy_tools: ["kraken2", "metaphlan"]
+  enable_functional: true
+  enable_assembly: true          # large RAM can afford assembly/binning
+  enable_statistics: true
+  enable_humann: false
+  enable_arg: true
+  enable_virus: true
+  default_assembler: megahit     # switch to metaspades only if memory_gb ≥ 250
+  binners: ["metabat2", "maxbin2", "concoct"]
+
+rag:
+  mode: hybrid
+
+cache:
+  enabled: true
+  per_sample_assembly: true
+  include_config_hash: true
+
+literature:
+  online: true                   # set false on air-gapped clusters
+
+hitl:
+  auto_confirm: false            # batch night runs: true or CLI --yes
+  mode: sync                     # API gateway: async
+  require_assembly_confirm: true
+  require_otu_filter_confirm: true
+  require_database_confirm: true
+  require_report_publish_confirm: true
+  default_report_publish: B
+
+interpretation:
+  require_grounding: true
+  require_evidence_chain: true
+
+statistics:
+  demo_mode: false
+  lefse_like: true
+  ancom_like: true
+  min_prevalence: 0.1
+  min_rel_abundance: 1.0e-5
+
+visualization:
+  lite: true
+
+summary:
+  enabled: true

@@ -1,6 +1,6 @@
-# 架构说明（v0.20）
+# 架构说明（v0.21）
 
-CLI / 配置 / 产物见 [USAGE.md](USAGE.md)。
+CLI / 配置 / 产物见 [USAGE.md](USAGE.md)；Linux ≥256 GB 部署见 [DEPLOY_LINUX.md](DEPLOY_LINUX.md)；短板闭环见 [OPTIMIZATION.md](OPTIMIZATION.md)。
 
 ## 编排主链
 
@@ -46,6 +46,12 @@ parse → router → bio_reasoning → supervisor → tool_specialist → plan_v
 - 解读抗幻觉：物种 / p / q / effect 须来自 biomarkers 等程序表（`require_evidence_chain`）
 - `mock` 仅用于 CI，不作为生物学真相
 
+## Knowledge / 审计
+
+- Hybrid RAG：`rag.mode=hybrid`；目录契约见 `database/README.md`
+- 推理链：`outdir/reasoning/chain.md`
+- 文献报告：`literature_report.md`；Chat：`POST /chat`
+
 ## 局限
 
-全量 CAMI 基准与向量化项目 Memory 仍为部分能力。
+全量 CAMI 基准、向量化项目 Memory、完整 Web UI 仍为部分能力。

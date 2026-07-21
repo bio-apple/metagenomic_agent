@@ -195,6 +195,51 @@ class MetaPhlAnParams(BaseToolParams):
         return _path_ok(v)
 
 
+class ConcoctParams(BaseToolParams):
+    tool: Literal["concoct"] = "concoct"
+    composition_file: str
+    coverage_file: str | None = None
+
+    @field_validator("composition_file", "coverage_file")
+    @classmethod
+    def _v_paths(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return _path_ok(v)
+
+
+class RGIParams(BaseToolParams):
+    tool: Literal["rgi"] = "rgi"
+    input: str
+    input_type: str = "contig"
+
+    @field_validator("input")
+    @classmethod
+    def _v_paths(cls, v: str) -> str:
+        return _path_ok(v)
+
+
+class VirSorter2Params(BaseToolParams):
+    tool: Literal["virsorter2"] = "virsorter2"
+    contigs: str
+    min_length: int = Field(default=3000, ge=500)
+
+    @field_validator("contigs")
+    @classmethod
+    def _v_paths(cls, v: str) -> str:
+        return _path_ok(v)
+
+
+class CheckVParams(BaseToolParams):
+    tool: Literal["checkv"] = "checkv"
+    viral_fasta: str
+
+    @field_validator("viral_fasta")
+    @classmethod
+    def _v_paths(cls, v: str) -> str:
+        return _path_ok(v)
+
+
 TOOL_SCHEMA_REGISTRY: dict[str, type[BaseToolParams]] = {
     "fastp": FastpParams,
     "fastqc": FastQCParams,
@@ -202,6 +247,7 @@ TOOL_SCHEMA_REGISTRY: dict[str, type[BaseToolParams]] = {
     "kraken2": Kraken2Params,
     "megahit": MegahitParams,
     "metabat2": MetaBAT2Params,
+    "concoct": ConcoctParams,
     "humann3": HUMAnN3Params,
     "humann": HUMAnN3Params,
     "checkm2": CheckM2Params,
@@ -209,6 +255,9 @@ TOOL_SCHEMA_REGISTRY: dict[str, type[BaseToolParams]] = {
     "bakta": BaktaParams,
     "metaphlan": MetaPhlAnParams,
     "metaphlan4": MetaPhlAnParams,
+    "rgi": RGIParams,
+    "virsorter2": VirSorter2Params,
+    "checkv": CheckVParams,
 }
 
 

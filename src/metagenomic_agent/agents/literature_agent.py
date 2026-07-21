@@ -122,8 +122,12 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
         direction = directions.get(genus, "")
         rag_hits = micro_rag.retrieve(genus)
+        rag_mode = str((cfg.get("rag") or {}).get("mode") or "hybrid")
         bio_hits = retrieve_multi(
-            genus, dbs=["gtdb", "ncbi_taxonomy", "kegg", "uniprot", "card", "vfdb", "mgnify"], top_k_per_db=2
+            genus,
+            dbs=["gtdb", "ncbi_taxonomy", "kegg", "uniprot", "card", "vfdb", "mgnify"],
+            top_k_per_db=2,
+            mode=rag_mode,
         )
         auth_ctx = authority_context_block(genus)
         if rag_hits:
@@ -209,25 +213,130 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
+    # Structured literature_report.md (Background / Findings / Evidence / Limitations / References)
+    report_md = _write_literature_report(
+        outdir,
+        query=state.get("user_query") or "",
+        entries=entries,
+        evidence_rows=evidence_rows,
+        rejected=rejected,
+        claims=claims,
+    )
+
+    from metagenomic_agent.knowledge.reasoning_log import log_decision
+
+    reason_patch = log_decision(
+        state,
+        "literature",
+        f"Grounded {len(entries)} taxa; wrote literature_report.md",
+        f"require_grounding={require_grounding}; rejected={len(rejected)}",
+        n_entries=len(entries),
+    )
+
     literature = {
         "entries": entries,
         "path": str(outdir / "literature_summary.md"),
+        "report_path": report_md,
         "evidence_table": str(evidence_dir / "evidence_table.md"),
         "claims_path": claims.get("path"),
         "rejected_ungrounded": rejected,
     }
+    arts = {
+        **state.get("artifacts", {}),
+        **(reason_patch.get("artifacts") or {}),
+        "literature": literature,
+        "evidence_table": evidence_rows,
+        "evidence_table_path": str(evidence_dir / "evidence_table.json"),
+        "evidence_claims": claims,
+        "literature_report": report_md,
+    }
     return {
         "literature": literature,
-        "artifacts": {
-            **state.get("artifacts", {}),
-            "literature": literature,
-            "evidence_table": evidence_rows,
-            "evidence_table_path": str(evidence_dir / "evidence_table.json"),
-            "evidence_claims": claims,
-        },
+        "artifacts": arts,
         "messages": state.get("messages", [])
         + [
             f"Literature Agent: {len(entries)} grounded taxa; "
-            f"rejected_ungrounded={len(rejected)}; claims={len(claims.get('claims') or [])}"
+            f"rejected_ungrounded={len(rejected)}; claims={len(claims.get('claims') or [])}; "
+            f"report={report_md}"
         ],
     }
+
+
+def _write_literature_report(
+    outdir: Path,
+    *,
+    query: str,
+    entries: list[dict[str, Any]],
+    evidence_rows: list[dict[str, Any]],
+    rejected: list[str],
+    claims: dict[str, Any],
+) -> str:
+    lines = [
+        "# Literature Report",
+        "",
+        "## Background",
+        "",
+        f"Research question: {query or '(unspecified)'}",
+        "",
+        "This report aggregates PubMed/Europe PMC (when online), curated bio-DB RAG "
+        "(GTDB/KEGG/CARD/VFDB), and table-bound biomarker directions. "
+        "Ungrounded taxa are excluded from Key Findings.",
+        "",
+        "## Key Findings",
+        "",
+    ]
+    if not entries:
+        lines.append("- No grounded taxa with literature context in this run.")
+    for e in entries:
+        lines.append(
+            f"- **{e.get('canonical_name') or e.get('genus')}** "
+            f"({e.get('direction') or 'n/a'}): {e.get('interpretation') or 'see papers'}"
+        )
+    lines.extend(["", "## Supporting Evidence", ""])
+    for row in (evidence_rows or [])[:15]:
+        lines.append(
+            f"- {row.get('species')}: {row.get('effect')} in {row.get('disease')} "
+            f"(PMID {row.get('pmid')}, source={row.get('source')})"
+        )
+    if not evidence_rows:
+        for e in entries:
+            for p in (e.get("papers") or [])[:2]:
+                lines.append(f"- {e.get('genus')}: {p.get('title')} ({p.get('pmid')})")
+    n_claims = len((claims or {}).get("claims") or [])
+    lines.extend(
+        [
+            "",
+            f"Evidence claims written: {n_claims} (see `evidence/claims.md`).",
+            "",
+            "## Limitations",
+            "",
+            "- Automated retrieval is not a systematic review; PMIDs need expert triage.",
+            "- Curated RAG indices may be stubs until full local dumps are mounted under `database/`.",
+            f"- Rejected ungrounded taxa: {', '.join(rejected) if rejected else 'none'}.",
+            "- LLM paraphrases (if any) are constrained to authority context only.",
+            "",
+            "## References",
+            "",
+        ]
+    )
+    seen: set[str] = set()
+    for row in evidence_rows or []:
+        pmid = str(row.get("pmid") or "")
+        if pmid and pmid not in seen and pmid not in {"kb", "mock"}:
+            seen.add(pmid)
+            lines.append(f"- PMID {pmid}: {row.get('species')} — {row.get('url') or ''}")
+    for e in entries:
+        for p in e.get("papers") or []:
+            pmid = str(p.get("pmid") or "")
+            if pmid and pmid not in seen:
+                seen.add(pmid)
+                lines.append(f"- {pmid}: {p.get('title')} {p.get('url') or ''}")
+    if len(seen) == 0:
+        lines.append("- (no external PMIDs; see internal KB notes in literature_summary.json)")
+
+    path = outdir / "literature_report.md"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    # Also top-level convenience path
+    top = outdir.parent / "literature_report.md"
+    top.write_text("\n".join(lines), encoding="utf-8")
+    return str(top)

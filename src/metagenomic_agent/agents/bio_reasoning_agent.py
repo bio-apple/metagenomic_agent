@@ -370,14 +370,24 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     )
 
     amsg = emit("bio_reasoning", "supervisor", "plan", bio)
+    from metagenomic_agent.knowledge.reasoning_log import log_decision
+
+    arts = {
+        **state.get("artifacts", {}),
+        "bio_reasoning": bio,
+        "hitl_options": hitl_options,
+        "bio_reasoning_path": str(outdir / "bio_reasoning.md"),
+    }
+    reason_patch = log_decision(
+        {**state, "artifacts": arts},
+        "bio_reasoning",
+        f"Use {bio['recommended_assay']} / assembler={bio.get('assembler_preference')}",
+        f"goal={bio['study_goal']}; cot={bio.get('cot_example_id')}; citations={len(bio.get('citations') or [])}",
+    )
+    arts = {**arts, **(reason_patch.get("artifacts") or {})}
     return {
         "hitl_pending": hitl_pending,
-        "artifacts": {
-            **state.get("artifacts", {}),
-            "bio_reasoning": bio,
-            "hitl_options": hitl_options,
-            "bio_reasoning_path": str(outdir / "bio_reasoning.md"),
-        },
+        "artifacts": arts,
         "messages": state.get("messages", [])
         + [f"Bio Reasoning: goal={bio['study_goal']} assay={bio['recommended_assay']}"],
         "agent_messages": append_msg(state.get("agent_messages"), amsg),

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.21.0
+
+- Unified `reasoning/` decision audit (`chain.jsonl` / `chain.md`)
+- Structured `literature_report.md`; hybrid RAG (`rag.mode=hybrid`); knowledge dir contract under `database/`
+- Dockerfile + docker-compose for orchestration API; `POST /chat` grounded Copilot
+- Figure legends; CONCOCT + CARD/RGI + DeepARG + VirSorter2/CheckV (mock + BioContainers pins)
+
 ## 0.20.0
 
 - Async HITL for Web/API: `hitl.mode=async`, session under `hitl/async/`, `resume_pipeline`

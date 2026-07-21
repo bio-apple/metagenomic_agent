@@ -34,6 +34,11 @@ DEFAULT_IMAGES: dict[str, str] = {
     "humann": "quay.io/biocontainers/humann:3.8--pyhdfd78af_0",
     "humann3": "quay.io/biocontainers/humann:3.8--pyhdfd78af_0",
     "diamond": "quay.io/biocontainers/diamond:2.1.9--h43eeafb_0",
+    "concoct": "quay.io/biocontainers/concoct:1.1.0--py311h245ed42_2",
+    "rgi": "quay.io/biocontainers/rgi:6.0.3--pyha8f3691_0",
+    "deeparg": "quay.io/biocontainers/deeparg:1.0.2--pyh7cba7a3_0",
+    "virsorter2": "quay.io/biocontainers/virsorter:2.2.4--pyhdfd78af_1",
+    "checkv": "quay.io/biocontainers/checkv:1.0.3--pyhdfd78af_0",
 }
 
 DEFAULT_CONDA_ENVS: dict[str, str] = {

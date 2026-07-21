@@ -1,6 +1,6 @@
-# 使用指南（v0.20）
+# 使用指南（v0.21）
 
-架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。Linux 大内存服务器（≥256 GB）部署见 [DEPLOY_LINUX.md](DEPLOY_LINUX.md)。
 
 ## CLI
 
@@ -50,6 +50,19 @@ curl "http://127.0.0.1:8000/runs/<run_id>/hitl?outdir=./results/async1"
 curl -X POST http://127.0.0.1:8000/runs/<run_id>/hitl/decide \
   -H 'Content-Type: application/json' \
   -d '{"outdir":"./results/async1","decisions":[{"id":"confirm_report_publish","key":"B"}],"resume":true}'
+```
+
+Chat（接地问答，可选绑定已完成 run 的 outdir）：
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat -H 'Content-Type: application/json' \
+  -d '{"question":"Why is Faecalibacterium reduced in IBD?","outdir":"./results"}'
+```
+
+容器编排层：
+
+```bash
+docker compose up --build
 ```
 
 环境变量：`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`（可选）。
@@ -124,6 +137,9 @@ S2	Control
 | `evidence/grounded_interp.md` | 表绑定解读（物种/p/q/effect 仅来自程序表） |
 | `hitl/critical_gates.json` · `CRITICAL_GATES.md` | 关键 HITL 审计 |
 | `hitl/async/session.json` · `state.json` · `AWAITING.md` | 异步审批会话（API resume） |
+| `reasoning/chain.md` · `chain.jsonl` | 跨 Agent 决策审计 |
+| `literature_report.md` | 结构化文献报告 |
+| `visualization/figure_legends.md` | 图注（Figure 1–4） |
 | `report/HELD.md` | HITL 选择暂缓报告时的占位说明 |
 | `diversity_analysis/otu_asv_filter.json` | 低频特征剔除摘要 |
 | `reporter/biological_report.md` | Reporter：多样性与通路解读 |

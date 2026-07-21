@@ -70,9 +70,20 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     per_sample: dict[str, Any] = {}
     merged = ["sample\tfeature\tabundance\tdatabase"]
 
+    pipe = (state.get("config") or {}).get("pipeline") or {}
+    enable_arg = bool(pipe.get("enable_arg", False))
+    asm_arts = (state.get("artifacts") or {}).get("assembly") or {}
+
     for sample in state["samples"]:
         sid = sample["sample_id"]
         art = functional.run(sample, qc_arts.get(sid, {}), outdir / sid / "functional", ctx=ctx)
+        if enable_arg:
+            from metagenomic_agent.tools import arg as arg_tools
+
+            contigs = (asm_arts.get(sid) or {}).get("contigs")
+            art["arg"] = arg_tools.run_arg_suite(
+                sample, qc_arts.get(sid, {}), outdir / sid / "arg", ctx, contigs=contigs
+            )
         per_sample[sid] = art
         path = art.get("functional_profile")
         if path and Path(path).exists():
