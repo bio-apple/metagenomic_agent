@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.9.0` · 容器沙盒工具调用（Docker/Apptainer）+ 报错自愈 · 专业化多智能体科研平台。
+**版本** `0.10.0` · 权威库锚定抗幻觉 + 证据链陈述 · 容器沙盒 · 多智能体科研平台。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -48,6 +48,12 @@ meta-agent version
 - 失败时分类 stderr（OOM / 缺二进制 / 架构不兼容 / 动态库缺失），自动降参、换组装器、切容器或 amd64，并向用户输出**可读摘要**而非原始堆栈。
 - 配置见 `config/default.yaml` → `sandbox:`。
 
+## 抗幻觉与证据链（v0.10）
+
+- 分类单元须在 **GTDB / NCBI Taxonomy** 策展索引中锚定，否则 Literature / 解读拒绝陈述。
+- 允许的陈述附带：**相对丰度**、**p/q 值**（若有差异检验）、**数据库 ID**（KEGG/UniProt/CARD 等）与 **PMID**。
+- 产物：`evidence/claims.json` · `evidence/claims.md`；配置 `interpretation.require_grounding`。
+
 | 路径 | 含义 |
 |------|------|
 | `router_decision.json` | 意图与领域路由 |
@@ -55,6 +61,7 @@ meta-agent version
 | `plan_validation.json` | 方案完备性 / 领域追问 |
 | `workflow/generated.nf` · `.smk` | RAG 生成的工作流草稿 |
 | `evidence/evidence_table.md` | 文献证据表 |
+| `evidence/claims.md` | 抗幻觉证据链 |
 | `xai/feature_importance.md` | 标志物可解释归因 |
 | `report/manuscript/` | 投稿分节草稿 |
 | `reproducibility/` | CWL + run_manifest |

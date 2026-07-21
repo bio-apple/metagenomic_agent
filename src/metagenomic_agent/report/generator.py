@@ -80,6 +80,11 @@ HTML_TEMPLATE = Template(
   </div>
 
   <div class="card">
+    <h2>Evidence Chains（抗幻觉）</h2>
+    <div>{{ claims_html | safe }}</div>
+  </div>
+
+  <div class="card">
     <h2>Literature</h2>
     <div>{{ literature_html | safe }}</div>
   </div>
@@ -177,6 +182,11 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
     if ev_path.exists():
         evidence_md = ev_path.read_text(encoding="utf-8")
 
+    claims_md = ""
+    claims_path = Path(state["outdir"]) / "evidence" / "claims.md"
+    if claims_path.exists():
+        claims_md = claims_path.read_text(encoding="utf-8")
+
     quality = (state.get("artifacts") or {}).get("quality_scores") or {}
 
     stats = state.get("artifacts", {}).get("statistics") or state.get("statistics") or {}
@@ -218,6 +228,7 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         recommendations=critic.get("recommendations") or [],
         quality_json=json.dumps(quality.get("scores") or quality, indent=2, ensure_ascii=False),
         evidence_html=_md_to_html(evidence_md or "_No evidence table_"),
+        claims_html=_md_to_html(claims_md or "_No evidence chains (run literature/report)_"),
         literature_html=_md_to_html(lit_md or "_No literature summary_"),
         interpretation_html=_md_to_html(interpretation),
         paths_json=json.dumps(key_paths, indent=2),

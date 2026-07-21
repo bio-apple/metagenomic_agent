@@ -13,4 +13,6 @@ Consumed by the Supervisor when drafting plans (runtime KB, not end-user docs).
 ## Safety
 
 - Do not invent host genome versions, coordinate systems, or sample groups — escalate to Plan Validator / HITL.  
-- Prefer multi-tool consensus for taxonomy when compute allows.
+- Prefer multi-tool consensus for taxonomy when compute allows.  
+- Do not assert taxa absent from GTDB/NCBI authority RAG; attach abundance, p/q-value, DB IDs, and PMIDs on biological claims.  
+- LLM text must paraphrase retrieval context only — no invented species, pathways, or causal disease claims.

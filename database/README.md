@@ -17,6 +17,6 @@ database/
 | `paths.glm_weights` | gLM 权重 |
 | `paths.glm_inference_cmd` | 外部 gLM 命令模板 |
 
-生物知识检索默认用包内 curated 索引（`src/metagenomic_agent/rag/data/`）。工具领域路由见 `knowledge/tool_domain_kb.json`。
+生物知识检索默认用包内 curated 索引（`src/metagenomic_agent/rag/data/curated_bio_index.json`），覆盖 **GTDB、NCBI Taxonomy、KEGG、UniProt、CARD、VFDB** 等 stub；可替换为本地全量库并保持同名字段。抗幻觉策略要求分类单元先在 GTDB/NCBI 锚定。工具领域路由见 `knowledge/tool_domain_kb.json`。
 
 `mock` 模式可不挂载数据库。详见 [docs/USAGE.md](../docs/USAGE.md)。

@@ -160,7 +160,9 @@ def build_evidence_table(
             "Up" if "enrich" in direction.lower() or "increas" in direction.lower() or "up" in direction.lower() else "Associated"
         )
         curated = evidence_for_taxon(genus, disease_hint=disease)
-        bio = retrieve_multi(genus, dbs=["gtdb", "kegg", "card", "vfdb", "mgnify"], top_k_per_db=1)
+        bio = retrieve_multi(
+            genus, dbs=["gtdb", "ncbi_taxonomy", "kegg", "uniprot", "card", "vfdb", "mgnify"], top_k_per_db=1
+        )
         papers = collect_papers(f"{genus} {disease}", mode, cfg)
         if curated:
             for c in curated:

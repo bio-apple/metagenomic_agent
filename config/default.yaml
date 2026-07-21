@@ -86,6 +86,16 @@ pi:
 
 rag:
   mode: keyword  # keyword | semantic
+  authority_dbs:
+    - gtdb
+    - ncbi_taxonomy
+    - kegg
+    - uniprot
+    - card
+
+interpretation:
+  require_grounding: true  # block ungrounded taxa; LLM may only paraphrase retrieval context
+  require_evidence_chain: true  # abundance / p-value / DB IDs / PMIDs on allowed claims
 
 validation:
   min_read_retention: 0.3

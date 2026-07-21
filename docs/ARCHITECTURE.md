@@ -1,4 +1,4 @@
-# 架构说明（v0.9 · 多智能体 + 容器沙盒）
+# 架构说明（v0.10 · 多智能体 + 容器沙盒 + 抗幻觉）
 
 源码：`src/metagenomic_agent/`。
 
@@ -56,6 +56,18 @@ parse → router → supervisor → tool_specialist → plan_validator
 - 工具擅长领域：`knowledge/tool_domain_kb.json`
 - 约束逻辑：`knowledge/domain_kb.py`（缺宿主版本 / 坐标系统 / 分组则追问）
 - 配置：`validation.plan_validator_hard_fail`
+
+## 抗幻觉与证据链（v0.10）
+
+| 组件 | 路径 | 作用 |
+|------|------|------|
+| 权威锚定 | `rag/authority.py` | GTDB/NCBI 未命中则拒绝物种陈述 |
+| UniProt | `rag/uniprot.py` + curated index | 蛋白/基因 ID |
+| 证据链 | `knowledge/evidence_chain.py` | 丰度 · p/q · DB ID · PMID → `evidence/claims.*` |
+| 解读 | `report/interpreter.py` | 仅基于 claims；LLM 只改写检索上下文 |
+| 文献 | `agents/literature_agent.py` | 过滤未锚定分类单元 |
+
+配置：`interpretation.require_grounding` / `require_evidence_chain`；`rag.authority_dbs`。
 
 ## 工作流 RAG 与 XAI
 

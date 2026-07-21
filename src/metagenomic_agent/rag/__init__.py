@@ -15,6 +15,7 @@ SUPPORTED_DBS = (
     "ncbi_taxonomy",
     "refseq",
     "kegg",
+    "uniprot",
     "eggnog",
     "vfdb",
     "card",
@@ -22,6 +23,9 @@ SUPPORTED_DBS = (
     "hmp",
     "mgnify",
 )
+
+# Authoritative DBs for anti-hallucination grounding
+AUTHORITY_DBS = ("gtdb", "ncbi_taxonomy", "kegg", "uniprot", "card")
 
 
 @lru_cache(maxsize=1)
@@ -47,6 +51,8 @@ def _score_entry(query: str, entry: dict[str, Any]) -> float:
         str(entry.get("family", "")),
         str(entry.get("category", "")),
         str(entry.get("biome", "")),
+        str(entry.get("gene", "")),
+        str(entry.get("protein", "")),
         " ".join(entry.get("aliases") or []),
         " ".join(entry.get("taxa_hint") or []),
         str(entry.get("lineage", "")),
@@ -95,7 +101,7 @@ def retrieve(db: str, query: str, top_k: int = 5, mode: str = "keyword") -> list
 
 
 def retrieve_multi(query: str, dbs: list[str] | None = None, top_k_per_db: int = 3) -> dict[str, list[dict[str, Any]]]:
-    targets = dbs or ["gtdb", "kegg", "card", "vfdb", "mgnify", "eggnog"]
+    targets = dbs or ["gtdb", "ncbi_taxonomy", "kegg", "uniprot", "card", "vfdb", "mgnify", "eggnog"]
     return {db: retrieve(db, query, top_k=top_k_per_db) for db in targets}
 
 
@@ -131,7 +137,9 @@ def annotate_features(features: list[str], dbs: list[str] | None = None) -> list
     """Annotate taxonomy/function feature IDs against bio DB RAG."""
     out: list[dict[str, Any]] = []
     for feat in features:
-        multi = retrieve_multi(feat, dbs=dbs or ["gtdb", "kegg", "card", "vfdb", "eggnog"], top_k_per_db=2)
+        multi = retrieve_multi(
+            feat, dbs=dbs or ["gtdb", "kegg", "uniprot", "card", "vfdb", "eggnog"], top_k_per_db=2
+        )
         flat = [h for hits in multi.values() for h in hits]
         flat.sort(key=lambda x: -x.get("score", 0))
         out.append({"feature": feat, "hits": flat[:5]})

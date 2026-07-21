@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0
+
+- Authority-bound RAG (GTDB, NCBI Taxonomy, KEGG, UniProt, CARD): ungrounded taxa blocked
+- Evidence chains: abundance / p·q-value / DB IDs / PMIDs on biological claims (`evidence/claims.*`)
+- Literature & interpreter constrained to retrieval context; UniProt curated + optional REST
+
 ## 0.9.0
 
 - MCP-style sandboxed tool calls (`tools/sandbox.py`) with Docker/Apptainer backends

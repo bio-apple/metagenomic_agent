@@ -1,5 +1,5 @@
 {
-  "version": "0.6.0",
+  "version": "0.10.0",
   "databases": {
     "gtdb": [
       {
@@ -158,19 +158,91 @@
         "id": "216851",
         "name": "Faecalibacterium prausnitzii",
         "rank": "species",
-        "lineage": "Bacteria;Bacillota;Clostridia;Eubacteriales;Oscillospiraceae"
+        "lineage": "Bacteria;Bacillota;Clostridia;Eubacteriales;Oscillospiraceae",
+        "aliases": ["Faecalibacterium"]
       },
       {
         "id": "562",
         "name": "Escherichia coli",
         "rank": "species",
-        "lineage": "Bacteria;Pseudomonadota;Gammaproteobacteria;Enterobacterales;Enterobacteriaceae"
+        "lineage": "Bacteria;Pseudomonadota;Gammaproteobacteria;Enterobacterales;Enterobacteriaceae",
+        "aliases": ["Escherichia"]
       },
       {
         "id": "239935",
         "name": "Akkermansia muciniphila",
         "rank": "species",
-        "lineage": "Bacteria;Verrucomicrobiota;Verrucomicrobiae;Verrucomicrobiales;Akkermansiaceae"
+        "lineage": "Bacteria;Verrucomicrobiota;Verrucomicrobiae;Verrucomicrobiales;Akkermansiaceae",
+        "aliases": ["Akkermansia"]
+      },
+      {
+        "id": "817",
+        "name": "Bacteroides fragilis",
+        "rank": "species",
+        "lineage": "Bacteria;Bacteroidota;Bacteroidia;Bacteroidales;Bacteroidaceae",
+        "aliases": ["Bacteroides"]
+      },
+      {
+        "id": "216816",
+        "name": "Bifidobacterium longum",
+        "rank": "species",
+        "lineage": "Bacteria;Actinomycetota;Actinomycetes;Bifidobacteriales;Bifidobacteriaceae",
+        "aliases": ["Bifidobacterium"]
+      },
+      {
+        "id": "166486",
+        "name": "Roseburia intestinalis",
+        "rank": "species",
+        "lineage": "Bacteria;Bacillota;Clostridia;Eubacteriales;Lachnospiraceae",
+        "aliases": ["Roseburia"]
+      },
+      {
+        "id": "165179",
+        "name": "Prevotella copri",
+        "rank": "species",
+        "lineage": "Bacteria;Bacteroidota;Bacteroidia;Bacteroidales;Prevotellaceae",
+        "aliases": ["Prevotella"]
+      },
+      {
+        "id": "33035",
+        "name": "Ruminococcus gnavus",
+        "rank": "species",
+        "lineage": "Bacteria;Bacillota;Clostridia;Eubacteriales;Lachnospiraceae",
+        "aliases": ["Ruminococcus"]
+      }
+    ],
+    "uniprot": [
+      {
+        "id": "A0A174C0Z7",
+        "name": "Butyrate kinase (Faecalibacterium)",
+        "gene": "buk",
+        "protein": "Butyrate kinase",
+        "taxa_hint": ["Faecalibacterium"],
+        "notes": "Butanoate metabolism; curated UniProt stub"
+      },
+      {
+        "id": "B2RI24",
+        "name": "Amuc_1100 (Akkermansia muciniphila)",
+        "gene": "Amuc_1100",
+        "protein": "Outer membrane protein Amuc_1100",
+        "taxa_hint": ["Akkermansia"],
+        "notes": "Immunomodulatory outer membrane protein"
+      },
+      {
+        "id": "P62593",
+        "name": "Beta-lactamase TEM",
+        "gene": "blaTEM",
+        "protein": "Beta-lactamase TEM",
+        "taxa_hint": ["Escherichia"],
+        "notes": "AMR; links to CARD TEM family"
+      },
+      {
+        "id": "Q8A1G3",
+        "name": "SusC-like TonB-dependent transporter",
+        "gene": "susC",
+        "protein": "TonB-dependent receptor",
+        "taxa_hint": ["Bacteroides"],
+        "notes": "Polysaccharide utilization locus"
       }
     ],
     "kegg": [
