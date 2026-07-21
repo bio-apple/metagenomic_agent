@@ -1,7 +1,6 @@
-# 顶刊导向优化实施说明
+# v0.5 能力落地对照
 
-对应建议书：[Optimization_Proposal_IF10.md](Optimization_Proposal_IF10.md)  
-状态：**v0.5.0 已完成三阶段 MVP**（契约 / gLM 路由 / 生物学验证 + CWL）。
+顶刊导向三阶段（契约 / gLM 路由 / 生物学验证 + CWL）在代码中的位置。架构总览见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 第一阶段：技能与契约
 

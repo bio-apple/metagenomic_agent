@@ -84,14 +84,8 @@ meta-agent serve --host 127.0.0.1 --port 8000
 | [docs/USAGE.md](docs/USAGE.md) | CLI / API / 配置详解 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 当前实现架构（v0.5） |
 | [docs/METHODS.md](docs/METHODS.md) | 论文 Methods 可引用说明 |
-| [docs/Optimization_Proposal_IF10.md](docs/Optimization_Proposal_IF10.md) | 顶刊导向优化建议书 |
-| [docs/OPTIMIZATION_PROPOSAL_IMPL.md](docs/OPTIMIZATION_PROPOSAL_IMPL.md) | 建议书落地对照 |
+| [docs/OPTIMIZATION_PROPOSAL_IMPL.md](docs/OPTIMIZATION_PROPOSAL_IMPL.md) | v0.5 能力落地对照 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本变更 |
-
-历史设计稿（部分内容已演进，以 ARCHITECTURE / METHODS 为准）：
-
-- `docs/Metagenomic_Research_Agent_Developer_Documentation.md`
-- `docs/Metagenomics_Agent_Architecture_and_Optimization.md`
 
 ## 局限（发表前务必披露）
 

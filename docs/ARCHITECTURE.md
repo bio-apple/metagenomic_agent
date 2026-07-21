@@ -76,4 +76,4 @@ src/metagenomic_agent/
   evaluation/      # 基准指标辅助
 ```
 
-设计动机与路线图见 [Optimization_Proposal_IF10.md](Optimization_Proposal_IF10.md)；代码对照表见 [OPTIMIZATION_PROPOSAL_IMPL.md](OPTIMIZATION_PROPOSAL_IMPL.md)。
+设计动机与代码落地表见 [OPTIMIZATION_PROPOSAL_IMPL.md](OPTIMIZATION_PROPOSAL_IMPL.md)。
