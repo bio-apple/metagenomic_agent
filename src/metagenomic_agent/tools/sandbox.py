@@ -70,30 +70,46 @@ def friendly_error_message(classified: str | None, stderr: str, tool: str) -> tu
     text = (stderr or "").lower()
     hints: list[str] = []
     if classified == "oom":
-        msg = f"工具 `{tool}` 因内存不足失败（常见于 exit 137）。"
-        hints = ["降低 threads/memory_gb", "改用 MEGAHIT 替代 metaSPAdes", "切换 Docker/Apptainer 并限制 --memory"]
+        msg = f"Tool `{tool}` failed due to out-of-memory (commonly exit 137)."
+        hints = [
+            "Lower threads/memory_gb",
+            "Use MEGAHIT instead of metaSPAdes",
+            "Switch to Docker/Apptainer and cap --memory",
+        ]
     elif classified == "missing_binary":
-        msg = f"工具 `{tool}` 可执行文件未找到。"
-        hints = ["改用 mode=docker/apptainer + biocontainers 镜像", "或安装对应 conda env"]
+        msg = f"Executable for tool `{tool}` was not found."
+        hints = [
+            "Use mode=docker/apptainer with biocontainers images",
+            "Or install the matching conda env",
+        ]
     elif classified == "arch_mismatch":
-        msg = f"架构不兼容（Apple Silicon / ARM 与 x86 镜像冲突）。"
-        hints = ["设置 sandbox.platform=linux/amd64 并通过 Docker 模拟", "或改用原生 arm64 biocontainer"]
+        msg = "Architecture mismatch (Apple Silicon / ARM vs x86 image conflict)."
+        hints = [
+            "Set sandbox.platform=linux/amd64 and emulate via Docker",
+            "Or use a native arm64 biocontainer",
+        ]
     elif classified == "missing_library":
-        msg = f"动态库缺失（glibc/libstdc++ 等），宿主机直接运行不安全。"
-        hints = ["强制容器隔离（docker/apptainer）", "避免 local 模式跑生信二进制"]
+        msg = "Missing shared libraries (glibc/libstdc++, etc.); running directly on the host is unsafe."
+        hints = [
+            "Force container isolation (docker/apptainer)",
+            "Avoid local mode for bioinformatics binaries",
+        ]
     elif classified == "timeout":
-        msg = f"工具 `{tool}` 超时。"
-        hints = ["增加 timeout", "降低数据量或 threads"]
+        msg = f"Tool `{tool}` timed out."
+        hints = ["Increase timeout", "Reduce data volume or threads"]
     elif classified == "resource":
-        msg = f"磁盘或权限等资源错误。"
-        hints = ["检查磁盘空间与输出目录写权限"]
+        msg = "Disk, permission, or other resource error."
+        hints = ["Check disk space and write permission on the output directory"]
     elif "conda" in text and ("not found" in text or "environment" in text):
-        msg = f"Conda 环境不可用。"
-        hints = ["创建 conda env", "或切换 docker/apptainer"]
+        msg = "Conda environment is unavailable."
+        hints = ["Create the conda env", "Or switch to docker/apptainer"]
         classified = classified or "missing_binary"
     else:
-        msg = f"工具 `{tool}` 执行失败（已捕获 stderr，系统将尝试自愈）。"
-        hints = ["查看 artifacts.errors 中的 classified 字段", "允许 self-heal 自动降参重试"]
+        msg = f"Tool `{tool}` failed (stderr captured; system will attempt self-heal)."
+        hints = [
+            "Inspect the classified field in artifacts.errors",
+            "Allow self-heal to downgrade and retry automatically",
+        ]
     # Keep only a short, sanitized one-line excerpt (avoid dumping stacks)
     excerpt_lines = [ln.strip() for ln in (stderr or "").strip().splitlines() if ln.strip()]
     if excerpt_lines:
@@ -102,9 +118,9 @@ def friendly_error_message(classified: str | None, stderr: str, tool: str) -> tu
             last = last[:117] + "..."
         # Skip useless repeated filler
         if last.lower() not in {"killed", "killed."} and "long stack" not in last.lower():
-            msg += f" 摘要: {last}"
+            msg += f" Summary: {last}"
         elif last.lower() in {"killed", "killed."}:
-            msg += " 摘要: process killed (OOM 嫌疑)"
+            msg += " Summary: process killed (suspected OOM)"
     return msg, hints
 
 
@@ -159,8 +175,11 @@ class SandboxExecutor:
                     backend=self.backend.value,
                     command=" ".join(req.argv),
                     classified="logic",
-                    user_message=f"参数 Schema 校验失败: {'; '.join(vr.errors)}",
-                    recovery_hints=["修正 YAML/JSON 参数后重试", "检查路径 / threads / memory_gb"],
+                    user_message=f"Parameter schema validation failed: {'; '.join(vr.errors)}",
+                    recovery_hints=[
+                        "Fix YAML/JSON parameters and retry",
+                        "Check paths / threads / memory_gb",
+                    ],
                     stderr="; ".join(vr.errors),
                 )
             if vr.ok:
@@ -176,7 +195,7 @@ class SandboxExecutor:
                 command=" ".join(req.argv) or f"mock:{req.tool}",
                 returncode=0,
                 stdout="mock ok",
-                user_message=f"mock 执行 `{req.tool}` 成功",
+                user_message=f"Mock execution of `{req.tool}` succeeded",
             )
 
         plat = req.platform if req.platform != "auto" else (

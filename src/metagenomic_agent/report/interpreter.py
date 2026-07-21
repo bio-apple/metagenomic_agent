@@ -19,42 +19,46 @@ def interpret(state: dict[str, Any]) -> str:
     report = write_evidence_chains(state)
     grounded = write_grounded_interp(state)
     lines = [
-        "## 生物学意义解读（证据锚定）",
+        "## Biological Interpretation (Evidence-Grounded)",
         "",
-        "策略：仅陈述已在 GTDB/NCBI Taxonomy 锚定的分类单元；"
-        "物种名、p/q、effect size（log2FC/LDA）必须来自程序生成的 biomarkers/LEfSe 表；"
-        "禁止对表外实体作 PCoA/通路断言。",
+        "Strategy: only state taxa grounded in GTDB/NCBI Taxonomy; "
+        "species names, p/q, and effect sizes (log2FC/LDA) must come from "
+        "program-generated biomarker/LEfSe tables; "
+        "do not assert PCoA/pathway claims for entities outside those tables.",
         "",
-        f"- 候选分类单元: {report['n_candidates']}",
-        f"- 权威库锚定: {report['n_grounded']}",
-        f"- 拒绝（未锚定）: {report['n_rejected_ungrounded']}",
-        f"- 表绑定允许陈述: {grounded.get('n_allowed')}（require_evidence_chain={require_chain}）",
-        f"- 表绑定阻断: {grounded.get('n_blocked')}",
+        f"- Candidate taxa: {report['n_candidates']}",
+        f"- Authority-grounded: {report['n_grounded']}",
+        f"- Rejected (ungrounded): {report['n_rejected_ungrounded']}",
+        f"- Table-bound allowed claims: {grounded.get('n_allowed')} (require_evidence_chain={require_chain})",
+        f"- Table-bound blocked: {grounded.get('n_blocked')}",
         "",
         f"- {grounded.get('pcoa_note')}",
         "",
     ]
     if report.get("rejected_taxa"):
-        lines.append("### 已拦截的未锚定名称")
+        lines.append("### Intercepted ungrounded names")
         for t in report["rejected_taxa"]:
-            lines.append(f"- `{t}`（未在 GTDB/NCBI 策展索引中命中）")
+            lines.append(f"- `{t}` (not found in GTDB/NCBI curated index)")
         lines.append("")
 
-    lines.append("### 证据链陈述")
+    lines.append("### Evidence-chain statements")
     lines.append("")
     allowed = [c for c in report.get("claims") or [] if c.get("allowed")]
     blocked = [c for c in report.get("claims") or [] if not c.get("allowed")]
     if not allowed and not blocked:
-        lines.append("_无可陈述的分类单元（无 biomarker / top genera）。_")
+        lines.append("_No claimable taxa (no biomarkers / top genera)._")
     for c in allowed:
         lines.append(f"- {c.get('statement')}")
     for c in blocked:
-        lines.append(f"- [阻断] {c.get('statement')}")
+        lines.append(f"- [Blocked] {c.get('statement')}")
 
     lines.append("")
-    lines.append(f"完整 JSON/Markdown：`{report.get('path', 'evidence/claims.md')}`")
+    lines.append(f"Full JSON/Markdown: `{report.get('path', 'evidence/claims.md')}`")
     lines.append("")
-    lines.append("本解读不构成临床诊断；因果关系需独立实验验证。")
+    lines.append(
+        "This interpretation is not a clinical diagnosis; "
+        "causal relationships require independent experimental validation."
+    )
 
     text = "\n".join(lines)
     if not require_grounding:
@@ -82,22 +86,26 @@ def interpret(state: dict[str, Any]) -> str:
             [
                 SystemMessage(
                     content=(
-                        "你是宏基因组学专家。只能基于给定 AUTHORITY CONTEXT 与 CLAIM 进行改写。"
-                        "CLAIM 中的物种名、p值、q值、log2FC/LDA 均来自程序表格，禁止改动数值，"
-                        "禁止引入未出现的菌种名、通路或因果断言；不得夸大疾病关联。"
-                        "用中文 2–4 句总结。"
+                        "You are a metagenomics expert. Rewrite only from the given "
+                        "AUTHORITY CONTEXT and CLAIM. "
+                        "Species names, p-values, q-values, and log2FC/LDA in CLAIM come "
+                        "from programmatic tables — do not alter numeric values; "
+                        "do not introduce taxa, pathways, or causal claims that are not "
+                        "present; do not overstate disease associations. "
+                        "Summarize in English (2–4 sentences)."
                     )
                 ),
                 HumanMessage(
                     content=(
-                        f"用户问题：{state.get('user_query')}\n\n"
+                        f"User question: {state.get('user_query')}\n\n"
                         f"AUTHORITY CONTEXT + TABLE-BOUND CLAIMS:\n{contexts}\n\n"
-                        "请在不添加新实体、不篡改 p/effect 的前提下做简洁综述。"
+                        "Provide a concise summary without adding new entities "
+                        "or altering p/effect values."
                     )
                 ),
             ]
         )
         extra = resp.content if isinstance(resp.content, str) else str(resp.content)
-        return text + "\n\n### LLM 综述（受检索约束）\n" + extra
+        return text + "\n\n### LLM summary (retrieval-constrained)\n" + extra
     except Exception as exc:  # noqa: BLE001
-        return text + f"\n\n(LLM 解读不可用: {exc})"
+        return text + f"\n\n(LLM interpretation unavailable: {exc})"

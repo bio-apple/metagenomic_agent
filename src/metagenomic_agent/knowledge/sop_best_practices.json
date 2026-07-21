@@ -4,7 +4,7 @@
   "sops": [
     {
       "id": "assay_16s_vs_shotgun",
-      "title": "16S 扩增子 vs Shotgun 宏基因组选型",
+      "title": "16S amplicon vs shotgun metagenomics assay selection",
       "tags": ["16s", "amplicon", "shotgun", "assay", "cost", "function"],
       "triggers": ["16s", "amplicon", "shotgun", "宏基因组", "扩增子", "pathway", "功能", "biomarker"],
       "decision": [
@@ -37,7 +37,7 @@
     },
     {
       "id": "env_gut_host_filter",
-      "title": "肠道 / 宿主相关样品预处理",
+      "title": "Gut / host-associated sample preprocessing",
       "tags": ["gut", "stool", "fecal", "肠道", "human", "host", "clinical"],
       "triggers": ["gut", "stool", "fecal", "肠道", "ibd", "obes", "host", "clinical"],
       "steps": [
@@ -53,7 +53,7 @@
     },
     {
       "id": "env_soil_prep",
-      "title": "土壤样品预处理策略",
+      "title": "Soil sample preprocessing strategy",
       "tags": ["soil", "土壤", "environment", "rhizosphere"],
       "triggers": ["soil", "土壤", "rhizosphere", "terrestrial"],
       "steps": [
@@ -69,7 +69,7 @@
     },
     {
       "id": "env_ocean_prep",
-      "title": "海洋 / 水体样品预处理策略",
+      "title": "Ocean / aquatic sample preprocessing strategy",
       "tags": ["ocean", "marine", "海水", "海洋", "aquatic"],
       "triggers": ["ocean", "marine", "海水", "海洋", "aquatic", "seawater"],
       "steps": [
@@ -84,7 +84,7 @@
     },
     {
       "id": "mag_qc_gate",
-      "title": "MAG QC 门控（CheckM2 → GTDB-Tk / Bakta）",
+      "title": "MAG QC gating (CheckM2 → GTDB-Tk / Bakta)",
       "tags": ["mag", "checkm2", "gtdbtk", "bakta", "completeness"],
       "triggers": ["mag", "bin", "checkm", "gtdb", "bakta", "组装", "assembly"],
       "steps": [
@@ -101,7 +101,7 @@
     },
     {
       "id": "diversity_function_report",
-      "title": "多样性与功能通路报告 SOP",
+      "title": "Diversity and functional pathway reporting SOP",
       "tags": ["alpha", "beta", "kegg", "cog", "go", "diversity", "report"],
       "triggers": ["alpha", "beta", "diversity", "kegg", "cog", "go", "pathway", "丰富度"],
       "steps": [

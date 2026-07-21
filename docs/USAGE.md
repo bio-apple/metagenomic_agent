@@ -1,34 +1,34 @@
-# 使用指南（v0.23）
+# Usage Guide (v0.23)
 
-架构与设计见 [ARCHITECTURE.md](ARCHITECTURE.md)；Linux ≥256 GB 部署见 [DEPLOY_LINUX.md](DEPLOY_LINUX.md)。
+See [ARCHITECTURE.md](ARCHITECTURE.md) for architecture and design; see [DEPLOY_LINUX.md](DEPLOY_LINUX.md) for Linux deployments with ≥256 GB RAM.
 
 ## CLI
 
-入口：`meta-agent`。
+Entry point: `meta-agent`.
 
 ### `run`
 
-| 选项 | 默认 | 说明 |
-|------|------|------|
-| `-i / --input` | 必填 | FASTQ 文件或目录 |
-| `-o / --outdir` | `./results` | 输出目录 |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-i / --input` | required | FASTQ file or directory |
+| `-o / --outdir` | `./results` | Output directory |
 | `-m / --mode` | `mock` | `mock` \| `local` \| `conda` \| `docker` \| `apptainer` |
-| `-q / --query` | 通用分析句 | 驱动 Router 意图与领域 |
-| `--metadata` | 无 | `sample_id,group` 的 TSV/CSV（差异分析推荐） |
-| `-c / --config` | `config/default.yaml` | YAML 覆盖 |
-| `-y / --yes` | false | 自动确认 HITL（含 Plan Validator 追问） |
+| `-q / --query` | generic analysis phrase | Drives Router intent and domain |
+| `--metadata` | none | TSV/CSV with `sample_id,group` (recommended for differential analysis) |
+| `-c / --config` | `config/default.yaml` | YAML overrides |
+| `-y / --yes` | false | Auto-confirm HITL (including Plan Validator prompts) |
 
 ```bash
-# 演示（推荐：带分组的一键数据；或 bash scripts/reproduce_demo.sh）
+# Demo (recommended: one-click grouped data; or bash scripts/reproduce_demo.sh)
 meta-agent run -i examples/demo_data/fastq --metadata examples/demo_data/metadata.tsv \
   -o ./results/demo --mode mock --yes \
   -q "IBD vs healthy gut microbiome biomarker discovery"
 
-# 最小单样本 fixture（CI）
+# Minimal single-sample fixture (CI)
 meta-agent run -i tests/fixtures/fastq -o ./results --mode mock --yes \
   -q "IBD gut microbiome biomarker discovery"
 
-# 真实数据
+# Real data
 meta-agent run -i /data/fastq -o /data/out --mode docker \
   -c config/default.yaml --metadata /data/meta.tsv \
   -q "IBD vs healthy biomarker discovery"
@@ -41,87 +41,87 @@ meta-agent serve --host 127.0.0.1 --port 8000
 meta-agent version
 ```
 
-异步 HITL（Web/API）：
+Async HITL (Web/API):
 
 ```bash
-# 启动分析并在门控处暂停
+# Start analysis and pause at gates
 curl -X POST http://127.0.0.1:8000/analyze -H 'Content-Type: application/json' \
   -d '{"input_path":"tests/fixtures/fastq","outdir":"./results/async1","mode":"mock","hitl_mode":"async"}'
 
-# 查看待确认门控
+# List pending confirmation gates
 curl "http://127.0.0.1:8000/runs/<run_id>/hitl?outdir=./results/async1"
 
-# 提交决策并续跑
+# Submit decisions and resume
 curl -X POST http://127.0.0.1:8000/runs/<run_id>/hitl/decide \
   -H 'Content-Type: application/json' \
   -d '{"outdir":"./results/async1","decisions":[{"id":"confirm_report_publish","key":"B"}],"resume":true}'
 ```
 
-Web UI（分析 + Chat）：
+Web UI (analysis + Chat):
 
 ```bash
 meta-agent serve --host 127.0.0.1 --port 8000
 open http://127.0.0.1:8000/ui
 ```
 
-Chat（接地问答，可选绑定已完成 run 的 outdir / project Memory）：
+Chat (grounded Q&A; optionally bind a completed run's outdir / project Memory):
 
 ```bash
 curl -X POST http://127.0.0.1:8000/chat -H 'Content-Type: application/json' \
   -d '{"question":"Why is Faecalibacterium reduced in IBD?","outdir":"./results"}'
 ```
 
-容器编排层：
+Container orchestration layer:
 
 ```bash
-# 编排层（镜像不含 database/；参考库按需挂载）
+# Orchestration layer (image does not include database/; mount reference DBs as needed)
 docker compose up --build
-# 生产挂载主机库：META_REF=/ref/databases docker compose up --build
+# Production mount of host DBs: META_REF=/ref/databases docker compose up --build
 ```
 
-差异分析 R 导出（DESeq2 / MaAsLin2 / ANCOM-BC）：运行后见 `biomarkers/r_export/`；可选 `statistics.try_run_r: true`。
+Differential-analysis R export (DESeq2 / MaAsLin2 / ANCOM-BC): after a run, see `biomarkers/r_export/`; optionally set `statistics.try_run_r: true`.
 
-环境变量：`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`（可选）。
+Environment variables: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` (optional).
 
-## 配置（`config/default.yaml`）
+## Configuration (`config/default.yaml`)
 
-| 段 | 作用 |
-|------|------|
-| `execution.engine` | `langgraph`（默认）\| `nextflow` \| `snakemake`；后两者读 Agent 写出的 params |
-| `execution.skip_swarm_on_engine_ok` | NF/SMK 成功时跳过双跑 swarm |
-| `sandbox.*` / `apptainer.sif_dir` | 容器后端；HPC SIF 缓存目录 |
-| `docker.*` / `linux.*` | BioContainers 覆盖、线程/内存/GPU、`scheduler` |
-| `cache.per_sample_assembly` | 复用 `outdir/<sample>/assembly/` 拼接产物 |
-| `cache.include_config_hash` | 配置变更时使步骤缓存失效 |
-| `routing.*` | gLM / 双路 / ε-greedy |
-| `paths.*` | 数据库、宿主 index、gLM 权重/命令 |
-| `pipeline.*` | 组装、分类工具列表 |
-| `validation.*` | 质控阈值、契约/Plan Validator 硬失败 |
-| `interpretation.*` | 抗幻觉：`require_grounding`、`require_evidence_chain` |
-| `summary.*` | 摘要驱动上下文：`enabled`、`max_llm_chars` |
-| `reproducibility.*` | `auto_export`、`seed` |
-| `visualization.*` | `default_q`、`lite`（按需加载）、`max_inline_biomarkers` |
-| `cache.enabled` | LangGraph 步骤缓存 |
-| `rag.*` | `keyword` \| `semantic`；`authority_dbs` |
-| `literature.*` | PubMed / Europe PMC / OpenAlex 等 |
-| `statistics.*` | `demo_mode`、`lefse_like`、`ancom_like` |
-| `hitl.auto_confirm` | CI/`--yes` 可 `true`；交互生产建议 `false` |
-| `hitl.mode` | `sync`（CLI Prompt）\| `async`（API 落盘暂停） |
-| `hitl.require_assembly_confirm` | Assembly 提交前人工确认 |
-| `hitl.require_otu_filter_confirm` | 极低频 OTU/ASV 阈值人工确认 |
-| `hitl.require_database_confirm` | 非 mock 且参考库路径缺失时确认 |
-| `hitl.require_report_publish_confirm` | 报告可分享 / 草稿 / 暂缓 |
-| `hitl.require_self_heal_confirm` | 高风险自愈（mock / loosen_qc / 降 confidence / 降 assembler）确认 |
-| `hitl.default_self_heal` | `B`=仅安全（推荐）· `A`=全部 · `C`=拒绝 |
-| `hitl.default_report_publish` | `A` 可分享 · `B` 草稿 · `C` 暂缓 |
-| `statistics.min_prevalence` / `min_rel_abundance` | HITL 确认后的特征过滤阈值 |
-| `project.*` | 宿主/坐标系统/领域等 Memory 字段 |
-| `report.manuscript_template` | 手稿模板名 |
-| `pi.max_replans` | PI 复盘次数 |
+| Section | Role |
+|---------|------|
+| `execution.engine` | `langgraph` (default) \| `nextflow` \| `snakemake`; the latter two consume Agent-written params |
+| `execution.skip_swarm_on_engine_ok` | Skip dual-run swarm when NF/SMK succeeds |
+| `sandbox.*` / `apptainer.sif_dir` | Container backend; HPC SIF cache directory |
+| `docker.*` / `linux.*` | BioContainers overrides, threads/memory/GPU, `scheduler` |
+| `cache.per_sample_assembly` | Reuse assembly products under `outdir/<sample>/assembly/` |
+| `cache.include_config_hash` | Invalidate step cache when config changes |
+| `routing.*` | gLM / dual-path / ε-greedy |
+| `paths.*` | Databases, host index, gLM weights/commands |
+| `pipeline.*` | Assembly and taxonomy tool lists |
+| `validation.*` | QC thresholds; contract / Plan Validator hard-fail |
+| `interpretation.*` | Anti-hallucination: `require_grounding`, `require_evidence_chain` |
+| `summary.*` | Summary-driven context: `enabled`, `max_llm_chars` |
+| `reproducibility.*` | `auto_export`, `seed` |
+| `visualization.*` | `default_q`, `lite` (on-demand load), `max_inline_biomarkers` |
+| `cache.enabled` | LangGraph step cache |
+| `rag.*` | `keyword` \| `semantic`; `authority_dbs` |
+| `literature.*` | PubMed / Europe PMC / OpenAlex, etc. |
+| `statistics.*` | `demo_mode`, `lefse_like`, `ancom_like` |
+| `hitl.auto_confirm` | CI/`--yes` may set `true`; interactive production should use `false` |
+| `hitl.mode` | `sync` (CLI Prompt) \| `async` (API pause-on-disk) |
+| `hitl.require_assembly_confirm` | Human confirm before Assembly submit |
+| `hitl.require_otu_filter_confirm` | Human confirm of rare OTU/ASV thresholds |
+| `hitl.require_database_confirm` | Confirm when non-mock and reference DB paths are missing |
+| `hitl.require_report_publish_confirm` | Report shareable / draft / hold |
+| `hitl.require_self_heal_confirm` | Confirm high-risk self-heal (mock / loosen_qc / lower confidence / downgrade assembler) |
+| `hitl.default_self_heal` | `B`=safe only (recommended) · `A`=all · `C`=reject |
+| `hitl.default_report_publish` | `A` shareable · `B` draft · `C` hold |
+| `statistics.min_prevalence` / `min_rel_abundance` | Feature-filter thresholds after HITL confirmation |
+| `project.*` | Host / coordinate system / domain Memory fields |
+| `report.manuscript_template` | Manuscript template name |
+| `pi.max_replans` | PI replan count |
 
-参考库**构建与目录契约**见 [database/README.md](../database/README.md)（含 Kraken2 / MetaPhlAn / GTDB / CARD 逐步命令）；辅助脚本 `scripts/build_databases.sh`。
+Reference DB **build steps and directory contract**: [database/README.md](../database/README.md) (step-by-step for Kraken2 / MetaPhlAn / GTDB / CARD); helper script `scripts/build_databases.sh`.
 
-## 元数据示例
+## Metadata example
 
 ```tsv
 sample_id	group
@@ -129,59 +129,59 @@ S1	IBD
 S2	Control
 ```
 
-## 主要产物
+## Primary outputs
 
-| 路径 | 说明 |
-|------|------|
-| `final_report.html` | 总报告（内嵌 Plotly 多图） |
-| `bio_reasoning.md` · `.json` · `_audit.json` | 规划前生物学推理 + CoT 引用审计 |
-| `resource_estimate.json` | 预估耗时/内存/磁盘与 resume 提示 |
-| `cache/steps/` | Swarm 中间结果缓存（断点续跑） |
-| `taxonomy_interpretation.md` | 分类结果污染/富集假设 |
-| `functional_interpretation.md` | 功能通路机制笔记 |
-| `interactive_dashboard.html` | 交互仪表盘（q 滑块筛选显著菌） |
+| Path | Description |
+|------|-------------|
+| `final_report.html` | Full report (embedded multi-panel Plotly figures) |
+| `bio_reasoning.md` · `.json` · `_audit.json` | Pre-planning biological reasoning + CoT citation audit |
+| `resource_estimate.json` | Estimated runtime/memory/disk and resume hints |
+| `cache/steps/` | Swarm intermediate cache (checkpoint resume) |
+| `taxonomy_interpretation.md` | Contamination / enrichment hypotheses from taxonomy |
+| `functional_interpretation.md` | Functional pathway mechanism notes |
+| `interactive_dashboard.html` | Interactive dashboard (q-slider for significant taxa) |
 | `quality_report.html` / `quality_status.json` | QC |
-| `taxonomy_profile.tsv` | 分类轮廓 |
-| `diversity_analysis/` | Alpha/Beta、属矩阵 |
-| `biomarkers/` | 差异标志物表 |
-| `evidence/claims.md` | 抗幻觉证据链 |
-| `evidence/evidence_table.md` | 文献证据表 |
-| `context/pipeline_summary.json` | LLM 用统计摘要 |
-| `planner/planner_plan.md` | Planner：实验设计与整体 Pipeline |
-| `executor/submit.{slurm,pbs,sge}` · `job.k8s.yaml` | Executor：多调度器提交规格 |
-| `executor/cluster_sense.json` · `resource_allocation.json` | 队列压力与封顶后的 CPU/内存/GPU |
-| `outdir/<sample>/assembly/checkpoint.json` | MEGAHIT/SPAdes 中间 Checkpoint |
-| `critic/qc_critic.md` · `bio_qc_chain.json` | QC 链：CheckM2 HQ、unclassified、Q20/Q30 |
-| `evidence/grounded_interp.md` | 表绑定解读（物种/p/q/effect 仅来自程序表） |
-| `hitl/critical_gates.json` · `CRITICAL_GATES.md` | 关键 HITL 审计 |
-| `hitl/async/session.json` · `state.json` · `AWAITING.md` | 异步审批会话（API resume） |
-| `reasoning/chain.md` · `chain.jsonl` | 跨 Agent 决策审计 |
-| `literature_report.md` | 结构化文献报告 |
-| `visualization/figure_legends.md` | 图注（Figure 1–4） |
-| `report/HELD.md` | HITL 选择暂缓报告时的占位说明 |
-| `diversity_analysis/otu_asv_filter.json` | 低频特征剔除摘要 |
-| `reporter/biological_report.md` | Reporter：多样性与通路解读 |
-| `workflow/params.yaml` · `params.json` | 校验后的引擎参数（Schema + 任务图） |
-| `workflow/ENGINE_README.md` | Nextflow/Snakemake 启动说明 |
-| `workflow/reproducible.nf` · `.smk` · `seeds.json` | 可复现导出 |
-| `workflow/generated.nf` · `.smk` | 规划期 RAG 草稿 |
-| `reproducibility/run_manifest.json` | 运行清单 + CWL |
-| `router_decision.json` | 意图与领域路由 |
-| `tool_specialist/tool_commands.md` | 工具命令 |
-| `plan_validation.json` | 方案校验 / 追问 |
-| `xai/feature_importance.md` | 标志物归因 |
-| `report/manuscript/` | 投稿分节草稿 |
-| `logs/events.jsonl` | 执行事件 |
+| `taxonomy_profile.tsv` | Taxonomy profile |
+| `diversity_analysis/` | Alpha/Beta diversity, genus matrix |
+| `biomarkers/` | Differential biomarker tables |
+| `evidence/claims.md` | Anti-hallucination evidence chain |
+| `evidence/evidence_table.md` | Literature evidence table |
+| `context/pipeline_summary.json` | Statistical summary for LLM context |
+| `planner/planner_plan.md` | Planner: experimental design and full pipeline |
+| `executor/submit.{slurm,pbs,sge}` · `job.k8s.yaml` | Executor: multi-scheduler submit specs |
+| `executor/cluster_sense.json` · `resource_allocation.json` | Queue pressure and capped CPU/memory/GPU |
+| `outdir/<sample>/assembly/checkpoint.json` | MEGAHIT/SPAdes intermediate checkpoint |
+| `critic/qc_critic.md` · `bio_qc_chain.json` | QC chain: CheckM2 HQ, unclassified, Q20/Q30 |
+| `evidence/grounded_interp.md` | Table-bound interpretation (species/p/q/effect from program tables only) |
+| `hitl/critical_gates.json` · `CRITICAL_GATES.md` | Critical HITL audit |
+| `hitl/async/session.json` · `state.json` · `AWAITING.md` | Async approval session (API resume) |
+| `reasoning/chain.md` · `chain.jsonl` | Cross-agent decision audit |
+| `literature_report.md` | Structured literature report |
+| `visualization/figure_legends.md` | Figure legends (Figure 1–4) |
+| `report/HELD.md` | Placeholder when HITL holds report publication |
+| `diversity_analysis/otu_asv_filter.json` | Rare-feature culling summary |
+| `reporter/biological_report.md` | Reporter: diversity and pathway interpretation |
+| `workflow/params.yaml` · `params.json` | Validated engine params (Schema + task graph) |
+| `workflow/ENGINE_README.md` | Nextflow/Snakemake launch notes |
+| `workflow/reproducible.nf` · `.smk` · `seeds.json` | Reproducible export |
+| `workflow/generated.nf` · `.smk` | Planning-phase RAG drafts |
+| `reproducibility/run_manifest.json` | Run manifest + CWL |
+| `router_decision.json` | Intent and domain routing |
+| `tool_specialist/tool_commands.md` | Tool commands |
+| `plan_validation.json` | Plan validation / follow-up questions |
+| `xai/feature_importance.md` | Biomarker attribution |
+| `report/manuscript/` | Manuscript section drafts |
+| `logs/events.jsonl` | Execution events |
 
-## 排障
+## Troubleshooting
 
-| 现象 | 处理 |
-|------|------|
-| Plan Validator 追问宿主基因组 | 设 `paths.host_index` 或 `project.host_genome_version`，或 mock/`--yes` |
-| 缺分组无法差异分析 | `--metadata`，或 `statistics.demo_mode: true` |
-| HITL 卡住 | `--yes` / `hitl.auto_confirm: true`；API 用 `hitl_mode=async` 后 `/hitl/decide` |
-| 宿主机缺库 / ARM 报错 | `--mode docker`；自愈可切容器 / 钉 amd64 |
-| OOM / exit 137 | 自愈升 memory/降 threads；**仅组装节点**才降级 MEGAHIT；见 [SELF_HEAL.md](SELF_HEAL.md) |
-| 担心自愈「纠错」 | 默认 `hitl.require_self_heal_confirm` + `default_self_heal: B` 暂缓高风险 |
-| 病毒工具未安装 | Specialist 仍写命令；安装工具或保持 mock |
-| 原始 stderr 刷屏 | 用户侧看自愈摘要；细节在 `artifacts.errors` / `logs/` |
+| Symptom | Remedy |
+|---------|--------|
+| Plan Validator asks for host genome | Set `paths.host_index` or `project.host_genome_version`, or use mock/`--yes` |
+| No groups → cannot run differential analysis | Provide `--metadata`, or set `statistics.demo_mode: true` |
+| HITL stuck | `--yes` / `hitl.auto_confirm: true`; for API use `hitl_mode=async` then `/hitl/decide` |
+| Missing host libs / ARM errors | `--mode docker`; self-heal may switch container / pin amd64 |
+| OOM / exit 137 | Self-heal raises memory / lowers threads; **assembler downgrade to MEGAHIT only on assembly nodes**; see [SELF_HEAL.md](SELF_HEAL.md) |
+| Concern about self-heal “false fixes” | Defaults `hitl.require_self_heal_confirm` + `default_self_heal: B` withhold high-risk actions |
+| Viral tools not installed | Specialist still writes commands; install tools or stay in mock |
+| Raw stderr flood | Users see self-heal summaries; details in `artifacts.errors` / `logs/` |

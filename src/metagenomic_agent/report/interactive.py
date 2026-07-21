@@ -468,13 +468,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <body>
   <header>
     <h1>Interactive Metagenomic Analytics</h1>
-    <p class="sub">{{ query }} · run_id={{ run_id }} · 拖拽缩放 / 图例点击筛选 · Heatmap 可按 FDR q 过滤显著差异菌群</p>
+    <p class="sub">{{ query }} · run_id={{ run_id }} · drag to zoom / click legend to filter · Heatmap filters differential taxa by FDR q</p>
   </header>
   <div class="controls">
     <div class="tabs" id="tabs">
-      <button class="tab active" data-panel="composition">物种组成</button>
-      <button class="tab" data-panel="alpha">Alpha 箱线</button>
-      <button class="tab" data-panel="beta">Beta 箱线</button>
+      <button class="tab active" data-panel="composition">Taxonomic composition</button>
+      <button class="tab" data-panel="alpha">Alpha boxplot</button>
+      <button class="tab" data-panel="beta">Beta boxplot</button>
       <button class="tab" data-panel="pcoa">PCoA</button>
       <button class="tab" data-panel="heatmap">Heatmap</button>
       <button class="tab" data-panel="volcano">Volcano</button>
@@ -485,27 +485,27 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   </div>
   <main>
     <section class="panel active" id="panel-composition">
-      <p class="hint">堆叠柱状图：样本物种相对丰度组成，点击图例可隐藏/显示分类单元。</p>
+      <p class="hint">Stacked bar chart of per-sample relative abundance; click the legend to hide/show taxa.</p>
       <div class="plot" id="plot-composition"></div>
     </section>
     <section class="panel" id="panel-alpha">
-      <p class="hint">Shannon 指数按分组的箱线图（含散点）。</p>
+      <p class="hint">Shannon index boxplots by group (with jittered points).</p>
       <div class="plot" id="plot-alpha"></div>
     </section>
     <section class="panel" id="panel-beta">
-      <p class="hint">Bray–Curtis：组内 vs 组间距离分布。</p>
+      <p class="hint">Bray–Curtis: within- vs between-group distance distributions.</p>
       <div class="plot" id="plot-beta"></div>
     </section>
     <section class="panel" id="panel-pcoa">
-      <p class="hint">PCoA（经典 MDS）；悬停查看样本，滚轮缩放。</p>
+      <p class="hint">PCoA (classical MDS); hover for sample IDs, scroll to zoom.</p>
       <div class="plot" id="plot-pcoa"></div>
     </section>
     <section class="panel" id="panel-heatmap">
-      <p class="hint">显著差异菌群热图：调节上方 q 阈值实时筛选；橙色 volcano 点同步高亮阈值。</p>
+      <p class="hint">Differential taxa heatmap: adjust the q threshold above to filter live; orange volcano points highlight the same cutoff.</p>
       <div class="plot" id="plot-heatmap"></div>
     </section>
     <section class="panel" id="panel-volcano">
-      <p class="hint">log2FC vs −log10(p)；橙色为当前 q 阈值下显著。</p>
+      <p class="hint">log2FC vs −log10(p); orange marks taxa significant at the current q threshold.</p>
       <div class="plot" id="plot-volcano"></div>
     </section>
   </main>
@@ -721,12 +721,12 @@ DASHBOARD_LITE_HTML = """<!DOCTYPE html>
 <body>
   <header>
     <h1>Interactive Analytics <small style="font-weight:400;color:#4a6358">(lite / on-demand)</small></h1>
-    <p class="sub">{{ query }} · run_id={{ run_id }} · 默认仅摘要；图按需 fetch JSON，完整表走下载链接</p>
+    <p class="sub">{{ query }} · run_id={{ run_id }} · summary by default; plots fetch JSON on demand; full tables via download links</p>
   </header>
   <div id="summaryBox"><pre id="summaryPre">Loading summary…</pre></div>
   <div class="controls">
     <div class="tabs" id="tabs">
-      <button class="tab active" data-panel="composition">组成</button>
+      <button class="tab active" data-panel="composition">Composition</button>
       <button class="tab" data-panel="alpha">Alpha</button>
       <button class="tab" data-panel="beta">Beta</button>
       <button class="tab" data-panel="pcoa">PCoA</button>
@@ -738,7 +738,7 @@ DASHBOARD_LITE_HTML = """<!DOCTYPE html>
     </label>
   </div>
   <main>
-    <section class="panel active" id="panel-composition"><p class="hint">按需加载 composition.plotly.json</p><div class="plot" id="plot-composition"></div></section>
+    <section class="panel active" id="panel-composition"><p class="hint">Load composition.plotly.json on demand</p><div class="plot" id="plot-composition"></div></section>
     <section class="panel" id="panel-alpha"><div class="plot" id="plot-alpha"></div></section>
     <section class="panel" id="panel-beta"><div class="plot" id="plot-beta"></div></section>
     <section class="panel" id="panel-pcoa"><div class="plot" id="plot-pcoa"></div></section>

@@ -232,8 +232,9 @@ def grounded_interpretation_bundle(state: dict[str, Any]) -> dict[str, Any]:
                 **c,
                 "allowed": False,
                 "statement": (
-                    f"拒绝无表统计陈述：`{taxon}` 未出现在 biomarkers/LEfSe 表或缺少 p_value "
-                    f"（抗幻觉：PCoA/差异解读必须引用程序表）。"
+                    f"Rejected table-free statistical claim: `{taxon}` is not in biomarkers/LEfSe "
+                    f"tables or lacks p_value "
+                    f"(anti-hallucination: PCoA/differential interpretation must cite program tables)."
                 ),
                 "block_reason": "missing_table_stats",
             }
@@ -249,7 +250,7 @@ def grounded_interpretation_bundle(state: dict[str, Any]) -> dict[str, Any]:
             name = g.get("canonical_name") or taxon
             bits = [f"**{name}**"]
             if row.get("direction"):
-                bits.append(f"方向=`{row['direction']}`")
+                bits.append(f"direction=`{row['direction']}`")
             if row.get("p_value") is not None:
                 bits.append(f"p={float(row['p_value']):.4g}")
             if row.get("q_value") is not None:
@@ -258,8 +259,8 @@ def grounded_interpretation_bundle(state: dict[str, Any]) -> dict[str, Any]:
                 bits.append(f"log2FC={float(row['log2fc']):.3f}")
             elif row.get("lda_score") is not None:
                 bits.append(f"LDA={float(row['lda_score']):.3f}")
-            bits.append(f"来源表=`{row.get('source_table', 'biomarker_list')}`")
-            c = {**c, "statement": "；".join(bits) + "。", "table_bound": True}
+            bits.append(f"source_table=`{row.get('source_table', 'biomarker_list')}`")
+            c = {**c, "statement": "; ".join(bits) + ".", "table_bound": True}
             allowed_claims.append(c)
         else:
             blocked_claims.append(c)
@@ -267,12 +268,13 @@ def grounded_interpretation_bundle(state: dict[str, Any]) -> dict[str, Any]:
     bullets = [c.get("statement") for c in allowed_claims if c.get("statement")]
     pcoa = universe.get("pcoa")
     pcoa_note = (
-        f"PCoA/Beta 图数据来自 `{pcoa.get('source_table')}`；解读不得引入表外物种。"
+        f"PCoA/Beta plot data from `{pcoa.get('source_table')}`; "
+        f"do not introduce taxa outside the table in interpretation."
         if pcoa
-        else "未找到 PCoA JSON；避免对未计算的 Beta 多样性作定量断言。"
+        else "No PCoA JSON found; avoid quantitative claims about uncomputed beta diversity."
     )
     pathway_bullets = [
-        f"- 通路 `{p}`（来自功能表）" for p in (universe.get("allowed_pathways") or [])[:8]
+        f"- Pathway `{p}` (from functional table)" for p in (universe.get("allowed_pathways") or [])[:8]
     ]
 
     return {

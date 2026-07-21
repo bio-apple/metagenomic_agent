@@ -12,7 +12,7 @@ def test_classify_arch_and_library():
 
 def test_friendly_error_hides_raw_dump():
     msg, hints = friendly_error_message("oom", "Killed\nlong stack " * 50, "metaspades")
-    assert "内存" in msg or "oom" in msg.lower() or "137" in msg
+    assert "memory" in msg.lower() or "oom" in msg.lower() or "137" in msg
     assert hints
     assert "long stack" not in msg  # should not dump full stderr body repeatedly
 
@@ -26,7 +26,7 @@ def test_sandbox_mock_tool_call():
 
 def test_self_heal_switches_to_container_on_missing_lib():
     actions = classify_from_errors(
-        [{"classified": "missing_library", "error": "libstdc++ missing", "user_message": "动态库缺失"}]
+        [{"classified": "missing_library", "error": "libstdc++ missing", "user_message": "Missing shared libraries"}]
     )
     assert "switch_to_container" in actions
     dag = [{"id": "qc", "agent": "qc", "tools": ["fastp"], "params": {}, "depends_on": [], "status": "failed"}]
@@ -45,7 +45,7 @@ def test_self_heal_pin_amd64():
 def test_summarize_heal_for_user():
     s = summarize_heal_for_user(
         ["reduce_memory", "switch_to_container"],
-        [{"classified": "oom", "user_message": "内存不足"}],
+        [{"classified": "oom", "user_message": "out of memory"}],
     )
-    assert "自愈" in s
-    assert "oom" in s or "内存" in s
+    assert "self-heal" in s.lower()
+    assert "oom" in s or "memory" in s.lower()

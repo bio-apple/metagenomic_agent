@@ -114,9 +114,9 @@ def build_claim(
     if allowed:
         bits = [f"**{ground.get('canonical_name') or taxon}**"]
         if direction or bio.get("direction"):
-            bits.append(f"方向: `{direction or bio.get('direction')}`")
+            bits.append(f"direction: `{direction or bio.get('direction')}`")
         if mean_ab is not None:
-            bits.append(f"均值相对丰度={mean_ab:.4f}")
+            bits.append(f"mean relative abundance={mean_ab:.4f}")
         if bio.get("p_value") is not None:
             bits.append(f"p={bio.get('p_value'):.4g}")
         if bio.get("q_value") is not None:
@@ -128,18 +128,22 @@ def build_claim(
             bits.append(f"DB=[{db_ids}]")
         if refs:
             bits.append("PMID=" + ",".join(r["pmid"] for r in refs[:3]))
-        statement = "；".join(bits) + "。"
-        statement += " 以上陈述仅基于本样本测定值与权威库/文献检索，未经验证的因果关系不作断言。"
+        statement = "; ".join(bits) + "."
+        statement += (
+            " This statement is based only on measured values from this sample set and "
+            "authority-DB/literature retrieval; unverified causal relationships are not asserted."
+        )
     else:
         if ground["grounded"] and require_chain and not has_table_stats:
             statement = (
-                f"拒绝无表统计陈述：`{taxon}` 已锚定但不在 biomarkers/LEfSe 表或缺少 p_value "
-                f"（抗幻觉：差异/PCoA 解读必须引用程序生成表格）。"
+                f"Rejected table-free statistical claim: `{taxon}` is grounded but not in "
+                f"biomarkers/LEfSe tables or lacks p_value "
+                f"(anti-hallucination: differential/PCoA interpretation must cite program-generated tables)."
             )
         else:
             statement = (
-                f"拒绝无依据陈述：`{taxon}` 未在 GTDB/NCBI 索引中锚定，"
-                f"或缺少丰度/显著性统计支撑（抗幻觉策略）。"
+                f"Rejected ungrounded claim: `{taxon}` is not anchored in the GTDB/NCBI index, "
+                f"or lacks abundance/significance support (anti-hallucination policy)."
             )
 
     return {
@@ -212,7 +216,7 @@ def write_evidence_chains(state: dict[str, Any]) -> dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
     (out / "claims.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     lines = [
-        "# Evidence-grounded claims（抗幻觉）",
+        "# Evidence-grounded claims (anti-hallucination)",
         "",
         report["policy"],
         "",
@@ -222,7 +226,7 @@ def write_evidence_chains(state: dict[str, Any]) -> dict[str, Any]:
         "",
     ]
     if report["rejected_taxa"]:
-        lines.append("## Rejected taxa（未在权威库锚定）")
+        lines.append("## Rejected taxa (not anchored in authority DBs)")
         for t in report["rejected_taxa"]:
             lines.append(f"- `{t}`")
         lines.append("")
@@ -234,8 +238,8 @@ def write_evidence_chains(state: dict[str, Any]) -> dict[str, Any]:
         lines.append(c.get("statement") or "")
         m = c.get("measurements") or {}
         lines.append(
-            f"- abundance(mean)={m.get('mean_relative_abundance')}；"
-            f"p={m.get('p_value')}；q={m.get('q_value')}；log2FC={m.get('log2fc')}"
+            f"- abundance(mean)={m.get('mean_relative_abundance')}; "
+            f"p={m.get('p_value')}; q={m.get('q_value')}; log2FC={m.get('log2fc')}"
         )
         for d in c.get("database_ids") or []:
             lines.append(f"- DB: {d.get('database')}:{d.get('id')} ({d.get('name')})")

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -97,12 +97,12 @@
 <body>
   <header>
     <h1>Metagenomic Research Copilot</h1>
-    <p>上传路径 · 启动分析 · 异步 HITL · 接地问答 · 查看结果仪表盘</p>
+    <p>Submit an input path · start analysis · async HITL · grounded Q&amp;A · view result dashboards</p>
   </header>
   <main>
     <section>
-      <h2>运行分析</h2>
-      <label>Input path (服务器可读路径)</label>
+      <h2>Run analysis</h2>
+      <label>Input path (server-readable path)</label>
       <input id="input_path" value="tests/fixtures/fastq"/>
       <label>Outdir</label>
       <input id="outdir" value="./results/webui"/>
@@ -128,16 +128,16 @@
       <pre id="run_out">{}</pre>
     </section>
     <section>
-      <h2>Chat（RAG 接地）</h2>
+      <h2>Chat (RAG-grounded)</h2>
       <label>Question</label>
       <textarea id="question">Why is Faecalibacterium reduced in IBD?</textarea>
-      <label>可选 outdir（绑定已完成 run）</label>
+      <label>Optional outdir (bind to a completed run)</label>
       <input id="chat_outdir" placeholder="./results/webui"/>
       <button id="btn_chat">POST /chat</button>
       <p class="status" id="chat_status"></p>
       <pre id="chat_out"></pre>
       <p class="status">
-        结果页：
+        Results:
         <a id="dash_link" href="#" target="_blank">interactive_dashboard.html</a> ·
         <a id="report_link" href="#" target="_blank">final_report.html</a>
       </p>

@@ -100,7 +100,7 @@ def check_taxonomy_qc(
             f"{prefix}classification_rate={rate:.2f} < {thr['min_classification_rate']} ({tool})"
         )
         recommendations.append(
-            "更换/更新分类数据库（Kraken2 DB / MetaPhlAn marker DB），或提高测序深度"
+            "Replace/update the taxonomy database (Kraken2 DB / MetaPhlAn marker DB), or increase sequencing depth"
         )
     if uncl is not None and uncl > thr["max_unclassified_fraction"]:
         ok = False
@@ -108,7 +108,7 @@ def check_taxonomy_qc(
             f"{prefix}unclassified_fraction={uncl:.2f} > {thr['max_unclassified_fraction']} ({tool})"
         )
         recommendations.append(
-            "提高 --confidence（Kraken2）或检查宿主去除；必要时换用更匹配环境的参考库"
+            "Raise --confidence (Kraken2) or check host removal; switch to a more environment-matched reference if needed"
         )
 
     return {
@@ -163,7 +163,9 @@ def check_mag_qc(
             f"(comp={completeness}, cont={contamination}); "
             f"high-quality gate is ≥{t['high_completeness']}% / ≤{t['high_contamination']}%"
         )
-        recommendations.append("精修分箱或提高组装深度以达到 high-quality MAG（≥90% / ≤5%）")
+        recommendations.append(
+            "Refine binning or increase assembly depth to reach high-quality MAG (≥90% / ≤5%)"
+        )
     else:
         ok = False
         warnings.append(
@@ -171,14 +173,16 @@ def check_mag_qc(
             f"(completeness={completeness}, contamination={contamination}); "
             f"fails medium gate ≥{t['medium_completeness']}% / ≤{t['medium_contamination']}%"
         )
-        recommendations.append("重新分箱（MetaBAT2/MaxBin2）或改用 MEGAHIT 后重跑 CheckM2")
+        recommendations.append(
+            "Re-bin (MetaBAT2/MaxBin2) or switch to MEGAHIT, then re-run CheckM2"
+        )
 
     # Explicit high-quality enforcement flag for reporting
     hq = tier == "high"
     if not hq and tier != "missing":
         if not any("high-quality" in w for w in warnings):
             warnings.append(
-                f"{prefix}未达 high-quality MAG：Completeness>{t['high_completeness']}% 且 "
+                f"{prefix}Does not meet high-quality MAG: Completeness>{t['high_completeness']}% and "
                 f"Contamination<{t['high_contamination']}%"
             )
 

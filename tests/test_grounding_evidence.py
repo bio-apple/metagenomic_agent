@@ -62,7 +62,7 @@ def test_evidence_chain_requires_stats(tmp_path: Path):
     fake = build_claim("TotallyFakeGenus999", state)
     assert fake["grounded"] is False
     assert fake["allowed"] is False
-    assert "拒绝" in (fake["statement"] or "")
+    assert "Rejected" in (fake["statement"] or "") or "reject" in (fake["statement"] or "").lower()
 
 
 def test_write_claims_and_interpret(tmp_path: Path):
@@ -85,8 +85,8 @@ def test_write_claims_and_interpret(tmp_path: Path):
     assert report["n_rejected_ungrounded"] >= 1
     assert "Inventedium" in report["rejected_taxa"]
     text = interpret(state)
-    assert "证据锚定" in text or "证据链" in text
-    assert "Inventedium" in text or "拒绝" in text
+    assert "Evidence" in text or "evidence-chain" in text.lower() or "Evidence-Grounded" in text
+    assert "Inventedium" in text or "Rejected" in text or "reject" in text.lower()
     data = json.loads((tmp_path / "evidence" / "claims.json").read_text(encoding="utf-8"))
     allowed = [c for c in data["claims"] if c["allowed"]]
     assert allowed

@@ -26,21 +26,21 @@ HTML_TEMPLATE = Template(
   </style>
 </head>
 <body>
-  <h1>宏基因组分析报告</h1>
+  <h1>Metagenomic Analysis Report</h1>
   <div class="card">
-    <p><b>查询：</b>{{ query }}</p>
-    <p><b>模式：</b>{{ mode }} | <b>验证：</b>{{ validation_status }}</p>
+    <p><b>Query:</b> {{ query }}</p>
+    <p><b>Mode:</b> {{ mode }} | <b>Validation:</b> {{ validation_status }}</p>
   </div>
   <div class="card">
-    <h2>物种相对丰度</h2>
+    <h2>Species relative abundance</h2>
     <div id="taxplot" style="height:420px;"></div>
   </div>
   <div class="card">
-    <h2>解读</h2>
+    <h2>Interpretation</h2>
     <div>{{ interpretation_html | safe }}</div>
   </div>
   <div class="card">
-    <h2>产物路径</h2>
+    <h2>Artifact paths</h2>
     <pre>{{ artifacts_json }}</pre>
   </div>
   <script>

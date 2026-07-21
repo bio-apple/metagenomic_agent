@@ -52,8 +52,8 @@ HTML_TEMPLATE = Template(
 
   <div class="card">
     <h2>Interactive Analytics</h2>
-    <p>物种组成、Alpha/Beta 箱线图、PCoA、显著差异菌群 Heatmap（可按 FDR q 筛选）。</p>
-    <a class="btn" href="{{ dashboard_href }}" target="_blank" rel="noopener">打开交互式仪表盘</a>
+    <p>Taxonomic composition, Alpha/Beta boxplots, PCoA, and differential taxa heatmap (filterable by FDR q).</p>
+    <a class="btn" href="{{ dashboard_href }}" target="_blank" rel="noopener">Open interactive dashboard</a>
   </div>
 
   <div class="card">
@@ -108,7 +108,7 @@ HTML_TEMPLATE = Template(
   </div>
 
   <div class="card">
-    <h2>Evidence Chains（抗幻觉）</h2>
+    <h2>Evidence Chains (anti-hallucination)</h2>
     <div>{{ claims_html | safe }}</div>
   </div>
 

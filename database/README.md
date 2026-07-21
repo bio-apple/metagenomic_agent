@@ -1,250 +1,250 @@
-# 参考数据库：目录契约与构建指南
+# Reference Databases: Directory Contract and Build Guide
 
-本仓库 `database/` 存放**全量参考库**（或符号链接）。  
-包内 RAG stub（`src/metagenomic_agent/rag/data/curated_bio_index.json`）仅用于解释/抗幻觉检索，**不能替代** Kraken2 / GTDB-Tk 等运行时库。
+The repository `database/` directory holds **full reference databases** (or symlinks).  
+The in-package RAG stub (`src/metagenomic_agent/rag/data/curated_bio_index.json`) is for interpretation / anti-hallucination retrieval only and **cannot replace** runtime libraries such as Kraken2 / GTDB-Tk.
 
-| 模式 | 是否需要本目录 |
-|------|----------------|
-| `mock` | 否 |
-| `local` / `conda` / `docker` / `apptainer` | 是（至少 taxonomy + host；功能/ARG 按需） |
+| Mode | Requires this directory? |
+|------|--------------------------|
+| `mock` | No |
+| `local` / `conda` / `docker` / `apptainer` | Yes (at least taxonomy + host; functional/ARG as needed) |
 
-一键骨架脚本：[scripts/build_databases.sh](../scripts/build_databases.sh)（需自行准备网络与磁盘）。
+Skeleton helper script: [scripts/build_databases.sh](../scripts/build_databases.sh) (you must provide network and disk).
 
 ---
 
-## 1. 推荐布局与配置映射
+## 1. Recommended layout and config mapping
 
-在仓库根或 `/ref/databases` 建立：
+Create under the repository root or `/ref/databases`:
 
 ```text
-database/                         # 或 /ref/databases → 写进 config paths.*
+database/                         # or /ref/databases → wired into config paths.*
 ├── host/
-│   └── hg38/                     # Bowtie2 索引前缀：hg38
-├── kraken_db/                    # Kraken2 标准库目录（含 hash.k2d 等）
-├── metaphlan_db/                 # MetaPhlAn 数据库目录
-├── gtdb/                         # GTDB-Tk release 数据根
-├── eggnog/                       # eggNOG-mapper 数据
+│   └── hg38/                     # Bowtie2 index prefix: hg38
+├── kraken_db/                    # Kraken2 standard DB (hash.k2d, etc.)
+├── metaphlan_db/                 # MetaPhlAn database directory
+├── gtdb/                         # GTDB-Tk release data root
+├── eggnog/                       # eggNOG-mapper data
 ├── diamond/                      # DIAMOND .dmnd
-├── humann/                       # chocophlan + uniref（可选）
+├── humann/                       # chocophlan + uniref (optional)
 ├── arg/
-│   ├── card/                     # CARD JSON（RGI load）
-│   └── deeparg/                  # DeepARG 模型（可选）
+│   ├── card/                     # CARD JSON (RGI load)
+│   └── deeparg/                  # DeepARG models (optional)
 ├── virulence/
-│   └── vfdb/                     # VFDB 蛋白/核酸（可选 DIAMOND）
-├── taxonomy/                     # 可选：NCBI taxdump / GTDB 元数据镜像
-├── function/                     # 可选：KEGG 本地镜像说明
-├── pathway/                      # 可选：HUMAnN pathway
-├── microbiome/                   # 可选：UHGG 等索引
-└── literature/                   # 可选：本地 PMID JSON 缓存
+│   └── vfdb/                     # VFDB protein/nucleotide (optional DIAMOND)
+├── taxonomy/                     # optional: NCBI taxdump / GTDB metadata mirror
+├── function/                     # optional: local KEGG mirror notes
+├── pathway/                      # optional: HUMAnN pathway
+├── microbiome/                   # optional: UHGG and related indexes
+└── literature/                   # optional: local PMID JSON cache
 ```
 
-在 `config/default.yaml` 或 `config/site.yaml`：
+In `config/default.yaml` or `config/site.yaml`:
 
 ```yaml
 paths:
-  host_index: "/ref/databases/host/hg38"          # Bowtie2 前缀，无 .1.bt2 后缀
+  host_index: "/ref/databases/host/hg38"          # Bowtie2 prefix, without .1.bt2 suffix
   kraken2_db: "/ref/databases/kraken_db"
   metaphlan_db: "/ref/databases/metaphlan_db"
   gtdb: "/ref/databases/gtdb"
   eggnog: "/ref/databases/eggnog"
-  diamond_db: "/ref/databases/diamond/nr.dmnd"  # 或 uniref90.dmnd
+  diamond_db: "/ref/databases/diamond/nr.dmnd"  # or uniref90.dmnd
 ```
 
-相对路径相对于**运行 cwd**；生产请用**绝对路径**。
+Relative paths are resolved against the **runtime cwd**; use **absolute paths** in production.
 
-磁盘粗算（SSD/并行文件系统，勿放慢 NFS 热路径）：
+Rough disk estimates (SSD/parallel FS; avoid slow NFS on hot paths):
 
-| 库 | 约占用 |
-|----|--------|
-| 宿主 hg38 Bowtie2 | ~4–8 GB |
-| Kraken2 Standard | ~50–100 GB+（随版本） |
+| Database | Approx. size |
+|----------|--------------|
+| Host hg38 Bowtie2 | ~4–8 GB |
+| Kraken2 Standard | ~50–100 GB+ (version-dependent) |
 | MetaPhlAn | ~5–15 GB |
 | GTDB-Tk r214+ | ~50–80 GB |
 | eggNOG | ~50 GB+ |
-| DIAMOND UniRef | 视库 20–200 GB |
+| DIAMOND UniRef | 20–200 GB depending on DB |
 | CARD | <1 GB |
 
 ---
 
-## 2. 构建步骤（按优先级）
+## 2. Build steps (by priority)
 
-以下命令在 Linux x86_64、已装对应工具或 BioContainers 下执行。  
-`DB_ROOT` 示例：`export DB_ROOT=/ref/databases` 或 `$(pwd)/database`。
+Run the following on Linux x86_64 with the corresponding tools or BioContainers installed.  
+Example `DB_ROOT`: `export DB_ROOT=/ref/databases` or `$(pwd)/database`.
 
-### 2.1 宿主去污染索引（`paths.host_index`）— **强烈建议**
+### 2.1 Host decontamination index (`paths.host_index`) — **strongly recommended**
 
 ```bash
 export DB_ROOT=/ref/databases
 mkdir -p "$DB_ROOT/host" && cd "$DB_ROOT/host"
 
-# 下载人类参考（示例 GRCh38 主染色体；按单位规范替换）
+# Download human reference (example GRCh38 primary chromosomes; follow institutional policy)
 # wget -O hg38.fa.gz "https://..."
 # gunzip -c hg38.fa.gz > hg38.fa
 
-# Bowtie2 建索引（前缀 = paths.host_index）
+# Build Bowtie2 index (prefix = paths.host_index)
 bowtie2-build --threads 16 hg38.fa hg38
-# 产物：hg38.1.bt2 … → paths.host_index: "$DB_ROOT/host/hg38"
+# Products: hg38.1.bt2 … → paths.host_index: "$DB_ROOT/host/hg38"
 ```
 
-容器示例：
+Container example:
 
 ```bash
 apptainer exec docker://quay.io/biocontainers/bowtie2:2.5.3--py39hd2f008b_0 \
   bowtie2-build --threads 16 hg38.fa hg38
 ```
 
-### 2.2 Kraken2（`paths.kraken2_db`）— **分类必备**
+### 2.2 Kraken2 (`paths.kraken2_db`) — **required for taxonomy**
 
-**方式 A：下载官方预构建 Standard（推荐）**
+**Option A: download official prebuilt Standard (recommended)**
 
 ```bash
 mkdir -p "$DB_ROOT/kraken_db" && cd "$DB_ROOT/kraken_db"
-# 查看当前镜像站 / 版本：https://benlangmead.github.io/aws-indexes/k2
-# 示例（URL 随发布变更，以官网为准）：
+# Check current mirrors / versions: https://benlangmead.github.io/aws-indexes/k2
+# Example (URL changes with releases; follow the official site):
 # wget https://genome-idx.s3.amazonaws.com/kraken/k2_standard_YYYYMMDD.tar.gz
 # tar -xzf k2_standard_*.tar.gz -C "$DB_ROOT/kraken_db"
-# 解压后目录内应有：hash.k2d  opts.k2d  taxo.k2d
+# After extract the directory should contain: hash.k2d  opts.k2d  taxo.k2d
 ```
 
-**方式 B：自行 `kraken2-build`**
+**Option B: build with `kraken2-build`**
 
 ```bash
 DB="$DB_ROOT/kraken_db"
 mkdir -p "$DB"
 kraken2-build --download-taxonomy --db "$DB"
-kraken2-build --download-library bacteria --db "$DB"   # 可加 archaea/viral/human
+kraken2-build --download-library bacteria --db "$DB"   # optionally archaea/viral/human
 kraken2-build --download-library archaea --db "$DB"
-# 人类读段若走 host 过滤，可不把 human 打进库
+# If human reads are removed via host filtering, human need not be in the DB
 kraken2-build --build --db "$DB" --threads 32
-# 可选：bracken-build -d "$DB" -t 32 -k 35 -l 150
+# Optional: bracken-build -d "$DB" -t 32 -k 35 -l 150
 ```
 
-校验：
+Validate:
 
 ```bash
 ls "$DB_ROOT/kraken_db"/hash.k2d "$DB_ROOT/kraken_db"/taxo.k2d
 kraken2 --db "$DB_ROOT/kraken_db" --threads 4 --paired R1.fq R2.fq --report /tmp/t.kreport >/dev/null
 ```
 
-配置：`paths.kraken2_db: "$DB_ROOT/kraken_db"`。
+Config: `paths.kraken2_db: "$DB_ROOT/kraken_db"`.
 
-### 2.3 MetaPhlAn（`paths.metaphlan_db`）
+### 2.3 MetaPhlAn (`paths.metaphlan_db`)
 
 ```bash
 mkdir -p "$DB_ROOT/metaphlan_db"
-# 安装 metaphlan 后：
+# After installing metaphlan:
 metaphlan --install --bowtie2db "$DB_ROOT/metaphlan_db"
-# 或指定版本索引（随 MetaPhlAn 文档）：
+# Or a versioned index (follow MetaPhlAn docs):
 # metaphlan --install --index mpa_vOct22_CHOCOPhlAnSGB_202212 --bowtie2db "$DB_ROOT/metaphlan_db"
 ```
 
-配置：`paths.metaphlan_db: "$DB_ROOT/metaphlan_db"`。
+Config: `paths.metaphlan_db: "$DB_ROOT/metaphlan_db"`.
 
-### 2.4 GTDB-Tk（`paths.gtdb`）— **MAG 分类**
+### 2.4 GTDB-Tk (`paths.gtdb`) — **MAG taxonomy**
 
 ```bash
 mkdir -p "$DB_ROOT/gtdb" && cd "$DB_ROOT/gtdb"
-# 按 https://ecogenomics.github.io/GTDBTk/installing/index.html
-# 下载对应 release 的 gtdbtk_data.tar.gz（体积大）
+# Follow https://ecogenomics.github.io/GTDBTk/installing/index.html
+# Download the matching release gtdbtk_data.tar.gz (large)
 # tar -xzf gtdbtk_rXXXvX_data.tar.gz -C "$DB_ROOT/gtdb"
-# 解压后通常含：taxonomy/  markers/  masks/  metadata/ …
+# Extracted tree usually includes: taxonomy/  markers/  masks/  metadata/ …
 
-export GTDBTK_DATA_PATH="$DB_ROOT/gtdb"   # 或指向含 release 的子目录
+export GTDBTK_DATA_PATH="$DB_ROOT/gtdb"   # or the release subdirectory
 ```
 
-配置：`paths.gtdb: "$DB_ROOT/gtdb"`（与 `GTDBTK_DATA_PATH` 一致）。
+Config: `paths.gtdb: "$DB_ROOT/gtdb"` (must match `GTDBTK_DATA_PATH`).
 
-### 2.5 eggNOG（`paths.eggnog`）— **功能注释**
+### 2.5 eggNOG (`paths.eggnog`) — **functional annotation**
 
 ```bash
 mkdir -p "$DB_ROOT/eggnog" && cd "$DB_ROOT/eggnog"
-# 使用 eggnog-mapper 自带下载（需 eggnog-mapper 已安装）：
+# Use eggnog-mapper's downloader (eggnog-mapper must be installed):
 download_eggnog_data.py -y --data_dir "$DB_ROOT/eggnog"
-# 或按 http://eggnog5.embl.de 文档拉取 diamond DB + annotations
+# Or follow http://eggnog5.embl.de for diamond DB + annotations
 ```
 
-配置：`paths.eggnog: "$DB_ROOT/eggnog"`。
+Config: `paths.eggnog: "$DB_ROOT/eggnog"`.
 
-### 2.6 DIAMOND（`paths.diamond_db`）
+### 2.6 DIAMOND (`paths.diamond_db`)
 
 ```bash
 mkdir -p "$DB_ROOT/diamond" && cd "$DB_ROOT/diamond"
-# 示例：UniRef90 FASTA → dmnd
+# Example: UniRef90 FASTA → dmnd
 # wget .../uniref90.fasta.gz && gunzip -c uniref90.fasta.gz > uniref90.fa
 diamond makedb --in uniref90.fa --db uniref90 --threads 32
-# 产物：uniref90.dmnd
+# Product: uniref90.dmnd
 ```
 
-配置：`paths.diamond_db: "$DB_ROOT/diamond/uniref90.dmnd"`。
+Config: `paths.diamond_db: "$DB_ROOT/diamond/uniref90.dmnd"`.
 
-### 2.7 CARD / RGI（`database/arg/card`）
+### 2.7 CARD / RGI (`database/arg/card`)
 
 ```bash
 mkdir -p "$DB_ROOT/arg/card" && cd "$DB_ROOT/arg/card"
-# 从 https://card.mcmaster.ca/download 下载「CARD data」JSON 包并解压
+# Download “CARD data” JSON package from https://card.mcmaster.ca/download and extract
 # rgi load --card_json /path/to/card.json --local
-# 或：rgi auto_load  （按 RGI 版本文档）
+# Or: rgi auto_load  (follow RGI version docs)
 ```
 
-Agent 在 `pipeline.enable_arg: true` 时走 RGI/DeepARG；库需在容器可访问路径。
+When `pipeline.enable_arg: true`, the Agent uses RGI/DeepARG; DBs must be on container-accessible paths.
 
-### 2.8 VFDB（`database/virulence/vfdb`）
+### 2.8 VFDB (`database/virulence/vfdb`)
 
 ```bash
 mkdir -p "$DB_ROOT/virulence/vfdb" && cd "$DB_ROOT/virulence/vfdb"
-# 从 http://www.mgc.ac.cn/VFs/download.htm 下载蛋白序列
+# Download protein sequences from http://www.mgc.ac.cn/VFs/download.htm
 # diamond makedb --in VFDB_setA_pro.fas --db vfdb
 ```
 
-可选：将 `vfdb.dmnd` 写入自定义 config 或挂到功能注释卷。
+Optional: point custom config at `vfdb.dmnd` or mount it on the functional annotation volume.
 
-### 2.9 HUMAnN（可选，`database/humann`）
+### 2.9 HUMAnN (optional, `database/humann`)
 
 ```bash
 mkdir -p "$DB_ROOT/humann"
 humann_databases --download chocophlan full "$DB_ROOT/humann"
 humann_databases --download uniref uniref90_diamond "$DB_ROOT/humann"
-# 配置 HUMAnN 环境变量或 wrapper 指向上述目录
+# Configure HUMAnN env vars or wrappers to the directories above
 ```
 
-### 2.10 RAG / KG（无需下载全库）
+### 2.10 RAG / KG (no need to download full DBs)
 
-解释层默认使用包内 curated 索引。若要替换全量权威库用于 RAG：
+The interpretation layer defaults to the in-package curated index. To replace with full authority DBs for RAG:
 
-1. 导出与 `curated_bio_index.json` 同 schema 的 JSON；或  
-2. 将全库路径仅用于工具，RAG 仍用 stub + PubMed。
+1. Export JSON matching the `curated_bio_index.json` schema; or  
+2. Use full DB paths for tools only, and keep RAG on the stub + PubMed.
 
 ---
 
-## 3. 与 Agent 联调
+## 3. Integrate with the Agent
 
 ```bash
-# 1) 写 site 配置
+# 1) Write site config
 cp config/linux_server_gt256gb.yaml config/site.yaml
-# 编辑 paths.* 为绝对路径
+# Edit paths.* to absolute paths
 
-# 2) 冒烟（小数据）
+# 2) Smoke (small data)
 meta-agent run -i tests/fixtures/fastq -o /tmp/db_smoke \
   -m apptainer -c config/site.yaml --yes \
   -q "gut taxonomy smoke"
 
-# 3) HITL：非 mock 且路径缺失会触发 confirm_databases
-#    设 hitl.require_database_confirm: true（默认）
+# 3) HITL: non-mock with missing paths triggers confirm_databases
+#    Keep hitl.require_database_confirm: true (default)
 ```
 
-Apptainer 需能 bind 库目录，例如：
+Apptainer must be able to bind the DB directories, for example:
 
 ```bash
-# 工具内部通过 volumes 挂载 paths 父目录；确保 DB_ROOT 对作业节点可读
+# Tools mount path parents via volumes; ensure DB_ROOT is readable on compute nodes
 ls "$DB_ROOT/kraken_db/hash.k2d"
 ```
 
 ---
 
-## 4. 校验清单
+## 4. Validation checklist
 
 ```bash
-# 宿主
+# Host
 ls ${paths_host_index}.1.bt2 2>/dev/null || ls ${paths_host_index}.1.bt2l
 
 # Kraken2
@@ -262,21 +262,21 @@ test -f "$DB_ROOT/diamond/"*.dmnd && echo OK_diamond
 
 ---
 
-## 5. 常见问题
+## 5. Common issues
 
-| 现象 | 处理 |
-|------|------|
-| HITL 卡在数据库确认 | 补全 `paths.*` 或临时 `require_database_confirm: false` |
-| Kraken 极慢 | 库放到本地 NVMe/scratch，勿用跨机房 NFS |
-| GTDB-Tk 找不到数据 | `export GTDBTK_DATA_PATH=...` 与 `paths.gtdb` 一致 |
-| RGI 无命中 | 未 `rgi load` CARD；检查 card.json |
-| 磁盘打满 | Standard Kraken + GTDB 即可起步；DIAMOND/HUMAnN 后装 |
-| ARM 机器 | BioContainers 多为 amd64；用 `platform: linux/amd64` 或 x86 节点 |
+| Symptom | Remedy |
+|---------|--------|
+| HITL stuck on database confirm | Complete `paths.*` or temporarily set `require_database_confirm: false` |
+| Kraken extremely slow | Place DB on local NVMe/scratch; avoid cross-site NFS |
+| GTDB-Tk cannot find data | `export GTDBTK_DATA_PATH=...` matching `paths.gtdb` |
+| RGI no hits | CARD not loaded via `rgi load`; check card.json |
+| Disk full | Start with Standard Kraken + GTDB; install DIAMOND/HUMAnN later |
+| ARM hosts | Most BioContainers are amd64; use `platform: linux/amd64` or x86 nodes |
 
 ---
 
-## 6. 与文档交叉引用
+## 6. Cross-references
 
-- 用法：[docs/USAGE.md](../docs/USAGE.md)  
-- 架构：[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)  
-- 大内存部署：[docs/DEPLOY_LINUX.md](../docs/DEPLOY_LINUX.md)
+- Usage: [docs/USAGE.md](../docs/USAGE.md)  
+- Architecture: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)  
+- Large-memory deployment: [docs/DEPLOY_LINUX.md](../docs/DEPLOY_LINUX.md)

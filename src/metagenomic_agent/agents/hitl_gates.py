@@ -19,22 +19,22 @@ OTU_THRESHOLD_PRESETS: dict[str, dict[str, Any]] = {
     "strict": {
         "min_prevalence": 0.2,
         "min_rel_abundance": 1e-4,
-        "label": "严格：患病率≥20% 且 相对丰度≥0.01%",
+        "label": "Strict: prevalence ≥20% and relative abundance ≥0.01%",
     },
     "balanced": {
         "min_prevalence": 0.1,
         "min_rel_abundance": 1e-5,
-        "label": "均衡：患病率≥10% 且 相对丰度≥0.001%（推荐）",
+        "label": "Balanced: prevalence ≥10% and relative abundance ≥0.001% (recommended)",
     },
     "lenient": {
         "min_prevalence": 0.05,
         "min_rel_abundance": 1e-6,
-        "label": "宽松：患病率≥5% 且 相对丰度≥0.0001%",
+        "label": "Lenient: prevalence ≥5% and relative abundance ≥0.0001%",
     },
     "none": {
         "min_prevalence": 0.0,
         "min_rel_abundance": 0.0,
-        "label": "不剔除极低频特征（保留全部）",
+        "label": "Do not filter ultra-rare features (keep all)",
     },
 }
 
@@ -75,13 +75,14 @@ def build_assembly_gate(state: dict[str, Any]) -> dict[str, Any] | None:
     assembler = bio.get("assembler_preference") or "megahit"
     n = len(state.get("samples") or [])
     wall = asm_est.get("est_wall_hours")
-    wall_s = f"{wall:.2f} h" if wall is not None else "数小时级"
+    wall_s = f"{wall:.2f} h" if wall is not None else "several hours"
     mem_s = asm_est.get("est_mem_gb") or mem or "?"
     question = (
-        f"[Assembly] 即将提交高算力组装/分箱（assembler=`{assembler}`，n={n}）。"
-        f"预估墙钟 ≈ {wall_s}，内存 ≈ {mem_s} GB"
-        + (f"（申请 {threads} CPU / {mem} GB）" if threads and mem else "")
-        + "。请确认："
+        f"[Assembly] About to submit compute-heavy assembly/binning "
+        f"(assembler=`{assembler}`, n={n}). "
+        f"Estimated wall time ≈ {wall_s}, memory ≈ {mem_s} GB"
+        + (f" (requesting {threads} CPU / {mem} GB)" if threads and mem else "")
+        + ". Please confirm:"
     )
     return {
         "id": "confirm_assembly",
@@ -91,17 +92,17 @@ def build_assembly_gate(state: dict[str, Any]) -> dict[str, Any] | None:
         "choices": [
             {
                 "key": "A",
-                "label": f"确认提交 Assembly（{assembler}）",
+                "label": f"Confirm and submit Assembly ({assembler})",
                 "action": "confirm_assembly",
             },
             {
                 "key": "B",
-                "label": "改用更省内存的 MEGAHIT 后提交",
+                "label": "Switch to memory-efficient MEGAHIT, then submit",
                 "action": "confirm_assembly_megahit",
             },
             {
                 "key": "C",
-                "label": "跳过 Assembly/分箱（节省算力）",
+                "label": "Skip Assembly/binning (save compute)",
                 "action": "skip_assembly",
             },
         ],
@@ -126,9 +127,9 @@ def build_otu_filter_gate(state: dict[str, Any]) -> dict[str, Any] | None:
     cur_prev = stats_cfg.get("min_prevalence", 0.1)
     cur_ab = stats_cfg.get("min_rel_abundance", 1e-5)
     question = (
-        "[OTU/ASV 过滤] 差异/多样性分析前将剔除极低频特征。"
-        f"当前默认 prevalence≥{cur_prev} · rel_abundance≥{cur_ab}。"
-        "请选择阈值（生信人员确认后再继续）："
+        "[OTU/ASV filter] Ultra-rare features will be removed before differential/diversity analysis. "
+        f"Current defaults: prevalence≥{cur_prev} · rel_abundance≥{cur_ab}. "
+        "Please select thresholds (bioinformatician confirmation required):"
     )
     return {
         "id": "confirm_otu_asv_filter",
@@ -172,13 +173,13 @@ def build_database_gate(state: dict[str, Any]) -> dict[str, Any] | None:
         "gate": "database_download",
         "critical": True,
         "question": (
-            f"[Databases] 参考库路径需确认后再跑分类/MAG（{detail}）。"
-            "请确认已下载/挂载 BioContainers 配套库："
+            f"[Databases] Reference database paths must be confirmed before taxonomy/MAG ({detail}). "
+            "Please confirm BioContainers companion databases are downloaded/mounted:"
         ),
         "choices": [
-            {"key": "A", "label": "已就绪，继续分析", "action": "confirm_databases"},
-            {"key": "B", "label": "仅用已有库，跳过缺失库相关步骤", "action": "databases_partial"},
-            {"key": "C", "label": "中止，先去下载/配置 paths.*", "action": "abort_for_databases"},
+            {"key": "A", "label": "Ready — continue analysis", "action": "confirm_databases"},
+            {"key": "B", "label": "Use available DBs only; skip steps needing missing DBs", "action": "databases_partial"},
+            {"key": "C", "label": "Abort — download/configure paths.* first", "action": "abort_for_databases"},
         ],
         "default": "A",
         "context": {"missing": missing, "paths": {k: paths.get(k) for k in ("kraken2_db", "gtdb", "host_index")}},
@@ -195,13 +196,13 @@ def build_report_publish_gate(state: dict[str, Any]) -> dict[str, Any] | None:
         "gate": "report_publish",
         "critical": True,
         "question": (
-            "[Report] 即将生成并可外发最终报告（HTML/手稿草稿）。"
-            "请确认是否允许写入 final_report 并标记为可分享："
+            "[Report] About to generate a final report that may be shared externally (HTML/manuscript draft). "
+            "Confirm writing final_report and marking it as shareable:"
         ),
         "choices": [
-            {"key": "A", "label": "允许生成并标记可外发", "action": "publish_report"},
-            {"key": "B", "label": "仅内部草稿（不标记外发）", "action": "draft_report_only"},
-            {"key": "C", "label": "暂缓报告生成", "action": "hold_report"},
+            {"key": "A", "label": "Allow generation and mark as shareable", "action": "publish_report"},
+            {"key": "B", "label": "Internal draft only (do not mark shareable)", "action": "draft_report_only"},
+            {"key": "C", "label": "Hold report generation", "action": "hold_report"},
         ],
         "default": str(hitl_cfg.get("default_report_publish") or "B"),
         "context": {"outdir": state.get("outdir")},
@@ -230,23 +231,23 @@ def build_self_heal_gate(state: dict[str, Any], proposed: list[str] | None = Non
         "gate": "self_heal_high_risk",
         "critical": True,
         "question": (
-            "[Self-Heal] 自动纠错拟执行高风险动作，可能改变生物学结论："
-            f"{high}。安全动作：{safe}。请选择："
+            "[Self-Heal] Auto-recovery proposes high-risk actions that may change biological conclusions: "
+            f"{high}. Safe actions: {safe}. Please choose:"
         ),
         "choices": [
             {
                 "key": "A",
-                "label": f"批准全部动作（含高风险：{high}）",
+                "label": f"Approve all actions (including high-risk: {high})",
                 "action": "approve_all_heal",
             },
             {
                 "key": "B",
-                "label": "仅执行安全动作（暂缓高风险）— 推荐",
+                "label": "Run safe actions only (defer high-risk) — recommended",
                 "action": "approve_safe_heal_only",
             },
             {
                 "key": "C",
-                "label": "拒绝自愈，保留原错误进入 Critic/报告",
+                "label": "Reject self-heal; keep original errors for Critic/report",
                 "action": "reject_heal",
             },
         ],

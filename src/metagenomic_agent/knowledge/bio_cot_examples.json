@@ -2,13 +2,13 @@
   {
     "id": "cot_obesity_gut",
     "triggers": ["obes", "肥胖", "bmi"],
-    "scenario": "肥胖患者肠道菌群变化",
+    "scenario": "Gut microbiota changes in obesity",
     "chain": [
-      "识别研究目标为疾病关联（case/control 或表型相关），而非单纯群落描述。",
-      "肠道宿主样本需宿主去除，再做分类学与功能轮廓。",
-      "优先 shotgun metagenomics：可同时覆盖物种与通路/AMR。",
-      "高复杂肠道群落组装优先 MEGAHIT；差异分析需要分组元数据。",
-      "解释须锚定 GTDB/NCBI 与文献，避免虚假菌种与夸大因果。"
+      "Identify the study goal as disease association (case/control or phenotype-related), not community description alone.",
+      "Host-associated gut samples need host depletion before taxonomic and functional profiling.",
+      "Prefer shotgun metagenomics: covers species plus pathways/AMR in one assay.",
+      "For high-complexity gut communities, prefer MEGAHIT for assembly; differential analysis requires group metadata.",
+      "Interpretation must be grounded in GTDB/NCBI and literature; avoid invented taxa and overstated causality."
     ],
     "citations": [
       {
@@ -33,12 +33,12 @@
   {
     "id": "cot_ibd_biomarker",
     "triggers": ["ibd", "crohn", "colitis", "溃疡", "克罗恩"],
-    "scenario": "IBD 生物标志物发现",
+    "scenario": "IBD biomarker discovery",
     "chain": [
-      "目标：差异丰度 + 机制假说，需 statistics + literature/evidence。",
-      "关注 Faecalibacterium 下调与 Escherichia 上调等可检验假设。",
-      "功能层（KEGG/eggNOG）用于 SCFA/炎症相关通路，不作临床诊断。",
-      "所有菌种陈述必须 GTDB/NCBI 锚定并附 p/q 与 PMID。"
+      "Goal: differential abundance plus mechanistic hypotheses; requires statistics + literature/evidence.",
+      "Focus on testable hypotheses such as Faecalibacterium depletion and Escherichia enrichment.",
+      "Functional layer (KEGG/eggNOG) for SCFA/inflammation-related pathways; not for clinical diagnosis.",
+      "All taxon claims must be GTDB/NCBI-anchored with p/q values and PMIDs."
     ],
     "citations": [
       {
@@ -63,12 +63,12 @@
   {
     "id": "cot_soil_low_virus",
     "triggers": ["soil", "土壤", "virus", "病毒", "phage", "virome", "低丰度"],
-    "scenario": "土壤宏基因组低丰度病毒",
+    "scenario": "Low-abundance viruses in soil metagenomes",
     "chain": [
-      "土壤高复杂、宿主多样；病毒信号常低丰度，需专用病毒工具或富集策略。",
-      "分类学可辅以 ViWrap/PhaBOX；勿仅用细菌导向数据库断言病毒多样性。",
-      "组装可选 MEGAHIT；病毒 contig 需额外质控，避免把细菌片段当作病毒。",
-      "推理必须引用病毒宏基因组最佳实践，禁止捏造病毒种名。"
+      "Soil is highly complex with diverse hosts; viral signal is often low-abundance and needs dedicated virus tools or enrichment.",
+      "Taxonomy may use ViWrap/PhaBOX; do not assert viral diversity from bacteria-oriented databases alone.",
+      "Assembly may use MEGAHIT; viral contigs need extra QC to avoid treating bacterial fragments as viruses.",
+      "Reasoning must cite viral metagenomics best practices; never invent virus species names."
     ],
     "citations": [
       {
@@ -88,11 +88,11 @@
   {
     "id": "cot_mag_recovery",
     "triggers": ["mag", "bin", "组装", "assembly", "genome"],
-    "scenario": "MAG 回收",
+    "scenario": "MAG recovery",
     "chain": [
-      "明确目标为基因组回收：QC → 组装 → 分箱 → CheckM2 → GTDB-Tk。",
-      "高复杂用 MEGAHIT；低复杂/小群落可试 metaSPAdes。",
-      "资源峰值高，生产环境应 Nextflow/Snakemake -resume。"
+      "Clarify genome-recovery goal: QC → assembly → binning → CheckM2 → GTDB-Tk.",
+      "Use MEGAHIT for high complexity; try metaSPAdes for low-complexity / small communities.",
+      "Peak resource use is high; production runs should use Nextflow/Snakemake -resume."
     ],
     "citations": [
       {

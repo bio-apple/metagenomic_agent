@@ -131,14 +131,16 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
 CONTAMINANT_HINTS = {
     "Pseudomonas": (
-        "常见于试剂/环境或水源污染，亦可见于部分环境富集；"
-        "需结合空白对照、试剂批次与宿主去除率判断 contamination vs biological enrichment。"
+        "Common in reagent/environmental or water-source contamination, and may also reflect "
+        "environmental enrichment; use blank controls, reagent lot, and host-depletion rate to "
+        "distinguish contamination vs biological enrichment."
     ),
     "Staphylococcus": (
-        "可能为皮肤来源污染或真实定植；检查采样与提取流程，并对照阴性对照。"
+        "May indicate skin-derived contamination or true colonization; review sampling and "
+        "extraction workflows and compare against negative controls."
     ),
-    "Ralstonia": "高丰度时常提示试剂污染，建议核查试剂空白。",
-    "Bradyrhizobium": "试剂/环境常见背景菌，优先怀疑 contamination。",
+    "Ralstonia": "High abundance often suggests reagent contamination; verify reagent blanks.",
+    "Bradyrhizobium": "Common reagent/environmental background taxon; prioritize contamination suspicion.",
 }
 
 GUT_MARKERS = {
@@ -176,9 +178,12 @@ def _interpret_taxa(per_sample: dict[str, Any], state: dict[str, Any]) -> dict[s
                     "note": CONTAMINANT_HINTS[g],
                 }
                 notes.append(hyp)
-                lines.append(f"- **{g}** 需鉴别: {CONTAMINANT_HINTS[g]}")
+                lines.append(f"- **{g}** needs differentiation: {CONTAMINANT_HINTS[g]}")
             elif g in GUT_MARKERS:
-                lines.append(f"- **{g}**: 常见肠道相关属；结合差异检验与证据链解读，勿直接断言因果。")
+                lines.append(
+                    f"- **{g}**: common gut-associated genus; interpret with differential tests "
+                    "and evidence chains — do not assert causality directly."
+                )
         lines.append("")
 
     expected = set(bio.get("expected_markers") or [])
@@ -190,7 +195,10 @@ def _interpret_taxa(per_sample: dict[str, Any], state: dict[str, Any]) -> dict[s
         lines.append(f"- Not in top genera: {', '.join(sorted(missing)) or '(none)'}")
         lines.append("")
 
-    lines.append("解释仅基于丰度排序与领域启发式，需结合 QC、空白对照与统计显著性。")
+    lines.append(
+        "Interpretation is based on abundance ranking and domain heuristics only; "
+        "combine with QC, blank controls, and statistical significance."
+    )
     return {"notes": notes, "markdown": "\n".join(lines), "expected_observed": sorted(found)}
 
 

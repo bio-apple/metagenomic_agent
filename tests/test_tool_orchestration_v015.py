@@ -114,4 +114,4 @@ def test_sandbox_rejects_bad_schema_when_provided():
         schema_params={"r1": "x;y", "db": "db", "threads": 8, "memory_gb": 16, "outdir": "results"},
     )
     assert not resp.ok
-    assert "Schema" in resp.user_message or "校验" in resp.user_message
+    assert "Schema" in resp.user_message or "schema" in resp.user_message.lower() or "validation" in resp.user_message.lower()

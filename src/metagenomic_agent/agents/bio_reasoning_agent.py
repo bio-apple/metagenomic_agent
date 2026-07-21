@@ -332,14 +332,14 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         {
             "id": "study_design",
             "question": (
-                f"Bio Reasoning 建议目标=`{bio['study_goal']}`，assay=`{bio['recommended_assay']}`，"
-                f"功能分析={'开' if bio['enable_function'] else '关'}，"
-                f"差异分析={'开' if bio['enable_statistics'] else '关'}。请确认："
+                f"Bio Reasoning recommends goal=`{bio['study_goal']}`, assay=`{bio['recommended_assay']}`, "
+                f"function analysis={'on' if bio['enable_function'] else 'off'}, "
+                f"differential analysis={'on' if bio['enable_statistics'] else 'off'}. Please confirm:"
             ),
             "choices": [
-                {"key": "A", "label": "按推理计划继续", "action": "accept_plan"},
-                {"key": "B", "label": "仅分类学（跳过功能/差异）", "action": "taxonomy_only"},
-                {"key": "C", "label": "强制开启 MAG 组装", "action": "force_assembly"},
+                {"key": "A", "label": "Continue with reasoned plan", "action": "accept_plan"},
+                {"key": "B", "label": "Taxonomy only (skip function/differential)", "action": "taxonomy_only"},
+                {"key": "C", "label": "Force-enable MAG assembly", "action": "force_assembly"},
             ],
             "default": "A",
         }
@@ -348,11 +348,11 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         hitl_options.append(
             {
                 "id": "missing_groups",
-                "question": "差异分析已规划但样本无 group 元数据：",
+                "question": "Differential analysis is planned but samples lack group metadata:",
                 "choices": [
-                    {"key": "A", "label": "使用 demo/synthetic 分组继续", "action": "demo_mode"},
-                    {"key": "B", "label": "跳过统计节点", "action": "skip_stats"},
-                    {"key": "C", "label": "中止并补充 --metadata", "action": "abort_for_metadata"},
+                    {"key": "A", "label": "Continue with demo/synthetic groups", "action": "demo_mode"},
+                    {"key": "B", "label": "Skip statistics nodes", "action": "skip_stats"},
+                    {"key": "C", "label": "Abort and supply --metadata", "action": "abort_for_metadata"},
                 ],
                 "default": "A",
             }

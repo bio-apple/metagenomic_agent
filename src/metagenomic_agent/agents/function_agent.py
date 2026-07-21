@@ -11,11 +11,19 @@ from metagenomic_agent.tools import functional
 from metagenomic_agent.tools.context import ToolContext
 
 MECHANISM_HINTS = {
-    "butyrate": "丁酸相关通路可影响肠道屏障与抗炎信号；需结合分类群（如 Faecalibacterium）解读。",
-    "butanoate": "丁酸代谢模块变化提示 SCFA 产能潜力改变，勿直接等同临床疗效。",
-    "starch": "多糖降解能力变化常与饮食纤维暴露相关。",
-    "beta-lactam": "β-内酰胺酶相关功能提示 AMR 潜力；应对齐 CARD 证据。",
-    "nitrate": "硝酸盐还原可见于兼性厌氧菌富集背景。",
+    "butyrate": (
+        "Butyrate-related pathways can affect gut barrier and anti-inflammatory signaling; "
+        "interpret alongside taxa (e.g. Faecalibacterium)."
+    ),
+    "butanoate": (
+        "Changes in butanoate metabolism modules suggest altered SCFA production potential; "
+        "do not equate directly with clinical efficacy."
+    ),
+    "starch": "Shifts in polysaccharide degradation capacity often relate to dietary fiber exposure.",
+    "beta-lactam": (
+        "Beta-lactamase–related functions suggest AMR potential; align with CARD evidence."
+    ),
+    "nitrate": "Nitrate reduction can occur in facultative anaerobe enrichment contexts.",
 }
 
 
@@ -59,7 +67,9 @@ def _interpret_functions(profile_path: Path, disease: str | None) -> dict[str, A
         if card:
             lines.append(f"- CARD: {card[0].get('id')} {card[0].get('name')}")
         lines.append("")
-    lines.append("功能变化不等于机制证实；因果推断需实验验证。")
+    lines.append(
+        "Functional changes do not prove mechanism; causal inference requires experimental validation."
+    )
     return {"notes": notes, "markdown": "\n".join(lines)}
 
 

@@ -39,7 +39,7 @@ def test_taxonomy_unclassified_gate():
     bad = check_taxonomy_qc(classification_rate=0.2, unclassified_fraction=0.8, sample_id="S1")
     assert bad["ok"] is False
     assert any("unclassified" in w for w in bad["warnings"])
-    assert any("数据库" in r or "confidence" in r.lower() or "置信" in r for r in bad["recommendations"])
+    assert any("database" in r.lower() or "confidence" in r.lower() for r in bad["recommendations"])
 
 
 def test_bio_qc_chain_and_critic(tmp_path: Path):
@@ -117,7 +117,7 @@ def test_table_bound_stats_guardrail(tmp_path: Path):
     }
     claim_block = build_claim("Faecalibacterium", state2)
     assert claim_block["allowed"] is False
-    assert "表" in (claim_block["statement"] or "") or "p_value" in (claim_block["statement"] or "")
+    assert "table" in (claim_block["statement"] or "").lower() or "p_value" in (claim_block["statement"] or "")
 
     bundle = write_grounded_interp(state)
     assert bundle["n_allowed"] >= 1

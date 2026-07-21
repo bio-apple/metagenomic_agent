@@ -181,7 +181,7 @@ def _self_heal(state: AgentState) -> dict:
     artifacts["self_heal_skipped"] = False
     summary = summarize_heal_for_user(actions, errors)
     if withheld:
-        summary += f"；已暂缓高风险动作(需HITL): {', '.join(withheld)}"
+        summary += f"; deferred high-risk actions (HITL required): {', '.join(withheld)}"
     artifacts["self_heal_summary"] = summary
 
     healed_state = {**state, "dag": new_dag, "config": new_config, "artifacts": artifacts}
@@ -292,11 +292,11 @@ def _quality_scores(state: AgentState) -> dict:
         hitl_options.append(
             {
                 "id": "host_contamination",
-                "question": f"样本 {', '.join(high_host)} 宿主污染偏高（≥20%）。请选择：",
+                "question": f"Samples {', '.join(high_host)} have elevated host contamination (≥20%). Choose an action:",
                 "choices": [
-                    {"key": "A", "label": "继续分析", "action": "continue"},
-                    {"key": "B", "label": "加强宿主去除 / 重新 QC", "action": "strengthen_host"},
-                    {"key": "C", "label": "标记删除高污染样本", "action": "drop_flagged_samples"},
+                    {"key": "A", "label": "Continue analysis", "action": "continue"},
+                    {"key": "B", "label": "Strengthen host removal / re-run QC", "action": "strengthen_host"},
+                    {"key": "C", "label": "Flag and drop high-contamination samples", "action": "drop_flagged_samples"},
                 ],
                 "default": "A",
             }

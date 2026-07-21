@@ -1,66 +1,66 @@
-# Self-Heal 可靠性：假阳性与人审防呆
+# Self-Heal Reliability: False Positives and Human Oversight
 
-面向论文 / 技术文档读者：自动化「自我纠错」何时会**纠错**，以及如何用 HITL 拦住高风险误修。
+For manuscript / technical readers: when automated “self-correction” can **mis-correct**, and how HITL blocks high-risk bad fixes.
 
-配套可运行评估：`metagenomic_agent.evaluation.self_heal_fpr`（`pytest tests/test_self_heal_fpr.py`）。
+Companion evaluation: `metagenomic_agent.evaluation.self_heal_fpr` (`pytest tests/test_self_heal_fpr.py`).
 
 ---
 
-## 1. 闭环在图中的位置
+## 1. Where the loop sits in the graph
 
 ```
 execute_swarm → validate → hitl_runtime
-  → (失败且 retry_count < max_retries) → self_heal → execute_swarm
-  → (分析员拒绝自愈) → critic …
-critic 未通过且关键词命中 → self_heal
+  → (failure and retry_count < max_retries) → self_heal → execute_swarm
+  → (analyst rejects heal) → critic …
+critic fails and keywords match → self_heal
 pi_replan → self_heal
 ```
 
-实现：`execution/self_heal.py`、`graph._self_heal` / `_route_after_*`。  
-自愈**只改** YAML/JSON 参数与 DAG，不重写自由 shell。
+Implementation: `execution/self_heal.py`, `graph._self_heal` / `_route_after_*`.  
+Self-heal **only mutates** YAML/JSON parameters and the DAG; it does not rewrite free-form shell.
 
 ---
 
-## 2. 风险分级（误修如何伤害结论）
+## 2. Risk tiers (how mis-fixes harm conclusions)
 
-| 风险 | 动作 | 生物学影响 |
-|------|------|------------|
-| 高 | `switch_to_mock_fallback` | 流程「成功」但结果无生物学意义 |
-| 高 | `loosen_qc` | 放宽质控 → 保留低质量读段，丰度/差异可偏 |
-| 高 | `lower_kraken_confidence` | 掩盖污染或库错误，假阳性物种↑ |
-| 高 | `downgrade_assembler` | MAG 完整性/断点变化，下游 binning 结论可变 |
-| 中 | `increase_memory` / `reduce_threads` / `switch_to_container` / `pin_platform_amd64` | 资源与平台；一般不改生物学阈值 |
-| 中 | `switch_taxonomy_tool` / `fix_db_path` | 工具/路径；需审计但仍优于静默降阈值 |
+| Risk | Action | Biological impact |
+|------|--------|-------------------|
+| High | `switch_to_mock_fallback` | Pipeline “succeeds” but results have no biological meaning |
+| High | `loosen_qc` | Relaxed QC → retain low-quality reads; abundance/differential may bias |
+| High | `lower_kraken_confidence` | Masks contamination or DB errors; false-positive species ↑ |
+| High | `downgrade_assembler` | MAG completeness/breakpoints change; downstream binning conclusions may shift |
+| Medium | `increase_memory` / `reduce_threads` / `switch_to_container` / `pin_platform_amd64` | Resources and platform; generally do not alter biological thresholds |
+| Medium | `switch_taxonomy_tool` / `fix_db_path` | Tool/path; needs audit but preferred over silently lowering thresholds |
 
-常量：`HIGH_RISK_ACTIONS`（代码与评估共用）。
-
----
-
-## 3. 已知会「纠错」的模式（案例库）
-
-| 场景 ID | 错误纠正 | 现况缓解 |
-|---------|----------|----------|
-| `oom_taxonomy` | 任意 OOM 曾附带 `downgrade_assembler` | **节点作用域**：仅 assembly 相关 OOM/SPAdes 才降级 |
-| `soft_qc_warning` | Critic 文案含 `quality` 即触发 `loosen_qc` | 关键词收紧为 `fastp`/`phred`/`q30`/…（去掉裸 `quality`） |
-| `pi_replan` | PI 重规划强制 `loosen_qc` | 仅保留 `switch_taxonomy_tool` |
-| `missing_binary` | 自动 `switch_to_mock_fallback` | 列为高风险；默认 HITL **B=仅安全动作** 暂缓 |
-| `bio_fail_confidence` | 生物校验失败 → 降 Kraken confidence | 高风险；默认不自动应用 |
-
-完整场景与评分：`evaluation/self_heal_fpr.catalog()`。
+Constant: `HIGH_RISK_ACTIONS` (shared by code and evaluation).
 
 ---
 
-## 4. 假阳性率（FPR）定义与基准结果
+## 3. Known “mis-fix” patterns (case catalog)
 
-在固定场景集上（非临床队列外推）：
+| Scenario ID | Erroneous correction | Current mitigation |
+|-------------|----------------------|--------------------|
+| `oom_taxonomy` | Any OOM previously also proposed `downgrade_assembler` | **Node scope**: downgrade only for assembly-related OOM/SPAdes |
+| `soft_qc_warning` | Critic text containing `quality` triggered `loosen_qc` | Keywords tightened to `fastp`/`phred`/`q30`/… (bare `quality` removed) |
+| `pi_replan` | PI replan forced `loosen_qc` | Keep only `switch_taxonomy_tool` |
+| `missing_binary` | Auto `switch_to_mock_fallback` | Marked high-risk; default HITL **B=safe actions only** withholds it |
+| `bio_fail_confidence` | Bio validation failure → lower Kraken confidence | High-risk; not applied automatically by default |
 
-| 指标 | 定义 | 目标 |
-|------|------|------|
-| **Trigger FPR** | P(进入 heal \| 金标准不应 heal) | → 0 |
-| **Action FPR** | P(场景提出 ≥1 个 `forbidden` 动作) | 尽量低；允许「提出但暂缓」 |
-| **Action FPR @ safe policy** | 经 `filter_actions_for_policy(approve_high_risk=False)` 后仍应用 forbidden | **必须为 0** |
+Full scenarios and scoring: `evaluation/self_heal_fpr.catalog()`.
 
-复现：
+---
+
+## 4. False-positive rate (FPR) definition and baseline
+
+On a fixed scenario suite (not extrapolatable to clinical cohorts):
+
+| Metric | Definition | Target |
+|--------|------------|--------|
+| **Trigger FPR** | P(enter heal \| gold standard should not heal) | → 0 |
+| **Action FPR** | P(scenario proposes ≥1 `forbidden` action) | Prefer low; “propose but withhold” is allowed |
+| **Action FPR @ safe policy** | Forbidden still applied after `filter_actions_for_policy(approve_high_risk=False)` | **Must be 0** |
+
+Reproduce:
 
 ```bash
 python -c "from metagenomic_agent.evaluation.self_heal_fpr import evaluate_self_heal_fpr; \
@@ -68,54 +68,54 @@ from pprint import pprint; pprint(evaluate_self_heal_fpr())"
 pytest -q tests/test_self_heal_fpr.py
 ```
 
-投稿表述建议：报告场景集规模、Trigger FPR、以及 **safe-policy 后 Action FPR=0**；并声明高风险动作默认不自动落地。
+Suggested manuscript wording: report scenario-suite size, Trigger FPR, and **Action FPR=0 under safe policy**; state that high-risk actions are not applied automatically by default.
 
 ---
 
-## 5. 人审循环（如何防止错误纠正）
+## 5. Human review loop (blocking erroneous corrections)
 
-配置（`config/default.yaml`）：
+Config (`config/default.yaml`):
 
 ```yaml
 hitl:
-  require_self_heal_confirm: true   # 存在高风险动作时启用门控
-  default_self_heal: B              # A=全部  B=仅安全（推荐）  C=拒绝自愈
+  require_self_heal_confirm: true   # enable gate when high-risk actions are present
+  default_self_heal: B              # A=all  B=safe only (recommended)  C=reject heal
 ```
 
-门控 ID：`confirm_self_heal`（`hitl_gates.build_self_heal_gate`）。
+Gate ID: `confirm_self_heal` (`hitl_gates.build_self_heal_gate`).
 
-| 选项 | 行为 |
-|------|------|
-| A `approve_all_heal` | 应用含高风险在内的全部提议 |
-| B `approve_safe_heal_only` | 只应用低/中风险；高风险写入 `self_heal_withheld` |
-| C `reject_heal` | 不改 DAG；`self_heal_skipped` → 路由到 **critic**（保留原错误） |
+| Option | Behavior |
+|--------|----------|
+| A `approve_all_heal` | Apply all proposals including high-risk |
+| B `approve_safe_heal_only` | Apply low/medium risk only; high-risk written to `self_heal_withheld` |
+| C `reject_heal` | Do not change DAG; `self_heal_skipped` → route to **critic** (original error retained) |
 
-审计字段（写入 `artifacts` / 报告 Methods）：`self_heal_proposed`、`self_heal_actions`、`self_heal_withheld`、`self_heal_decision`、`self_heal_risk`。
+Audit fields (written to `artifacts` / report Methods): `self_heal_proposed`, `self_heal_actions`, `self_heal_withheld`, `self_heal_decision`, `self_heal_risk`.
 
-生产建议：
+Production recommendations:
 
-1. 保持 `require_self_heal_confirm: true` 与 `default_self_heal: B`。  
-2. CLI 交互：关闭 `hitl.auto_confirm`，由生信人员显式选 A/B/C。  
-3. 禁止在论文主结果中依赖 `switch_to_mock_fallback`；`sandbox.allow_mock_fallback` 仅限工程冒烟。  
-4. 报告 Methods 必须列出实际应用的 `self_heal_actions` 与暂缓项。
-
----
-
-## 6. 与「正确自愈」的边界
-
-仍鼓励自动执行的修复（在 max_retries 内）：
-
-- 内存/线程/超时调整  
-- 切 Docker / 钉 `linux/amd64`  
-- 缺失库时提示 `fix_db_path`、追加 MetaPhlAn  
-
-这些动作也写入审计，但不默认索要 HITL（除非同时夹带高风险项）。
+1. Keep `require_self_heal_confirm: true` and `default_self_heal: B`.  
+2. Interactive CLI: disable `hitl.auto_confirm`; let bioinformaticians choose A/B/C explicitly.  
+3. Do not rely on `switch_to_mock_fallback` in primary manuscript results; `sandbox.allow_mock_fallback` is for engineering smoke tests only.  
+4. Report Methods must list applied `self_heal_actions` and withheld items.
 
 ---
 
-## 7. 局限（论文诚实段）
+## 6. Boundary with “correct” self-heal
 
-- 当前 FPR 来自**合成场景回归**，不是大规模真实失败日志的流行病学估计。  
-- Critic→heal 仍依赖关键词，可能漏报（FN）真实需重跑的情况。  
-- `lower_kraken_confidence` 即使经 HITL 批准，仍可能掩盖污染——应优先查宿主过滤与参考库。  
-- 扩展真实 stderr 语料后应重跑 `evaluate_self_heal_fpr` 并更新本节数字。
+Still encouraged for automatic execution (within `max_retries`):
+
+- Memory / thread / timeout adjustments  
+- Switch to Docker / pin `linux/amd64`  
+- Prompt `fix_db_path` or append MetaPhlAn when DBs are missing  
+
+These actions are audited but do not request HITL by default (unless bundled with high-risk items).
+
+---
+
+## 7. Limitations (honest manuscript section)
+
+- Current FPR comes from a **synthetic scenario regression**, not an epidemiological estimate from large real failure logs.  
+- Critic→heal still depends on keywords and may miss (FN) cases that truly need a re-run.  
+- Even if HITL approves `lower_kraken_confidence`, contamination may still be masked—prefer host filtering and reference DB checks first.  
+- After expanding real stderr corpora, re-run `evaluate_self_heal_fpr` and update the numbers in this section.

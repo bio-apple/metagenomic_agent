@@ -6,19 +6,19 @@ execution:
   engine: langgraph  # langgraph | snakemake | nextflow
   # Agent writes outdir/workflow/params.yaml; engines consume it (no LLM free-form shell)
   # nf: -resume; smk: --rerun-incomplete
-  skip_swarm_on_engine_ok: true  # NF/SMK 成功则不双跑 LangGraph swarm
+  skip_swarm_on_engine_ok: true  # skip dual-run LangGraph swarm when NF/SMK succeeds
 
 # Prefer container isolation for bio tools (MCP-style sandbox). Avoid fragile host binaries.
 sandbox:
   backend: ""  # empty → follow mode; or mock|local|conda|docker|apptainer
   prefer_container: true
-  platform: auto  # auto | linux/amd64 | linux/arm64 （Apple Silicon 建议 linux/amd64）
-  allow_mock_fallback: true  # 自愈最后手段：切 mock 保流程
+  platform: auto  # auto | linux/amd64 | linux/arm64 (on Apple Silicon prefer linux/amd64)
+  allow_mock_fallback: true  # last-resort self-heal: switch to mock to keep the pipeline alive
 
 # BioContainers images live in tools/context.DEFAULT_IMAGES; override pins here:
 docker:
   threads: 8
-  platform: linux/amd64  # biocontainers 多为 amd64；Apple Silicon 走模拟
+  platform: linux/amd64  # most biocontainers are amd64; Apple Silicon uses emulation
   images: {}
   # agent_image: ghcr.io/bio-apple/metagenomic_agent:latest
 

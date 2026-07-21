@@ -1,13 +1,13 @@
-# Demo data（审稿 / 本地一键复现）
+# Demo data (review / local one-click reproduction)
 
-仓库内置的极小 paired FASTQ（每样本约 520 B），**不依赖参考库**，配合 `--mode mock` 即可跑通全流程。
+Bundled minimal paired FASTQ (≈520 B per sample). **No reference databases required**; with `--mode mock` the full pipeline exercises end-to-end.
 
-| 路径 | 说明 |
-|------|------|
-| `fastq/` | 4 个样本 × R1/R2（`ibd_*` / `ctrl_*`） |
-| `metadata.tsv` | `sample_id` + `group`（IBD vs Control） |
+| Path | Description |
+|------|-------------|
+| `fastq/` | 4 samples × R1/R2 (`ibd_*` / `ctrl_*`) |
+| `metadata.tsv` | `sample_id` + `group` (IBD vs Control) |
 
-一键复现见仓库根目录：`bash scripts/reproduce_demo.sh`
+One-click reproduction from the repository root: `bash scripts/reproduce_demo.sh`
 
 ```bash
 pip install -e ".[dev]"
@@ -19,6 +19,6 @@ meta-agent run \
   -q "IBD vs healthy gut microbiome biomarker discovery"
 ```
 
-预期产物（节选）：`results/demo/final_report.html`、`results/demo/evaluation/`（含 CAMI toy / MetaAgentScore）、`biomarkers/`。
+Expected outputs (selected): `results/demo/final_report.html`, `results/demo/evaluation/` (CAMI toy / MetaAgentScore), `biomarkers/`.
 
-> Mock 输出仅用于软件与流水线复现，**不可当作生物学结论**。真实分析请按 [database/README.md](../../database/README.md) 构建参考库后使用 `docker` / `apptainer` 模式。
+> Mock outputs are for software and pipeline reproducibility only and **must not be treated as biological conclusions**. For real analyses, build reference databases per [database/README.md](../../database/README.md) and use `docker` / `apptainer` mode.

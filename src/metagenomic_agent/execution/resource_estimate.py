@@ -119,11 +119,11 @@ def estimate_resources(state: dict[str, Any]) -> dict[str, Any]:
             "apptainer_sif_dir": (cfg.get("apptainer") or {}).get("sif_dir"),
         },
         "user_message": (
-            f"预估墙钟时间 ≈ {total_h:.2f} h（{n} 样本，mode={mode}）；"
-            f"申请资源 ≈ {threads} CPU / {avail_mem:.0f} GB"
-            f"（集群={sense.get('scheduler')}, pressure={sense.get('pressure')}）；"
-            f"峰值估算 ≈ {peak_mem:.0f} GB；磁盘 ≈ {disk:.1f} GB。"
-            + ((" 警告: " + "; ".join(warnings)) if warnings else "")
+            f"Estimated wall time ≈ {total_h:.2f} h ({n} samples, mode={mode}); "
+            f"requested resources ≈ {threads} CPU / {avail_mem:.0f} GB "
+            f"(cluster={sense.get('scheduler')}, pressure={sense.get('pressure')}); "
+            f"peak estimate ≈ {peak_mem:.0f} GB; disk ≈ {disk:.1f} GB."
+            + ((" Warnings: " + "; ".join(warnings)) if warnings else "")
         ),
     }
     return report

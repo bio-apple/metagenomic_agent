@@ -303,19 +303,19 @@ def deep_merge_config(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, 
 def summarize_heal_for_user(actions: list[str], errors: list[dict[str, Any]]) -> str:
     """Human-readable recovery summary — no raw stderr dump."""
     if not actions and not errors:
-        return "无自愈动作"
-    parts = [f"已计划自愈动作: {', '.join(actions) or 'none'}"]
+        return "No self-heal actions"
+    parts = [f"Planned self-heal actions: {', '.join(actions) or 'none'}"]
     classes = sorted({(e.get("classified") or "unknown") for e in errors})
     if classes:
-        parts.append(f"错误类别: {', '.join(classes)}")
+        parts.append(f"Error classes: {', '.join(classes)}")
     friendly = [e.get("user_message") for e in errors if e.get("user_message")]
     if friendly:
-        parts.append("说明: " + friendly[0])
+        parts.append("Note: " + friendly[0])
     digest = summarize_error_logs(errors)
     if digest and digest != "no errors":
         first = digest.splitlines()[0]
-        parts.append(f"日志摘要: {first}")
-    return "；".join(parts)
+        parts.append(f"Log summary: {first}")
+    return "; ".join(parts)
 
 
 def patch_workflow_params_on_heal(
