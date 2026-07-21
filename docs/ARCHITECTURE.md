@@ -12,6 +12,8 @@
 
 ## 编排主链
 
+Graphical abstract（仓库 README）：[`docs/figures/overview.svg`](figures/overview.svg)。
+
 ```
 parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
   → planner → export_dag(+HITL) → workflow → contract → HITL
