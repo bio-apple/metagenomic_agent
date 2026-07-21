@@ -1,14 +1,18 @@
+# This CITATION.cff file was generated following Citation File Format 1.2.0
+# https://citation-file-format.github.io/
+#
+# Manuscript draft (full Application Note text for reviewers):
+# https://github.com/bio-apple/metagenomic_agent/blob/main/docs/manuscript/application_note.md
+
 cff-version: 1.2.0
-title: "Metagenomic Agent"
-message: "If you use this software, please cite it using these metadata."
+message: >-
+  If you use Metagenomic Agent, please cite this software using the metadata below.
+  Reviewers and readers can obtain the complete Application Note manuscript draft at
+  https://github.com/bio-apple/metagenomic_agent/blob/main/docs/manuscript/application_note.md
 type: software
+title: "Metagenomic Agent"
 authors:
   - name: "bio-apple contributors"
-repository-code: "https://github.com/bio-apple/metagenomic_agent"
-url: "https://github.com/bio-apple/metagenomic_agent"
-license: MIT
-version: "0.25.1"
-date-released: "2026-07-21"
 abstract: >-
   Open-source multi-agent platform for shotgun metagenomics: research-question
   planning, container-sandboxed tool execution, human-in-the-loop safety gates,
@@ -19,4 +23,50 @@ keywords:
   - bioinformatics
   - reproducibility
   - human-in-the-loop
+  - shotgun metagenomics
   - langgraph
+license: MIT
+version: "0.25.1"
+date-released: "2026-07-21"
+repository-code: "https://github.com/bio-apple/metagenomic_agent"
+url: "https://github.com/bio-apple/metagenomic_agent"
+identifiers:
+  - type: url
+    value: "https://github.com/bio-apple/metagenomic_agent"
+    description: "Source code repository"
+  - type: url
+    value: "https://github.com/bio-apple/metagenomic_agent/blob/main/docs/manuscript/application_note.md"
+    description: "Application Note manuscript draft (full text for reviewers)"
+preferred-citation:
+  type: unpublished
+  title: >-
+    Metagenomic Agent: multi-agent planning, sandboxed execution, and
+    evidence-grounded reporting for shotgun metagenomics
+  authors:
+    - name: "bio-apple contributors"
+  year: 2026
+  url: "https://github.com/bio-apple/metagenomic_agent/blob/main/docs/manuscript/application_note.md"
+  notes: >-
+    Application Note / Software article draft. Cite this unpublished manuscript
+    together with the software version in CITATION.cff until a journal DOI is available.
+  identifiers:
+    - type: url
+      value: "https://github.com/bio-apple/metagenomic_agent/blob/main/docs/manuscript/application_note.md"
+      description: "Full manuscript draft in the repository"
+references:
+  - type: software
+    title: "Metagenomic Agent source code"
+    authors:
+      - name: "bio-apple contributors"
+    version: "0.25.1"
+    url: "https://github.com/bio-apple/metagenomic_agent"
+    license: MIT
+  - type: unpublished
+    title: >-
+      Metagenomic Agent: multi-agent planning, sandboxed execution, and
+      evidence-grounded reporting for shotgun metagenomics (Application Note draft)
+    authors:
+      - name: "bio-apple contributors"
+    year: 2026
+    url: "https://github.com/bio-apple/metagenomic_agent/blob/main/docs/manuscript/application_note.md"
+    notes: "Complete manuscript draft for peer review and editorial assessment"
