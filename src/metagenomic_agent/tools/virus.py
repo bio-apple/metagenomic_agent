@@ -80,11 +80,75 @@ def run_checkv(viral_fasta: str, outdir: Path, ctx: ToolContext, sample_id: str)
     return {"checkv_tsv": str(quality), "n_contigs": max(0, len(quality.read_text().splitlines()) - 1), "tool": "checkv"}
 
 
+def run_genomad(contigs: str, outdir: Path, ctx: ToolContext, sample_id: str) -> dict[str, Any]:
+    """geNomad virus/plasmid identification (benchmark-informed primary caller)."""
+    outdir.mkdir(parents=True, exist_ok=True)
+    summary = outdir / f"{sample_id}.genomad.tsv"
+    fa = outdir / f"{sample_id}.genomad.viral.fa"
+    if ctx.mode == "mock":
+        summary.write_text(
+            "seq_name\tvirus_score\tplasmid_score\n"
+            f"{sample_id}_contig_1\t0.92\t0.05\n",
+            encoding="utf-8",
+        )
+        fa.write_text(f">{sample_id}_genomad_viral_1\n{'ATGC' * 200}\n", encoding="utf-8")
+        return {
+            "genomad_tsv": str(summary),
+            "viral_fasta": str(fa),
+            "n_viral": 1,
+            "tool": "genomad",
+        }
+
+    if ctx.mode in {"local", "conda"} and ctx.which("genomad"):
+        ctx.run_tool(
+            "genomad",
+            ["genomad", "end-to-end", contigs, str(outdir / "genomad_out"), "--threads", str(ctx.threads)],
+            check=False,
+        )
+    else:
+        vols = {str(Path(contigs).parent): "/data", str(outdir): "/outdir"}
+        inner = (
+            f"genomad end-to-end /data/{Path(contigs).name} /outdir/genomad_out "
+            f"--threads {ctx.threads}"
+        )
+        ctx.run_docker("genomad", inner, vols)
+    if not summary.exists():
+        summary.write_text("seq_name\tvirus_score\n", encoding="utf-8")
+    if not fa.exists():
+        fa.write_text("", encoding="utf-8")
+    n = max(0, len(summary.read_text(encoding="utf-8").splitlines()) - 1)
+    return {"genomad_tsv": str(summary), "viral_fasta": str(fa), "n_viral": n, "tool": "genomad"}
+
+
 def run_virus_suite(contigs: str, outdir: Path, ctx: ToolContext, sample_id: str) -> dict[str, Any]:
+    """Multi-tool virus ID (VirSorter2 + geNomad) → CheckV — Wu et al. 2024 informed."""
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
     vs = run_virsorter2(contigs, outdir / "virsorter2", ctx, sample_id)
-    viral_fa = vs.get("viral_fasta")
-    if not viral_fa or not Path(viral_fa).exists():
-        # synthesize empty for checkv skip
-        return {**vs, "checkv": {"skipped": True, "reason": "no viral fasta"}}
+    gm = run_genomad(contigs, outdir / "genomad", ctx, sample_id)
+    # Prefer union of viral fastas for CheckV
+    viral_fa = vs.get("viral_fasta") or gm.get("viral_fasta")
+    if gm.get("viral_fasta") and Path(str(gm["viral_fasta"])).exists() and Path(str(gm["viral_fasta"])).stat().st_size > 0:
+        if vs.get("viral_fasta") and Path(str(vs["viral_fasta"])).exists():
+            merged = outdir / f"{sample_id}.viral_merged.fa"
+            parts = []
+            for p in (vs["viral_fasta"], gm["viral_fasta"]):
+                parts.append(Path(p).read_text(encoding="utf-8", errors="ignore"))
+            merged.write_text("".join(parts), encoding="utf-8")
+            viral_fa = str(merged)
+        else:
+            viral_fa = gm["viral_fasta"]
+    consensus = {
+        "callers": ["virsorter2", "genomad"],
+        "n_virsorter2": vs.get("n_viral", 0),
+        "n_genomad": gm.get("n_viral", 0),
+        "n_union_proxy": int(vs.get("n_viral") or 0) + int(gm.get("n_viral") or 0),
+        "note": "Multi-caller suite; biome-specific performance varies (Wu et al. 2024).",
+    }
+    (outdir / "virus_callers.json").write_text(
+        __import__("json").dumps(consensus, indent=2), encoding="utf-8"
+    )
+    if not viral_fa or not Path(viral_fa).exists() or Path(viral_fa).stat().st_size == 0:
+        return {**vs, "genomad": gm, "checkv": {"skipped": True, "reason": "no viral fasta"}, "consensus": consensus}
     cv = run_checkv(str(viral_fa), outdir / "checkv", ctx, sample_id)
-    return {**vs, "checkv": cv}
+    return {**vs, "genomad": gm, "checkv": cv, "consensus": consensus}

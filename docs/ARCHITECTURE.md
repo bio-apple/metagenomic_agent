@@ -2,7 +2,7 @@
 
 Metagenomic Agent is a **scientific control plane** for shotgun metagenomics: it plans analyses from a research question, executes community tools in sandboxes, gates biology-altering decisions, grounds claims in tables, and emits reproducible reports.
 
-Companion: [USAGE.md](USAGE.md) · [DEPLOY_LINUX.md](DEPLOY_LINUX.md) · [database/README.md](../database/README.md) · [SELF_HEAL.md](SELF_HEAL.md) · graphical abstract [`figures/overview.svg`](figures/overview.svg).
+Companion: [USAGE.md](USAGE.md) · [DEPLOY_LINUX.md](DEPLOY_LINUX.md) · [database/README.md](../database/README.md) · [SELF_HEAL.md](SELF_HEAL.md) · [LITERATURE.md](LITERATURE.md) · [MAG_PROTOCOL.md](MAG_PROTOCOL.md) · graphical abstract [`figures/overview.svg`](figures/overview.svg).
 
 ## Scope
 

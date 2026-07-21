@@ -102,21 +102,113 @@
       ]
     },
     {
-      "id": "mag_qc_gate",
-      "title": "MAG QC gating (CheckM2 → GTDB-Tk / Bakta)",
-      "tags": ["mag", "checkm2", "gtdbtk", "bakta", "completeness"],
-      "triggers": ["mag", "bin", "checkm", "gtdb", "bakta", "组装", "assembly"],
+      "id": "fecal_functional_annotation",
+      "title": "Human fecal metagenomes — gene-centric functional annotation (Treiber 2020)",
+      "tags": ["fecal", "stool", "diamond", "functional", "humann", "e-value", "read length"],
+      "triggers": ["fecal", "stool", "gut function", "diamond", "functional annotation", "gene-centric", "humann"],
       "steps": [
-        "Assemble (MEGAHIT/metaSPAdes) → bin (MetaBAT2/MaxBin2)",
-        "CheckM2: compute completeness & contamination",
+        "Prefer gene-centric mapping (DIAMOND blastx / HUMAnN) over assemble-then-annotate when community function must not be biased to abundant taxa",
+        "Library: size-select to enable longer merged PE reads when possible",
+        "Reads: longer reads improve detection; merge PE when insert size allows",
+        "DIAMOND: use curated/custom protein DB when available; apply strict e-value (e.g. ≤1e-5) for high-confidence hits",
+        "Report sequencing depth sufficiency; avoid over-claiming rare pathways at low depth",
+        "Post: summarize KEGG/eggNOG/CAZy; bind claims to program tables"
+      ],
+      "checklist": [
+        "paths.diamond_db or HUMAnN DB configured",
+        "e-value / identity thresholds recorded in Methods",
+        "Host DNA removed for host-associated stool"
+      ],
+      "citations": ["Treiber et al. 2020 BMC Biology — pre/post-sequencing recommendations"]
+    },
+    {
+      "id": "env_skin_prep",
+      "title": "Skin / early-life skin microbiome preprocessing",
+      "tags": ["skin", "dermal", "early-life", "infant", "cutaneous"],
+      "triggers": ["skin", "dermal", "cutaneous", "early-life skin", "infant skin"],
+      "steps": [
+        "Document body site, age, and sampling swab protocol (early-life catalogs are site-specific)",
+        "QC/trim; expect lower biomass — watch contamination and negative controls",
+        "Optional human host depletion; do not over-filter low-biomass microbial signal",
+        "Taxonomy with broad DB; MAG recovery when depth supports genome catalog goals",
+        "Interpret with skin genome catalogs (e.g. early-life skin MAG resources) rather than gut-only priors"
+      ],
+      "qc_gates": {"Q30_min_pct": 75, "read_retention_min": 0.15},
+      "pitfalls": ["Kit/reagent contaminants dominate low-biomass skin swabs", "Gut marker taxa are not default priors"]
+    },
+    {
+      "id": "env_air_prep",
+      "title": "Air / aerosol metagenomics (agricultural and environmental)",
+      "tags": ["air", "aerosol", "airborne", "agricultural", "spore", "pathogen"],
+      "triggers": ["air", "aerosol", "airborne", "atmospheric", "spore", "agricultural air"],
+      "steps": [
+        "Record filter type, flow rate, duration, weather, and crop/season metadata",
+        "Expect ultra-low biomass — mandatory negatives; DNA recovery and shotgun classification are feasible but noisy",
+        "Taxonomy to species when markers allow; track plant pathogens dynamically across season",
+        "Correlate pathogen spore proxies with weather covariates when metadata present",
+        "Avoid gut-centric interpretation of airborne communities"
+      ],
+      "qc_gates": {"Q30_min_pct": 70, "read_retention_min": 0.1},
+      "pitfalls": ["Contamination and stochastic dropout", "Weather-driven batch structure"]
+    },
+    {
+      "id": "env_mycobiome",
+      "title": "Gut mycobiome / fungal shotgun analysis",
+      "tags": ["fungi", "mycobiome", "eukaryote", "yeast", "mold"],
+      "triggers": ["fungi", "fungal", "mycobiome", "yeast", "candida", "aspergillus", "cgf"],
+      "steps": [
+        "State endpoint: bacterial metagenome vs dedicated mycobiome (fungi are often <1% of shotgun reads)",
+        "Use eukaryotic-aware DBs / fungal genome catalogs (e.g. cultivated gut fungi resources) when available",
+        "Do not interpret absence of fungi as biological absence at shallow depth",
+        "For disease association, validate fungal signatures independently when possible"
+      ],
+      "pitfalls": ["Bacterial-biased DBs under-call fungi", "ITS amplicon may be preferred for dedicated mycobiome surveys"]
+    },
+    {
+      "id": "clinical_respiratory_mngs",
+      "title": "Clinical respiratory mNGS — research orchestration SOP",
+      "tags": ["clinical", "respiratory", "mngs", "virus", "swab", "bal"],
+      "triggers": ["respiratory", "nasopharyngeal", "bronchoalveolar", "bal", "clinical mngs", "mNGS"],
+      "steps": [
+        "RESEARCH USE ONLY — not a certified IVD; document institutional ethics and validation status",
+        "Sample types: upper respiratory swab / BAL; track LoD, controls, and turnaround goals",
+        "Host depletion + viral-enriched or bulk metagenomics per study design",
+        "Taxonomy/virus detection with dual DNA/RNA awareness; retain discrepancy adjudication workflow",
+        "For novel virus discovery, enable de novo / translated-nucleotide style search when configured",
+        "Report sensitivity/specificity only when local validation exists"
+      ],
+      "pitfalls": ["Do not claim clinical diagnosis from research agent alone", "Database incompleteness for divergent viruses"]
+    },
+    {
+      "id": "virus_identification_benchmark",
+      "title": "Virus identification — multi-tool practice (benchmark-informed)",
+      "tags": ["virus", "virome", "virsorter", "genomad", "checkv", "biome"],
+      "triggers": ["virus", "virome", "phage", "vlp", "viral discovery", "genomad"],
+      "steps": [
+        "Prefer ≥1 primary viral caller (VirSorter2 and/or geNomad) + CheckV quality",
+        "Biome matters: tool performance differs across gut/ocean/soil/air — disclose tools and cutoffs",
+        "Early-life gut virome: consider VLP-enriched vs bulk; age metadata improves interpretation",
+        "Do not treat single-tool hits as genome-quality viruses without CheckV / manual review"
+      ],
+      "citations": ["Wu et al. 2024 virus ID benchmarking; Zeng et al. 2024 ELGV"]
+    },
+    {
+      "id": "mag_qc_gate",
+      "title": "MAG QC gating (DAS Tool → CheckM2/BUSCO → GTDB-Tk / Bakta)",
+      "tags": ["mag", "checkm2", "busco", "das_tool", "gtdbtk", "bakta", "completeness", "vamb"],
+      "triggers": ["mag", "bin", "checkm", "gtdb", "bakta", "das", "busco", "组装", "assembly"],
+      "steps": [
+        "Assemble (MEGAHIT/metaSPAdes/Flye) → bin (MetaBAT2/MaxBin2/CONCOCT/VAMB)",
+        "Refine with DAS Tool consensus across binners",
+        "CheckM2 + BUSCO: completeness & contamination / ortholog completeness",
         "Gate: medium ≥50% comp / ≤10% contam; high ≥90% / ≤5%",
-        "GTDB-Tk classify_wf on passed bins",
-        "Optional Bakta annotation on high/medium quality MAGs"
+        "GTDB-Tk classify_wf on passed bins; optional Bakta + ARG profiling on MAGs"
       ],
       "qc_gates": {
         "medium_quality": {"completeness_min": 50, "contamination_max": 10},
         "high_quality": {"completeness_min": 90, "contamination_max": 5}
-      }
+      },
+      "citations": ["Banerjee et al. 2024 STAR Protocols MAG protocol"]
     },
     {
       "id": "diversity_function_report",

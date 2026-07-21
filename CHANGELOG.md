@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.26.0
+
+- Literature-driven upgrade from curated `paper/` corpus: fecal DIAMOND/MEGAN-lite, AMRFinderPlus+VFDB wrappers, geNomad multi-caller virus suite
+- New SOPs: skin, air, mycobiome, clinical respiratory (research), fecal functional annotation, virus benchmark practice
+- Docs: `docs/LITERATURE.md`, `docs/MAG_PROTOCOL.md`, `paper/README.md` (PDFs gitignored)
+
 ## 0.25.1
 
 - Public documentation curated for journal submission (English-only; removed internal design drafts and redundant mirrors)

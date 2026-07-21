@@ -26,7 +26,7 @@ keywords:
   - shotgun metagenomics
   - langgraph
 license: MIT
-version: "0.25.1"
+version: "0.26.0"
 date-released: "2026-07-21"
 repository-code: "https://github.com/bio-apple/metagenomic_agent"
 url: "https://github.com/bio-apple/metagenomic_agent"
@@ -58,7 +58,7 @@ references:
     title: "Metagenomic Agent source code"
     authors:
       - name: "bio-apple contributors"
-    version: "0.25.1"
+    version: "0.26.0"
     url: "https://github.com/bio-apple/metagenomic_agent"
     license: MIT
   - type: unpublished

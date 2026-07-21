@@ -65,6 +65,10 @@ def retrieve_tool_manuals(query: str, tool: str | None = None, top_k: int = 3) -
         "soil": ["megahit", "checkm2", "gtdbtk"],
         "ocean": ["kraken2", "checkm2"],
         "wastewater": ["kraken2", "megahit", "checkm2", "rgi"],
+        "air": ["kraken2", "diamond"],
+        "skin": ["kraken2", "checkm2"],
+        "mycobiome": ["kraken2", "metaphlan", "diamond"],
+        "respiratory": ["kraken2", "centrifuge"],
         "general": ["kraken2", "checkm2", "gtdbtk", "bakta"],
     }.get(env, ["kraken2", "checkm2"])
     out: list[dict[str, Any]] = []
@@ -112,6 +116,14 @@ def detect_sample_environment(query: str) -> str:
         return "soil"
     if any(k in q for k in ("wastewater", "sewage", "wwtp", "activated sludge", "污水", "废水")):
         return "wastewater"
+    if any(k in q for k in ("air", "aerosol", "airborne", "atmospheric", "spore trap")):
+        return "air"
+    if any(k in q for k in ("skin", "dermal", "cutaneous", "皮肤")):
+        return "skin"
+    if any(k in q for k in ("fungi", "fungal", "mycobiome", "yeast", "真菌")):
+        return "mycobiome"
+    if any(k in q for k in ("respiratory", "nasopharyngeal", "bronchoalveolar", "bal ")):
+        return "respiratory"
     if any(k in q for k in ("gut", "stool", "fecal", "肠道", "ibd", "obes", "host", "clinical")):
         return "gut"
     return "general"

@@ -8,28 +8,32 @@
       "category": "taxonomy",
       "docs": [
         {"title": "Kraken 2 GitHub / Manual", "url": "https://github.com/DerrickWood/kraken2/wiki/Manual"},
-        {"title": "Kraken 2 paper", "url": "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1891-0"}
+        {"title": "Kraken 2 paper", "url": "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1891-0"},
+        {"title": "Kraken software suite protocols (Lu et al. 2022)", "url": "https://github.com/jenniferlu717/KrakenTools"}
       ],
-      "tags": ["taxonomy", "k-mer", "shotgun", "virus_screen", "hpc"],
+      "tags": ["taxonomy", "k-mer", "shotgun", "virus_screen", "hpc", "clinical_pathogen"],
       "when_to_use": [
         "Large cohort shotgun taxonomic profiling",
         "Fast k-mer screening before marker-gene tools",
-        "Viral / custom DB screens when DB is indexed"
+        "Viral / custom DB screens when DB is indexed",
+        "Clinical-style pathogen screen protocols (suite scripts; research use)"
       ],
       "key_params": {
-        "--db": "Path to Kraken 2 database (must contain hash.k2d, opts.k2d, taxo.k2d)",
+        "--db": "Path to Kraken 2 database (must contain hash.k2d, opts.k2d, taxo.k2d); pin DB version in Methods",
         "--threads / -t": "CPU threads (1–256)",
-        "--confidence": "Minimum confidence (0–1); start 0.05–0.1 for metagenomes",
+        "--confidence": "Minimum confidence (0–1); start 0.05–0.1 for metagenomes; raise for clinical screens",
         "--memory-mapping": "Prefer for multi-sample runs sharing one DB",
-        "--report": "Standard Kraken report for Bracken / MultiQC"
+        "--report": "Standard Kraken report for Bracken / MultiQC",
+        "Bracken -r": "Read length expected by Bracken (match library / merge strategy)"
       },
       "pitfalls": [
         "Unindexed or incomplete DB → missing_db failures",
         "Results are database-dependent; do not over-interpret species without markers",
-        "Pair with MetaPhlAn for higher-precision gut profiles when compute allows"
+        "Pair with MetaPhlAn for higher-precision gut profiles when compute allows",
+        "False positives rise with low confidence / incomplete host depletion"
       ],
       "resource_hints": {"threads": 8, "memory_gb": 32, "notes": "Standard DB may need 30–100+ GB RAM"},
-      "sop_refs": ["assay_shotgun_default", "env_gut_host_filter"]
+      "sop_refs": ["assay_shotgun_default", "env_gut_host_filter", "clinical_respiratory_mngs"]
     },
     {
       "id": "gtdbtk",
@@ -144,6 +148,47 @@
       "pitfalls": ["Prefer tool-specific adapter files; verify PE vs SE mode"],
       "resource_hints": {"threads": 8, "memory_gb": 8},
       "sop_refs": ["env_soil_prep", "env_ocean_prep"]
+    },
+    {
+      "id": "amrfinderplus",
+      "name": "AMRFinderPlus",
+      "category": "resistance",
+      "docs": [
+        {"title": "AMRFinderPlus", "url": "https://github.com/ncbi/amr/wiki"},
+        {"title": "Feldgarden et al. 2021", "url": "https://doi.org/10.1038/s41598-021-91456-0"}
+      ],
+      "tags": ["amr", "virulence", "stress", "ncbi", "reference_gene_catalog"],
+      "when_to_use": [
+        "Detect AMR, stress, metal, biocide, and virulence genes from assemblies",
+        "Link resistome to virulence via Reference Gene Catalog classes"
+      ],
+      "key_params": {"--plus": "Include stress/virulence/plus genes", "-n": "nucleotide assembly", "-p": "protein sequences"},
+      "pitfalls": ["Requires up-to-date AMRFinder database download", "Point mutations are species-aware — check organism flag"],
+      "resource_hints": {"threads": 4, "memory_gb": 8},
+      "sop_refs": ["env_wastewater_prep", "mag_qc_gate"]
+    },
+    {
+      "id": "diamond",
+      "name": "DIAMOND",
+      "category": "function",
+      "docs": [
+        {"title": "DIAMOND", "url": "https://github.com/bbuchfink/diamond"},
+        {"title": "DIAMOND+MEGAN protocol", "url": "https://doi.org/10.1002/cpz1.59"},
+        {"title": "Treiber et al. 2020 fecal functional annotation", "url": "https://doi.org/10.1186/s12915-020-00775-7"}
+      ],
+      "tags": ["blastx", "function", "megan", "fecal", "long-read"],
+      "when_to_use": [
+        "Gene-centric functional profiling without abundance bias of assembly-first annotation",
+        "Short or long reads / contigs against protein DB then MEGAN-style binning"
+      ],
+      "key_params": {
+        "--evalue": "Strict thresholds (e.g. 1e-5) improve precision (Treiber 2020)",
+        "--max-target-seqs": "1 for primary hit tables",
+        "DB": "paths.diamond_db — prefer curated/custom when targeting known genes"
+      },
+      "pitfalls": ["Assemble-then-annotate biases toward abundant taxa", "Empty profile if diamond_db unset"],
+      "resource_hints": {"threads": 16, "memory_gb": 32},
+      "sop_refs": ["fecal_functional_annotation"]
     }
   ]
 }

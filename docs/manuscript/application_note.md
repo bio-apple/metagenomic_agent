@@ -1,7 +1,7 @@
 # Metagenomic Agent: multi-agent planning, sandboxed execution, and evidence-grounded reporting for shotgun metagenomics
 
 **Manuscript type:** Application Note / Software  
-**Software version:** 0.25.1  
+**Software version:** 0.26.0  
 **Figure:** [`docs/figures/overview.svg`](../figures/overview.svg)
 
 ---

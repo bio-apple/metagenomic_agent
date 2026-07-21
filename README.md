@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![CI](https://img.shields.io/badge/tests-passing-0B6E4F.svg)](tests/)
-[![Version](https://img.shields.io/badge/version-0.25.1-0B6E4F.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.26.0-0B6E4F.svg)](CHANGELOG.md)
 [![Cite](https://img.shields.io/badge/citation-CITATION.cff-0B6E4F.svg)](CITATION.cff)
 
 **Vision.** Turn shotgun metagenomics from a brittle, expert-only tool chain into a **trustworthy scientific agent**: given a research question and sequencing reads, the system plans the analysis, runs community tools in sandboxes, asks for human confirmation when biology or cost is at stake, grounds every claim in program-generated tables, and delivers an audited, publication-ready report.
@@ -88,6 +88,9 @@ meta-agent run -i /data/fastq -o /data/out --mode docker \
 | [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md) | Large-memory Linux / HPC deployment |
 | [database/README.md](database/README.md) | Reference database build |
 | [docs/manuscript/application_note.md](docs/manuscript/application_note.md) | Application Note manuscript (complete draft) |
+| [docs/LITERATURE.md](docs/LITERATURE.md) | Literature → software mapping |
+| [docs/MAG_PROTOCOL.md](docs/MAG_PROTOCOL.md) | MAG construction protocol |
+| [paper/README.md](paper/README.md) | Curated paper corpus index |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ## Citation

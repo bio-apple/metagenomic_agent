@@ -21,3 +21,6 @@ workdir/
 !tests/fixtures/fastq/*.fastq
 !examples/demo_data/fastq/*.fastq
 .DS_Store
+# Local literature PDFs (large); keep paper/README.md tracked
+paper/*.pdf
+paper/**/*.pdf

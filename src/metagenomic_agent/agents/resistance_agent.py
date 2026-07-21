@@ -1,4 +1,7 @@
-"""Resistance / Virulence Agent — CARD/RGI, DeepARG, ResFinder, AMRFinderPlus, VFDB."""
+"""Resistance / Virulence Agent — CARD/RGI, DeepARG, ResFinder, AMRFinderPlus, VFDB.
+
+Informed by Feldgarden et al. 2021 (AMRFinderPlus / Reference Gene Catalog).
+"""
 
 from __future__ import annotations
 
@@ -10,33 +13,6 @@ from metagenomic_agent.knowledge.microbiome_kg import explain_microbe
 from metagenomic_agent.knowledge.reasoning_log import log_decision
 from metagenomic_agent.tools import arg as arg_tools
 from metagenomic_agent.tools.context import ToolContext
-
-
-def _mock_resfinder(outdir: Path, sample_id: str) -> dict[str, Any]:
-    path = outdir / f"{sample_id}.resfinder.tsv"
-    path.write_text(
-        "Resistance gene\tIdentity\tPhenotype\nblaCTX-M\t99.2\tBeta-lactam resistance\n",
-        encoding="utf-8",
-    )
-    return {"resfinder_tsv": str(path), "n_hits": 1, "tool": "resfinder"}
-
-
-def _mock_amrfinder(outdir: Path, sample_id: str) -> dict[str, Any]:
-    path = outdir / f"{sample_id}.amrfinder.tsv"
-    path.write_text(
-        "Gene symbol\tElement type\tSubtype\nblaCTX-M\tAMR\tBeta-lactam\n",
-        encoding="utf-8",
-    )
-    return {"amrfinder_tsv": str(path), "n_hits": 1, "tool": "amrfinderplus"}
-
-
-def _mock_vfdb(outdir: Path, sample_id: str) -> dict[str, Any]:
-    path = outdir / f"{sample_id}.vfdb.tsv"
-    path.write_text(
-        "VFG\tGene\tProduct\nVFG000001\tfimH\ttype 1 fimbrial adhesin\n",
-        encoding="utf-8",
-    )
-    return {"vfdb_tsv": str(path), "n_hits": 1, "tool": "vfdb", "database": "VFDB"}
 
 
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -53,18 +29,26 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         sdir = outdir / sid
         sdir.mkdir(parents=True, exist_ok=True)
         contigs = (asm.get(sid) or {}).get("contigs")
+        # Without contigs, still allow read-based DeepARG; AMRFinder needs nucleotide/protein
+        if not contigs:
+            # Use QC clean reads path placeholder for mock contig-less runs
+            contigs = (qc.get(sid) or {}).get("nonhost_r1") or sample.get("r1")
         suite = arg_tools.run_arg_suite(sample, qc.get(sid, {}), sdir / "arg", ctx, contigs=contigs)
-        # ResFinder / AMRFinder / VFDB (mock tables when binaries absent)
-        suite["resfinder"] = _mock_resfinder(sdir, sid)
-        suite["amrfinder"] = _mock_amrfinder(sdir, sid)
-        suite["vfdb"] = _mock_vfdb(sdir, sid)
+        # Ensure catalog tools always present (suite embeds them when contigs set)
+        if "amrfinder" not in suite and contigs:
+            suite["amrfinder"] = arg_tools.run_amrfinderplus(str(contigs), sdir / "amrfinder", ctx, sid)
+        if "resfinder" not in suite and contigs:
+            suite["resfinder"] = arg_tools.run_resfinder(str(contigs), sdir / "resfinder", ctx, sid)
+        if "vfdb" not in suite and contigs:
+            suite["vfdb"] = arg_tools.run_vfdb_blast(str(contigs), sdir / "vfdb", ctx, sid)
         per_sample[sid] = suite
+        amr_n = (suite.get("amrfinder") or {}).get("n_hits") or suite.get("n_hits") or 0
+        vf_n = (suite.get("vfdb") or {}).get("n_hits") or 0
         implications.append(
-            f"{sid}: Detected ARG e.g. blaCTX-M — Potential implication: Beta-lactam resistance; "
-            f"VFDB hits for adhesins (see {sdir})"
+            f"{sid}: AMR/virulence hits amrfinder={amr_n} vfdb={vf_n} "
+            f"(Reference Gene Catalog–style reporting; see {sdir})"
         )
 
-    # KG grounding for top ARG-linked taxa
     kg_notes = [explain_microbe("Escherichia"), explain_microbe("Klebsiella")]
     report = {
         "role": "resistance_virulence",
@@ -72,17 +56,20 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "implications": implications,
         "kg_notes": kg_notes,
         "tools": ["rgi", "deeparg", "resfinder", "amrfinderplus", "vfdb"],
+        "literature": "Feldgarden et al. 2021 Sci Rep — AMRFinderPlus / Reference Gene Catalog",
     }
     (outdir / "resistance_report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     md = ["# Resistance / Virulence Report", ""] + [f"- {x}" for x in implications]
     md.append("")
     md.append("## Tools: CARD/RGI · DeepARG · ResFinder · AMRFinderPlus · VFDB")
+    md.append("")
+    md.append(f"_Literature: {report['literature']}_")
     (outdir / "resistance_report.md").write_text("\n".join(md), encoding="utf-8")
 
     reason = log_decision(
         state,
         "resistance",
-        "Ran ARG + virulence suite",
+        "Ran ARG + virulence suite (AMRFinderPlus catalog)",
         f"samples={len(per_sample)}; tools=rgi/deeparg/resfinder/amrfinder/vfdb",
     )
     arts = {**(state.get("artifacts") or {}), **(reason.get("artifacts") or {}), "resistance": report}

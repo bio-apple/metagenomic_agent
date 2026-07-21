@@ -49,6 +49,16 @@ ASSAY_CUES = {
     "long-read": ("long_read_metagenomics", "Prefer Flye (+ MetaBAT2/VAMB) for MAG recovery."),
     "nanopore": ("long_read_metagenomics", "Prefer Flye (+ MetaBAT2/VAMB) for MAG recovery."),
     "pacbio": ("long_read_metagenomics", "Prefer Flye (+ MetaBAT2/VAMB) for MAG recovery."),
+    "mycobiome": ("mycobiome_shotgun", "Fungal-aware databases/catalogs; shallow depth undercalls fungi."),
+    "fungal": ("mycobiome_shotgun", "Fungal-aware databases/catalogs; shallow depth undercalls fungi."),
+    "respiratory": (
+        "clinical_respiratory_mngs",
+        "Research mNGS path for respiratory viruses; not a certified IVD.",
+    ),
+    "mngs": (
+        "clinical_respiratory_mngs",
+        "Research mNGS path; require local validation before clinical claims.",
+    ),
 }
 
 
