@@ -1,20 +1,22 @@
 # Linux 大内存服务器部署指南（RAM ≥ 256 GB）
 
-面向单机或 HPC 登录/计算节点：内存 **≥256 GB**，运行 Metagenomic Research Agent（v0.20+）生产分析。默认配置 `linux.max_memory_gb: 256` 会封顶资源，大内存机必须用下文覆盖配置抬高上限。
+面向单机或 HPC 登录/计算节点：内存 **≥256 GB**，运行 Metagenomic Research Agent（v0.20+）生产分析。`默认配置 linux.max_memory_gb: 256 会封顶资源，大内存机必须用下文覆盖配置抬高`上限。
 
 配套文件：[config/linux_server_gt256gb.yaml](../config/linux_server_gt256gb.yaml)
 
 ## 1. 目标拓扑
 
-| 组件 | 推荐 |
-|------|------|
-| OS | Ubuntu 22.04+/RHEL 8+，x86_64 |
-| 内存 | ≥256 GB（建议 512 GB+ 做组装/binning） |
-| CPU | ≥32 物理核；配置线程不超过 `nproc - 4` |
-| 磁盘 | 数据盘 ≥4 TB NVMe/并行文件系统；库与结果分盘 |
-| 容器 | **Apptainer**（HPC）或 Docker（单机 root） |
-| 调度 | 单机 `local`；集群 `slurm` / `pbs` / `sge` |
-| Python | 3.10–3.12，独立 venv |
+
+| 组件     | 推荐                                    |
+| ------ | ------------------------------------- |
+| OS     | Ubuntu 22.04+/RHEL 8+，x86_64          |
+| 内存     | ≥256 GB（建议 512 GB+ 做组装/binning）       |
+| CPU    | ≥32 物理核；配置线程不超过 `nproc - 4`           |
+| 磁盘     | 数据盘 ≥4 TB NVMe/并行文件系统；库与结果分盘          |
+| 容器     | **Apptainer**（HPC）或 Docker（单机 root）   |
+| 调度     | 单机 `local`；集群 `slurm` / `pbs` / `sge` |
+| Python | 3.10–3.12，独立 venv                     |
+
 
 ```
 /data/raw/fastq          # 只读原始数据
@@ -59,23 +61,27 @@ apptainer --version || singularity --version
 
 本项目**不要**把 Kraken2/MEGAHIT 等装进 Agent 的 Python 环境。环境分两层：
 
-| 层 | 装什么 | 推荐方式 |
-|----|--------|----------|
-| **A. 编排层** | `meta-agent`、LangGraph、FastAPI… | Python **venv + pip** |
-| **B. 生信工具层** | fastp、Kraken2、MEGAHIT、CheckM2… | **Apptainer/Docker（BioContainers）** |
+
+| 层            | 装什么                             | 推荐方式                                |
+| ------------ | ------------------------------- | ----------------------------------- |
+| **A. 编排层**   | `meta-agent`、LangGraph、FastAPI… | Python **venv + pip**               |
+| **B. 生信工具层** | fastp、Kraken2、MEGAHIT、CheckM2…  | **Apptainer/Docker（BioContainers）** |
+
 
 ```
 venv (meta-agent) ──调度──► Apptainer/Docker 里的 biocontainers 工具
                          └── bind 挂载 /data、/ref、/results
 ```
 
-| `mode` | 工具从哪来 | 适用 |
-|--------|------------|------|
-| `mock` | 不跑真工具 | CI / 冒烟 |
-| `apptainer` | SIF（推荐 HPC） | 无 Docker root 的服务器 |
-| `docker` | BioContainers 镜像 | 单机有 Docker |
-| `conda` | 主机 conda env | 已有 bioconda 环境时 |
-| `local` | 主机 PATH 二进制 | 不推荐生产 |
+
+| `mode`      | 工具从哪来            | 适用                 |
+| ----------- | ---------------- | ------------------ |
+| `mock`      | 不跑真工具            | CI / 冒烟            |
+| `apptainer` | SIF（推荐 HPC）      | 无 Docker root 的服务器 |
+| `docker`    | BioContainers 镜像 | 单机有 Docker         |
+| `conda`     | 主机 conda env     | 已有 bioconda 环境时    |
+| `local`     | 主机 PATH 二进制      | 不推荐生产              |
+
 
 生产大内存机：**A 用 venv，B 用 `apptainer`（或 `docker`）**。
 
@@ -204,16 +210,28 @@ meta-agent run -i tests/fixtures/fastq -o /tmp/meta-smoke --mode mock --yes \
 
 ## 4. 参考库落地
 
-库路径必须存在且可被容器 bind-mount（Apptainer `--bind` / Docker `-v`）。详见 [database/README.md](../database/README.md)。
+**必须按 [database/README.md](../database/README.md) 构建**，不要只建空目录。摘要：
+
+```bash
+export DB_ROOT=/ref/databases
+bash scripts/build_databases.sh --layout
+# 宿主：bash scripts/build_databases.sh --host /path/to/hg38.fa
+# Kraken：设置 KRAKEN_TARBALL_URL 后 --kraken-download
+# MetaPhlAn：bash scripts/build_databases.sh --metaphlan
+# GTDB / eggNOG / DIAMOND / CARD：见 database/README.md §2.4–2.8
+bash scripts/build_databases.sh --check
+# 将 $DB_ROOT/PATHS.example.yaml 合并进 config/site.yaml → paths.*
+```
 
 | 配置键 | 建议绝对路径 | 备注 |
 |--------|--------------|------|
-| `paths.kraken2_db` | `/ref/databases/kraken2` | 标准库约数十 GB；大库放到最快盘 |
+| `paths.kraken2_db` | `/ref/databases/kraken_db` | 标准库约数十 GB；大库放到最快盘 |
 | `paths.gtdb` | `/ref/databases/gtdb` | GTDB-Tk 数据 |
-| `paths.metaphlan_db` | `/ref/databases/metaphlan` | |
+| `paths.metaphlan_db` | `/ref/databases/metaphlan_db` | |
 | `paths.host_index` | `/ref/databases/host/hg38` | Bowtie2 前缀 |
 | `paths.eggnog` | `/ref/databases/eggnog` | 功能注释 |
 
+库路径必须存在且可被容器 bind-mount（Apptainer `--bind` / Docker `-v`）。  
 生产前用 HITL 数据库门控确认：`hitl.require_database_confirm: true`（非 mock 且路径缺失会停）。
 
 ## 5. 大内存覆盖配置
@@ -227,18 +245,20 @@ cp config/linux_server_gt256gb.yaml config/site.yaml
 
 要点（已写在 `linux_server_gt256gb.yaml`）：
 
-| 键 | ≥256 GB 机建议 | 原因 |
-|----|----------------|------|
-| `mode` | `apptainer` 或 `docker` | 可复现，少踩主机依赖 |
-| `linux.memory_gb` | 240–400 | 单作业申报内存（留 OS/缓存） |
-| `linux.max_memory_gb` | **≥ 物理内存 − 32** | 否则 cluster sense 封在 256 |
-| `linux.threads` / `max_threads` | 32–64 / ≤ nproc−4 | 组装与分类并行 |
-| `linux.prefer_shm` | `true` | 加速 DB 热读 |
-| `pipeline.enable_assembly` | 按需 `true` | 大内存才适合 metaSPAdes |
-| `sandbox.prefer_container` | `true` | |
-| `apptainer.sif_dir` | `/scratch/$USER/containers` | 避免家目录配额打满 |
-| `hitl.auto_confirm` | 交互 `false`；批处理 `true` | 生产关键步骤确认 |
-| `hitl.mode` | 批处理 `sync`+`--yes`；服务 `async` | |
+
+| 键                               | ≥256 GB 机建议                   | 原因                      |
+| ------------------------------- | ----------------------------- | ----------------------- |
+| `mode`                          | `apptainer` 或 `docker`        | 可复现，少踩主机依赖              |
+| `linux.memory_gb`               | 240–400                       | 单作业申报内存（留 OS/缓存）        |
+| `linux.max_memory_gb`           | **≥ 物理内存 − 32**               | 否则 cluster sense 封在 256 |
+| `linux.threads` / `max_threads` | 32–64 / ≤ nproc−4             | 组装与分类并行                 |
+| `linux.prefer_shm`              | `true`                        | 加速 DB 热读                |
+| `pipeline.enable_assembly`      | 按需 `true`                     | 大内存才适合 metaSPAdes       |
+| `sandbox.prefer_container`      | `true`                        |                         |
+| `apptainer.sif_dir`             | `/scratch/$USER/containers`   | 避免家目录配额打满               |
+| `hitl.auto_confirm`             | 交互 `false`；批处理 `true`         | 生产关键步骤确认                |
+| `hitl.mode`                     | 批处理 `sync`+`--yes`；服务 `async` |                         |
+
 
 ## 6. 运行方式
 
@@ -317,39 +337,43 @@ curl -X POST http://服务器:8000/analyze -H 'Content-Type: application/json' -
 
 ## 7. 资源经验值（RAM ≥ 256 GB）
 
-| 阶段 | 线程 | 内存量级 | 备注 |
-|------|------|----------|------|
-| QC / host filter | 8–16 | 16–64 GB | |
-| Kraken2 标准库 | 16–32 | 80–120 GB | 大库可更高；优先本地盘/shm |
-| MEGAHIT | 24–48 | 64–200 GB | 默认组装器 |
-| metaSPAdes | 32–48 | **≥250 GB** | 仅大内存机开启 |
-| MetaBAT2 / CheckM2 | 16–32 | 64–128 GB | |
-| HUMAnN3 | 16–32 | 64–128 GB | `enable_humann` 按需 |
+
+| 阶段                 | 线程    | 内存量级        | 备注                 |
+| ------------------ | ----- | ----------- | ------------------ |
+| QC / host filter   | 8–16  | 16–64 GB    |                    |
+| Kraken2 标准库        | 16–32 | 80–120 GB   | 大库可更高；优先本地盘/shm    |
+| MEGAHIT            | 24–48 | 64–200 GB   | 默认组装器              |
+| metaSPAdes         | 32–48 | **≥250 GB** | 仅大内存机开启            |
+| MetaBAT2 / CheckM2 | 16–32 | 64–128 GB   |                    |
+| HUMAnN3            | 16–32 | 64–128 GB   | `enable_humann` 按需 |
+
 
 原则：**申报内存 = 峰值 × 1.1，且 ≤ 物理内存 − 32 GB**；多作业共节点时按队列策略再砍。
 
 ## 8. 生产检查清单
 
-1. `free -h` ≥ 256 GB；`linux.max_memory_gb` 已抬高  
-2. `paths.*` 绝对路径存在；非 mock 跑通数据库门控  
-3. Apptainer/Docker 能 pull BioContainers；`sif_dir` 在 scratch  
-4. 元数据含 `sample_id` + `group`  
-5. 首次队列作业用小队列（2–4 样本）验证后扩队列  
-6. 打开 `cache.enabled` / `cache.per_sample_assembly` 以便断点续跑  
-7. 关键步骤：交互关 `auto_confirm`；批处理 `--yes`；远程用 `hitl_mode=async`  
-8. 报告外发前确认 `confirm_report_publish`（可分享 vs 内部草稿）  
+1. `free -h` ≥ 256 GB；`linux.max_memory_gb` 已抬高
+2. `paths.*` 绝对路径存在；非 mock 跑通数据库门控
+3. Apptainer/Docker 能 pull BioContainers；`sif_dir` 在 scratch
+4. 元数据含 `sample_id` + `group`
+5. 首次队列作业用小队列（2–4 样本）验证后扩队列
+6. 打开 `cache.enabled` / `cache.per_sample_assembly` 以便断点续跑
+7. 关键步骤：交互关 `auto_confirm`；批处理 `--yes`；远程用 `hitl_mode=async`
+8. 报告外发前确认 `confirm_report_publish`（可分享 vs 内部草稿）
 9. 备份 `/results/*/reproducibility/` 与 `workflow/params.yaml`
 
 ## 9. 排障
 
-| 现象 | 处理 |
-|------|------|
-| 内存被封在 256 GB | 提高 `linux.max_memory_gb`，重跑 |
-| OOM / exit 137 | 降 `threads`；组装改 MEGAHIT；检查同节点抢占 |
-| Apptainer 找不到库 | bind 绝对路径；检查 SELinux/AppArmor |
-| 家目录满 | `APPTAINER_CACHEDIR` 指到 scratch |
-| HITL 卡住无 TTY | `--yes` 或 API `async` |
-| 文献 API 超时 | `literature.online: false` |
-| NFS 上 Kraken 极慢 | 库拷到本地/scratch 或 shm |
+
+| 现象              | 处理                              |
+| --------------- | ------------------------------- |
+| 内存被封在 256 GB    | 提高 `linux.max_memory_gb`，重跑     |
+| OOM / exit 137  | 降 `threads`；组装改 MEGAHIT；检查同节点抢占 |
+| Apptainer 找不到库  | bind 绝对路径；检查 SELinux/AppArmor   |
+| 家目录满            | `APPTAINER_CACHEDIR` 指到 scratch |
+| HITL 卡住无 TTY    | `--yes` 或 API `async`           |
+| 文献 API 超时       | `literature.online: false`      |
+| NFS 上 Kraken 极慢 | 库拷到本地/scratch 或 shm             |
+
 
 更细的 CLI/产物说明见 [USAGE.md](USAGE.md)。
