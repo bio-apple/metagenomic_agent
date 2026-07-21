@@ -1,62 +1,85 @@
-# Metagenomic Agent
+# Metagenomic Research Agent
 
-基于 **LangGraph** 的宏基因组生信 Agent（MVP）：自然语言需求 → 条件化分析 DAG → 专用 BioAgent 集群 → 校验回环 → HTML 报告。
+Autonomous AI agent system for end-to-end metagenomic analysis and biological discovery.
 
-## 架构（MVP 裁剪）
+See the full design in [`docs/Metagenomic_Research_Agent_Developer_Documentation.md`](docs/Metagenomic_Research_Agent_Developer_Documentation.md).
+
+## Architecture
 
 ```
-Input Parser → Coordinator (DAG) → BioAgent Swarm (QC / Taxonomy / Functional)
-      → Validator Loop (retry) → Report Agent → HTML / methods / reproduce.sh
+User (natural language)
+        │
+ Supervisor Agent
+        │
+ ┌──────┼──────────┬──────────┐
+ QC   Taxonomy  Assembly  Function
+        │
+ Statistics Agent
+        │
+ Critic Agent
+        │
+ Literature Agent
+        │
+ Report Generator
 ```
 
-暂缓：完整 Nextflow、组装分箱实装、基因组语言模型、下游多组学、Web HITL。
+Implemented with **LangGraph** + optional **Snakemake** (`workflow/Snakefile`) + **FastAPI** (`meta-agent serve`).
 
-## 快速开始
+## Quick start
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env   # 可选：配置 DeepSeek/Qwen API
+cp .env.example .env   # optional LLM keys (DeepSeek/Qwen/OpenAI)
 
-# mock 模式（无需 Docker / 数据库）
-meta-agent run --input tests/fixtures/fastq --outdir ./results --mode mock --yes
+meta-agent run \
+  --input tests/fixtures/fastq \
+  --outdir ./results \
+  --mode mock \
+  --query "Analyze shotgun metagenomic samples from IBD patients and healthy controls. Identify microbial biomarkers." \
+  --yes
 ```
 
-打开 `results/report/report.html` 查看交互式报告。
+Outputs (documentation §8):
 
-## Docker 模式
+```
+results/
+├── quality_report.html
+├── taxonomy_profile.tsv
+├── functional_profile.tsv
+├── diversity_analysis/
+├── biomarkers/
+├── literature_summary/
+└── final_report.html
+```
 
-需本地可用镜像（默认 `meta:latest`，可与旁路 [metagenomics](../metagenomics) 项目对齐），并在 `config/default.yaml` 填写：
-
-- `paths.host_index`
-- `paths.kraken2_db`
+## API
 
 ```bash
-meta-agent run -i /data/fastq -o ./results --mode docker --yes
+meta-agent serve --host 127.0.0.1 --port 8000
+# POST /analyze  GET /health
 ```
 
-## LLM
+## Docker mode
 
-通过 OpenAI 兼容接口（DeepSeek / Qwen）：
+Requires image `meta:latest` (or configure `docker.image`) and databases under `database/` / `config/default.yaml` paths.
 
-```bash
-export OPENAI_API_KEY=...
-export OPENAI_BASE_URL=https://api.deepseek.com/v1
-export OPENAI_MODEL=deepseek-chat
-```
+## Agents & tools
 
-未配置 API Key 时，Coordinator 使用内置肠道宏基因组默认流水线模板。
+| Agent | Module | Tools |
+|-------|--------|-------|
+| Supervisor | `agents/supervisor.py` | LLM / heuristic planner |
+| QC | `agents/qc_agent.py` | fastp, host filter |
+| Taxonomy | `agents/taxonomy_agent.py` | Kraken2, Bracken, MetaPhlAn |
+| Assembly | `agents/assembly_agent.py` | MEGAHIT, MetaBAT2, GTDB-Tk |
+| Function | `agents/function_agent.py` | KEGG/eggNOG/CAZy/CARD/VFDB |
+| Statistics | `agents/statistics_agent.py` | Shannon, Bray-Curtis, biomarkers |
+| Critic | `agents/critic_agent.py` | reliability checks |
+| Literature | `agents/literature_agent.py` | PubMed + mechanism KB |
+| Report | `report/generator.py` | HTML / methods / reproduce.sh |
 
-## 测试
+## Tests
 
 ```bash
 pytest -q
 ```
-
-## 目录
-
-- `src/metagenomic_agent/` — 核心包（graph / agents / tools / validators / report）
-- `config/default.yaml` — 默认配置
-- `examples/` — 示例配置
-- `tests/` — 单元与 dry-run 测试

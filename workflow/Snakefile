@@ -1,0 +1,52 @@
+# Metagenomic Research Agent — Snakemake workflow skeleton
+# Optional classical engine alongside the LangGraph agent runtime.
+#
+# Usage:
+#   snakemake -j 4 --configfile config/default.yaml \
+#     --config input_dir=tests/fixtures/fastq outdir=results
+
+configfile: "config/default.yaml"
+
+INPUT_DIR = config.get("input_dir", "tests/fixtures/fastq")
+OUTDIR = config.get("outdir", "results")
+MODE = config.get("mode", "mock")
+
+
+rule all:
+    input:
+        f"{OUTDIR}/final_report.html",
+        f"{OUTDIR}/taxonomy_profile.tsv",
+        f"{OUTDIR}/quality_report.html",
+
+
+rule run_agent:
+    """Delegate end-to-end analysis to the Metagenomic Research Agent CLI."""
+    output:
+        report=f"{OUTDIR}/final_report.html",
+        taxonomy=f"{OUTDIR}/taxonomy_profile.tsv",
+        quality=f"{OUTDIR}/quality_report.html",
+    params:
+        input_dir=INPUT_DIR,
+        outdir=OUTDIR,
+        mode=MODE,
+        query=config.get(
+            "query",
+            "Analyze shotgun metagenomic samples and identify microbial biomarkers.",
+        ),
+    shell:
+        """
+        meta-agent run \
+          --input {params.input_dir} \
+          --outdir {params.outdir} \
+          --mode {params.mode} \
+          --query "{params.query}" \
+          --yes
+        """
+
+
+rule qc_only:
+    """Placeholder for native Snakemake QC rule (agent-preferred)."""
+    output:
+        touch(f"{OUTDIR}/.qc_native_placeholder")
+    shell:
+        "echo 'Use meta-agent QC Agent or tools/fastp.py for native QC.'"

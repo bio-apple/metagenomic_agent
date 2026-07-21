@@ -1,4 +1,4 @@
-"""Shared LangGraph state for the metagenomic agent pipeline."""
+"""Shared LangGraph state for the Metagenomic Research Agent."""
 
 from __future__ import annotations
 
@@ -14,6 +14,16 @@ class SampleMeta(TypedDict):
     platform: str
     read_length_est: int
     paired: bool
+    group: NotRequired[str | None]
+
+
+class TaskSpec(TypedDict):
+    name: str
+    agent: str
+    tools: NotRequired[list[str]]
+    params: NotRequired[dict[str, Any]]
+    depends_on: NotRequired[list[str]]
+    status: NotRequired[str]
 
 
 class DagNode(TypedDict):
@@ -33,6 +43,13 @@ class ValidationResult(TypedDict):
     messages: list[str]
 
 
+class CriticResult(TypedDict):
+    passed: bool
+    warnings: list[str]
+    recommendations: list[str]
+    details: dict[str, Any]
+
+
 class AgentState(TypedDict):
     user_query: str
     input_path: str
@@ -40,10 +57,15 @@ class AgentState(TypedDict):
     mode: Literal["mock", "docker"]
     config: dict[str, Any]
     samples: list[SampleMeta]
+    metadata_path: NotRequired[str | None]
+    tasks: list[TaskSpec]
     dag: list[DagNode]
     artifacts: dict[str, Any]
     messages: list[str]
     validation: NotRequired[ValidationResult | None]
+    critic: NotRequired[CriticResult | None]
+    literature: NotRequired[dict[str, Any] | None]
+    statistics: NotRequired[dict[str, Any] | None]
     retry_count: int
     max_retries: int
     hitl_pending: list[str]

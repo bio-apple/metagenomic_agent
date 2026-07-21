@@ -1,3 +1,3 @@
-"""Metagenomic bioinformatics agent powered by LangGraph."""
+"""Metagenomic Research Agent."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

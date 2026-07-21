@@ -1,4 +1,4 @@
-"""Mock tool outputs for dry-run / demo without Docker databases."""
+"""Shared mock outputs for dry-run without Docker/databases."""
 
 from __future__ import annotations
 
@@ -7,11 +7,8 @@ from pathlib import Path
 from typing import Any
 
 
-def write_mock_fastp(outdir: Path, sample_id: str) -> dict[str, Any]:
+def write_fastp(outdir: Path, sample_id: str) -> dict[str, Any]:
     outdir.mkdir(parents=True, exist_ok=True)
-    html = outdir / f"{sample_id}.fastp.html"
-    jpath = outdir / f"{sample_id}.fastp.json"
-    tsv = outdir / f"{sample_id}.fastp.tsv"
     payload = {
         "summary": {
             "before_filtering": {
@@ -25,48 +22,30 @@ def write_mock_fastp(outdir: Path, sample_id: str) -> dict[str, Any]:
                 "total_reads": 920_000,
                 "total_bases": 138_000_000,
                 "q20_rate": 0.98,
-                "q30_rate": 0.92,
+                "q30_rate": 0.95,
                 "gc_content": 0.45,
             },
         }
     }
+    jpath = outdir / f"{sample_id}.fastp.json"
     jpath.write_text(json.dumps(payload, indent=2))
-    html.write_text("<html><body>mock fastp</body></html>")
-    tsv.write_text(
-        "SampleID\tTotal_reads(Raw)\tTotal_reads(clean)\n"
-        f"{sample_id}\t1000000\t920000\n"
-    )
+    (outdir / f"{sample_id}.fastp.html").write_text("<html><body>mock fastp</body></html>")
     (outdir / f"{sample_id}.clean_R1.fastq").write_text("@r1\nACGT\n+\nIIII\n")
     (outdir / f"{sample_id}.clean_R2.fastq").write_text("@r2\nACGT\n+\nIIII\n")
     return {
         "fastp_json": str(jpath),
-        "fastp_html": str(html),
-        "fastp_tsv": str(tsv),
+        "fastp_html": str(outdir / f"{sample_id}.fastp.html"),
         "clean_r1": str(outdir / f"{sample_id}.clean_R1.fastq"),
         "clean_r2": str(outdir / f"{sample_id}.clean_R2.fastq"),
+        "Q30": 95,
+        "adapter_removed": True,
+        "status": "PASS",
         "read_retention": 0.92,
         "host_fraction": 0.08,
     }
 
 
-def write_mock_host_filter(outdir: Path, sample_id: str, upstream: dict[str, Any]) -> dict[str, Any]:
-    outdir.mkdir(parents=True, exist_ok=True)
-    nonhost_r1 = outdir / f"{sample_id}.nonhost_R1.fastq"
-    nonhost_r2 = outdir / f"{sample_id}.nonhost_R2.fastq"
-    nonhost_r1.write_text("@r1\nACGTACGT\n+\nIIIIIIII\n")
-    nonhost_r2.write_text("@r2\nACGTACGT\n+\nIIIIIIII\n")
-    stats = outdir / f"{sample_id}.host_filter.tsv"
-    stats.write_text("sample\thost_fraction\tnonhost_reads\n" f"{sample_id}\t0.08\t846400\n")
-    return {
-        **upstream,
-        "nonhost_r1": str(nonhost_r1),
-        "nonhost_r2": str(nonhost_r2),
-        "host_filter_tsv": str(stats),
-        "host_fraction": 0.08,
-    }
-
-
-def write_mock_taxonomy(outdir: Path, sample_id: str, tool: str) -> dict[str, Any]:
+def write_taxonomy(outdir: Path, sample_id: str, tool: str) -> dict[str, Any]:
     outdir.mkdir(parents=True, exist_ok=True)
     table = outdir / f"{sample_id}.{tool}.abundance.tsv"
     rows = [
@@ -85,15 +64,57 @@ def write_mock_taxonomy(outdir: Path, sample_id: str, tool: str) -> dict[str, An
         f"{tool}_abundance": str(table),
         f"{tool}_report": str(report),
         "top_genera": [g for g, _ in rows[:5]],
+        "classification_rate": 0.72,
     }
 
 
-def write_mock_functional(outdir: Path, sample_id: str) -> dict[str, Any]:
+def write_host_filter(outdir: Path, sample_id: str, upstream: dict[str, Any]) -> dict[str, Any]:
     outdir.mkdir(parents=True, exist_ok=True)
-    path = outdir / f"{sample_id}.diamond.tsv"
-    path.write_text(
-        "qseqid\tsseqid\tpident\tKO\tdescription\n"
-        "gene1\tUniRef90_X\t95.0\tK00001\talcohol dehydrogenase\n"
-        "gene2\tUniRef90_Y\t90.0\tK00626\tacetyl-CoA C-acetyltransferase\n"
+    r1 = outdir / f"{sample_id}.nonhost_R1.fastq"
+    r2 = outdir / f"{sample_id}.nonhost_R2.fastq"
+    r1.write_text("@r1\nACGTACGT\n+\nIIIIIIII\n")
+    r2.write_text("@r2\nACGTACGT\n+\nIIIIIIII\n")
+    return {
+        **upstream,
+        "nonhost_r1": str(r1),
+        "nonhost_r2": str(r2),
+        "host_fraction": 0.08,
+    }
+
+
+def write_assembly(outdir: Path, sample_id: str) -> dict[str, Any]:
+    outdir.mkdir(parents=True, exist_ok=True)
+    contigs = outdir / f"{sample_id}.contigs.fa"
+    contigs.write_text(f">{sample_id}_contig_1\n{'ATGC' * 200}\n")
+    bins = outdir / "bins"
+    bins.mkdir(exist_ok=True)
+    (bins / f"{sample_id}.bin.1.fa").write_text(f">{sample_id}_bin1\n{'ATGC' * 500}\n")
+    gtdb = outdir / f"{sample_id}.gtdbtk.summary.tsv"
+    gtdb.write_text(
+        "user_genome\tclassification\n"
+        f"{sample_id}.bin.1\td__Bacteria;p__Bacteroidota;c__Bacteroidia;o__Bacteroidales;f__Bacteroidaceae;g__Bacteroides;s__Bacteroides_uniformis\n"
     )
-    return {"diamond_tsv": str(path), "n_hits": 2}
+    return {
+        "contigs": str(contigs),
+        "bins_dir": str(bins),
+        "gtdb_summary": str(gtdb),
+        "n_bins": 1,
+    }
+
+
+def write_functional(outdir: Path, sample_id: str) -> dict[str, Any]:
+    outdir.mkdir(parents=True, exist_ok=True)
+    profile = outdir / f"{sample_id}.functional_profile.tsv"
+    profile.write_text(
+        "feature\tabundance\tdatabase\n"
+        "K00001\t120\tKEGG\n"
+        "COG1234\t80\teggNOG\n"
+        "GH13\t45\tCAZy\n"
+        "ARO:3000010\t3\tCARD\n"
+        "VFG0376\t2\tVFDB\n"
+    )
+    return {
+        "functional_profile": str(profile),
+        "databases": ["KEGG", "eggNOG", "CAZy", "CARD", "VFDB"],
+        "n_features": 5,
+    }

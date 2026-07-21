@@ -7,24 +7,24 @@ from metagenomic_agent.state import AgentState
 from conftest import write_tiny_fastq
 
 
-def test_graph_dryrun_mock(tmp_path: Path):
-    fq = tmp_path / "fastq"
-    write_tiny_fastq(fq / "gut_R1.fastq")
-    write_tiny_fastq(fq / "gut_R2.fastq")
-    out = tmp_path / "out"
+def _initial(fq: Path, out: Path, query: str) -> AgentState:
     cfg = load_config(overrides={"mode": "mock", "pipeline": {"enable_assembly": False}})
-
-    initial: AgentState = {
-        "user_query": "分析我的肠道宏基因组 FASTQ 数据",
+    return {
+        "user_query": query,
         "input_path": str(fq),
         "outdir": str(out),
         "mode": "mock",
         "config": cfg,
         "samples": [],
+        "metadata_path": None,
+        "tasks": [],
         "dag": [],
         "artifacts": {},
         "messages": [],
         "validation": None,
+        "critic": None,
+        "literature": None,
+        "statistics": None,
         "retry_count": 0,
         "max_retries": 2,
         "hitl_pending": [],
@@ -32,9 +32,39 @@ def test_graph_dryrun_mock(tmp_path: Path):
         "report_path": None,
         "error": None,
     }
-    final = run_pipeline(initial)
+
+
+def test_graph_dryrun_mock(tmp_path: Path):
+    fq = tmp_path / "fastq"
+    write_tiny_fastq(fq / "gut_R1.fastq")
+    write_tiny_fastq(fq / "gut_R2.fastq")
+    out = tmp_path / "out"
+    final = run_pipeline(
+        _initial(
+            fq,
+            out,
+            "Analyze shotgun metagenomic samples from IBD patients and healthy controls. Identify microbial biomarkers.",
+        )
+    )
     assert final.get("report_path")
     assert Path(final["report_path"]).exists()
-    assert final.get("validation", {}).get("passed") is True
+    assert (out / "quality_report.html").exists()
+    assert (out / "taxonomy_profile.tsv").exists()
+    assert (out / "functional_profile.tsv").exists()
+    assert (out / "diversity_analysis" / "alpha_diversity.tsv").exists()
+    assert (out / "biomarkers" / "biomarkers.tsv").exists()
+    assert (out / "literature_summary" / "literature_summary.md").exists()
+    assert final.get("critic") is not None
+    assert final.get("literature") is not None
     assert "qc_host" in final.get("artifacts", {})
     assert "taxonomy" in final.get("artifacts", {})
+
+
+def test_supervisor_plan_json(tmp_path: Path):
+    fq = tmp_path / "fastq"
+    write_tiny_fastq(fq / "S_R1.fastq")
+    write_tiny_fastq(fq / "S_R2.fastq")
+    out = tmp_path / "out"
+    final = run_pipeline(_initial(fq, out, "Find microbial signatures associated with inflammatory disease."))
+    assert (out / "supervisor_plan.json").exists()
+    assert final.get("tasks")

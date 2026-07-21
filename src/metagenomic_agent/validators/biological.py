@@ -11,7 +11,7 @@ def validate_biological(state: dict[str, Any]) -> dict[str, Any]:
     markers = set(cfg.get("gut_marker_genera", []))
     tax = state.get("artifacts", {}).get("taxonomy", {})
     query = (state.get("user_query") or "").lower()
-    gut_like = any(k in query for k in ("gut", "肠道", "粪", "stool", "fecal"))
+    gut_like = any(k in query for k in ("gut", "肠道", "粪", "stool", "fecal", "ibd", "炎症"))
 
     result: dict[str, Any] = {"samples": {}, "ok": True, "messages": []}
     if not require or not gut_like:

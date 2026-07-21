@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metagenomic-agent"
-version = "0.1.0"
-description = "LangGraph-based metagenomic bioinformatics agent (MVP)"
+version = "0.2.0"
+description = "Autonomous AI agent system for end-to-end metagenomic analysis and biological discovery"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -22,6 +22,8 @@ dependencies = [
   "jinja2>=3.1",
   "python-dotenv>=1.0",
   "typing_extensions>=4.0",
+  "fastapi>=0.110.0",
+  "uvicorn>=0.27.0",
 ]
 
 [project.optional-dependencies]

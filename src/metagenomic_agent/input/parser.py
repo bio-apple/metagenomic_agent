@@ -128,6 +128,11 @@ def discover_samples(input_path: str | Path) -> list[SampleMeta]:
 
 def parse_input(state: AgentState) -> dict:
     samples = discover_samples(state["input_path"])
+    meta_path = state.get("metadata_path")
+    if meta_path:
+        from metagenomic_agent.input.metadata import apply_groups, load_sample_groups
+
+        samples = apply_groups(samples, load_sample_groups(meta_path))
     msg = f"Parsed {len(samples)} sample(s) from {state['input_path']}"
     return {
         "samples": samples,

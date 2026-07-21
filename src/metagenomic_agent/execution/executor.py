@@ -1,4 +1,4 @@
-"""DAG executor and lightweight progress monitor."""
+"""DAG executor for specialized bioagents."""
 
 from __future__ import annotations
 
@@ -16,12 +16,11 @@ def _topo_sort(dag: list[dict[str, Any]]) -> list[dict[str, Any]]:
     order: list[dict[str, Any]] = []
 
     def visit(nid: str) -> None:
-        if nid in seen:
+        if nid in seen or nid not in by_id:
             return
         node = by_id[nid]
         for dep in node.get("depends_on", []):
-            if dep in by_id:
-                visit(dep)
+            visit(dep)
         seen.add(nid)
         order.append(node)
 
@@ -35,9 +34,9 @@ def execute_swarm(state: AgentState) -> dict:
     artifacts = dict(state.get("artifacts", {}))
     messages = list(state.get("messages", []))
     memory = ContextMemory(f"{state['outdir']}/context")
-    order = _topo_sort(dag)
+    stats_state = state.get("statistics")
 
-    for node in order:
+    for node in _topo_sort(dag):
         if node.get("status") == "skipped":
             continue
         agent_name = node["agent"]
@@ -51,20 +50,32 @@ def execute_swarm(state: AgentState) -> dict:
         memory.append_history(f"start:{node['id']}")
         try:
             produced = fn(state={**state, "artifacts": artifacts}, node=node)
+            # statistics agent may return _statistics_state
+            if "_statistics_state" in produced:
+                stats_state = produced.pop("_statistics_state")
             for k, v in produced.items():
-                if isinstance(v, dict) and isinstance(artifacts.get(k), dict):
+                if k == "artifacts" and isinstance(v, dict):
+                    artifacts.update(v)
+                elif isinstance(v, dict) and isinstance(artifacts.get(k), dict) and k not in {
+                    "statistics",
+                }:
                     artifacts[k].update(v)
                 else:
                     artifacts[k] = v
+            if "statistics" in produced and isinstance(produced["statistics"], dict):
+                stats_state = produced["statistics"]
             node["status"] = "done"
             elapsed = time.time() - t0
             messages.append(f"Finished {node['id']} in {elapsed:.2f}s")
             memory.append_history(f"done:{node['id']}:{elapsed:.2f}s")
-        except Exception as exc:  # noqa: BLE001 — surface to validator/recovery
+        except Exception as exc:  # noqa: BLE001
             node["status"] = "failed"
             messages.append(f"FAILED {node['id']}: {exc}")
             memory.append_history(f"fail:{node['id']}:{exc}")
             artifacts.setdefault("errors", []).append({"node": node["id"], "error": str(exc)})
 
     memory.update(artifacts=artifacts, dag=dag)
-    return {"artifacts": artifacts, "dag": dag, "messages": messages}
+    result = {"artifacts": artifacts, "dag": dag, "messages": messages}
+    if stats_state is not None:
+        result["statistics"] = stats_state
+    return result

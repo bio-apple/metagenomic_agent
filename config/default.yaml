@@ -7,21 +7,27 @@ docker:
   threads: 8
 
 paths:
-  host_index: ""          # Bowtie2 HG38 index dir
-  kraken2_db: ""          # Kraken2 database dir
+  host_index: ""
+  kraken2_db: "database/kraken_db"
   metaphlan_db: ""
+  gtdb: "database/gtdb"
+  eggnog: "database/eggnog"
 
 pipeline:
   enable_host_filter: true
   taxonomy_tools: ["kraken2", "metaphlan"]
   enable_functional: true
   enable_assembly: false
+  enable_statistics: true
   enable_humann: false
 
 llm:
   provider: openai_compatible
   model: deepseek-chat
   temperature: 0.2
+
+literature:
+  pubmed: true
 
 validation:
   min_read_retention: 0.3
