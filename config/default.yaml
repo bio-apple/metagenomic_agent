@@ -97,6 +97,15 @@ interpretation:
   require_grounding: true  # block ungrounded taxa; LLM may only paraphrase retrieval context
   require_evidence_chain: true  # abundance / p-value / DB IDs / PMIDs on allowed claims
 
+# Long-context: agents consume statistical metadata, not raw Fastq/Bam/Fasta contents.
+summary:
+  enabled: true
+  max_llm_chars: 12000
+
+reproducibility:
+  auto_export: true  # write reproducible.nf / .smk + seeds + config_snapshot after analysis
+  seed: null  # integer to pin; null → derived from run_id
+
 validation:
   min_read_retention: 0.3
   max_host_fraction: 0.95

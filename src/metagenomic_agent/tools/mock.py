@@ -42,6 +42,8 @@ def write_fastp(outdir: Path, sample_id: str) -> dict[str, Any]:
         "status": "PASS",
         "read_retention": 0.92,
         "host_fraction": 0.08,
+        "reads_before": 1_000_000,
+        "reads_after": 920_000,
     }
 
 

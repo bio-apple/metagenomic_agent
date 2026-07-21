@@ -71,6 +71,8 @@ def run(
 
     q30 = 90
     retention = 0.9
+    reads_before = None
+    reads_after = None
     if jpath.exists():
         try:
             data = json.loads(jpath.read_text())
@@ -78,6 +80,8 @@ def run(
             before = float(data["summary"]["before_filtering"]["total_reads"]) or 1
             after = float(data["summary"]["after_filtering"]["total_reads"])
             retention = after / before
+            reads_before = int(before)
+            reads_after = int(after)
         except (KeyError, ValueError, json.JSONDecodeError):
             pass
 
@@ -91,6 +95,8 @@ def run(
         "status": "PASS",
         "read_retention": retention,
         "host_fraction": 0.0,
+        "reads_before": reads_before,
+        "reads_after": reads_after,
     }
 
 

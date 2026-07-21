@@ -206,6 +206,10 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         "biomarkers": str(outdir / "biomarkers"),
         "literature_summary": str(outdir / "literature_summary"),
         "evidence": str(outdir / "evidence"),
+        "context_summary": str(outdir / "context" / "pipeline_summary.json"),
+        "reproducible_nf": str(outdir / "workflow" / "reproducible.nf"),
+        "reproducible_smk": str(outdir / "workflow" / "reproducible.smk"),
+        "seeds": str(outdir / "workflow" / "seeds.json"),
         "quality": str(outdir / "quality"),
         "workflow_dag": str(outdir / "workflow" / "dag.json"),
         "manuscript": str(outdir / "report" / "manuscript"),
@@ -213,6 +217,7 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         "xai": str(outdir / "xai"),
         "router": str(outdir / "router_decision.json"),
         "tool_specialist": str(outdir / "tool_specialist"),
+        "reproducibility": str(outdir / "reproducibility"),
         "final_report.html": str(outdir / "final_report.html"),
     }
 
@@ -309,14 +314,28 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
 
 
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
-    paths = generate(state)
+    from metagenomic_agent.coordinator.summary import write_pipeline_summary
     from metagenomic_agent.report.reproducibility import write_reproducibility_bundle
 
+    # Ensure latest metadata summary before packaging
+    if ((state.get("config") or {}).get("summary") or {}).get("enabled", True):
+        summary_full = write_pipeline_summary(state)
+        llm_ctx = summary_full.pop("_llm_context", "")
+        arts0 = dict(state.get("artifacts") or {})
+        arts0["pipeline_summary"] = {k: v for k, v in summary_full.items() if not k.startswith("_")}
+        arts0["llm_context"] = llm_ctx
+        state = {**state, "artifacts": arts0}
+
+    paths = generate(state)
     bundle = write_reproducibility_bundle(state)
     arts = {**state.get("artifacts", {}), "report": paths, "reproducibility": bundle}
     return {
         "report_path": paths["html"],
         "artifacts": arts,
         "messages": state.get("messages", [])
-        + [f"Report written to {paths['html']}", f"Reproducibility bundle: {bundle.get('manifest')}"],
+        + [
+            f"Report written to {paths['html']}",
+            f"Reproducibility bundle: {bundle.get('manifest')}",
+            f"Workflows: {bundle.get('reproducible_nf')} / {bundle.get('reproducible_smk')} seed={bundle.get('run_seed')}",
+        ],
     }

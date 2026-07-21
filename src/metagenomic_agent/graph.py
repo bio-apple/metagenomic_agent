@@ -123,13 +123,23 @@ def _export_dag(state: AgentState) -> dict:
 
 
 def _quality_scores(state: AgentState) -> dict:
+    from metagenomic_agent.coordinator.summary import write_pipeline_summary
+
     report = write_quality_report(state)
     arts = dict(state.get("artifacts") or {})
     arts["quality_scores"] = report
+    # Refresh metadata summary after validation-adjacent QC scores
+    summary_full = write_pipeline_summary({**state, "artifacts": arts})
+    llm_ctx = summary_full.pop("_llm_context", "")
+    arts["pipeline_summary"] = {k: v for k, v in summary_full.items() if not k.startswith("_")}
+    arts["llm_context"] = llm_ctx
     return {
         "artifacts": arts,
         "messages": state.get("messages", [])
-        + [f"Quality overall={report.get('scores', {}).get('Overall Score')}"],
+        + [
+            f"Quality overall={report.get('scores', {}).get('Overall Score')}",
+            "Refreshed pipeline_summary for LLM context",
+        ],
     }
 
 

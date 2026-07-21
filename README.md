@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.10.0` · 权威库锚定抗幻觉 + 证据链陈述 · 容器沙盒 · 多智能体科研平台。
+**版本** `0.11.0` · Summary 驱动长上下文 + 可复现工作流导出 · 抗幻觉证据链 · 容器沙盒。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -54,6 +54,12 @@ meta-agent version
 - 允许的陈述附带：**相对丰度**、**p/q 值**（若有差异检验）、**数据库 ID**（KEGG/UniProt/CARD 等）与 **PMID**。
 - 产物：`evidence/claims.json` · `evidence/claims.md`；配置 `interpretation.require_grounding`。
 
+## 长上下文与可复现（v0.11）
+
+- Agent 只消费中间文件的**统计元数据**（Reads、Q30、N50、CheckM 完整度等），不把 Fastq/Bam/Fasta 序列塞进 Context Window。
+- 分析结束后自动导出 `workflow/reproducible.nf` / `reproducible.smk`、`seeds.json`、`config_snapshot.yaml`。
+- 配置：`summary.enabled`、`reproducibility.seed` / `auto_export`。
+
 | 路径 | 含义 |
 |------|------|
 | `router_decision.json` | 意图与领域路由 |
@@ -62,7 +68,9 @@ meta-agent version
 | `workflow/generated.nf` · `.smk` | RAG 生成的工作流草稿 |
 | `evidence/evidence_table.md` | 文献证据表 |
 | `evidence/claims.md` | 抗幻觉证据链 |
-| `xai/feature_importance.md` | 标志物可解释归因 |
+| `context/pipeline_summary.json` | 统计元数据摘要（供 LLM） |
+| `workflow/reproducible.nf` · `.smk` | 同行评审可复现工作流 |
+| `workflow/seeds.json` | 运行种子 |
 | `report/manuscript/` | 投稿分节草稿 |
 | `reproducibility/` | CWL + run_manifest |
 

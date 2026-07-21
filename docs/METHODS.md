@@ -1,4 +1,4 @@
-# Methods note for manuscripts（v0.10）
+# Methods note for manuscripts（v0.11）
 
 用法见 [USAGE.md](USAGE.md)，架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
@@ -13,11 +13,19 @@ Analysis is coordinated by specialized agents rather than a single monolithic pr
 5. **Workflow Agent** — RAG over nf-core/Snakemake-style snippets; records self-correction notes from runtime errors.  
 6. **Literature / Evidence** — authority-bound bio-DB RAG + optional online literature APIs; ungrounded taxa rejected.  
 7. **XAI** — leave-one-feature group-separation attribution for biomarker drivers.  
-8. **Report** — HTML, manuscript sections, CWL reproducibility bundle, evidence chains.
+8. **Report** — HTML, manuscript sections, CWL reproducibility bundle, evidence chains, post-run `.nf`/`.smk`.
 
 Pipeline graph:
 
 `parse → router → supervisor → tool_specialist → plan_validator → export_dag → workflow_agent → contract → HITL → swarm → validate → quality → self-heal* → critic → literature → pi_review* → visualization → xai → report`
+
+## Summary-driven context
+
+Intermediate Fastq/Bam/Fasta files remain on disk. Agents and LLM prompts consume only statistical metadata (read counts, Q30, classification rate, contig N50, CheckM completeness/contamination, biomarker p/q-values) via `context/pipeline_summary.json`.
+
+## Reproducibility
+
+After analysis the agent writes `workflow/reproducible.nf`, `workflow/reproducible.smk`, `workflow/seeds.json`, `workflow/config_snapshot.yaml`, and `reproducibility/run_manifest.json` for peer review and independent re-execution.
 
 ## Tooling & environment
 
@@ -30,7 +38,8 @@ Tools are invoked through a typed sandbox (`ToolCallRequest`) preferring **Docke
 | MAGs | MEGAHIT/metaSPAdes → MetaBAT2 → CheckM2 |
 | Statistics | Shannon; Bray–Curtis; MWU + BH-FDR; optional LEfSe-like / CLR–MWU |
 | Ordination | Classical MDS (PCoA); Spearman co-occurrence |
-| Interpretation | Evidence Table + **evidence chains** (abundance, p/q, GTDB/NCBI/KEGG/UniProt/CARD IDs, PMIDs); XAI |
+| Interpretation | Evidence Table + evidence chains; XAI |
+| Provenance | Pipeline summary + seeded Nextflow/Snakemake export |
 
 ## Hallucination mitigation
 
@@ -41,4 +50,5 @@ Biological claims are allowed only when the taxon resolves in the curated **GTDB
 1. Default differential tests are lightweight; LEfSe-like/ANCOM-like are Python approximations, not official packages.  
 2. Some routed tools (CAMITAX, TAMA, ViWrap, PhaBOX) may be registered without local installation.  
 3. XAI is transparent abundance-separation attribution, not TreeSHAP on a fitted classifier.  
-4. Workflow/bio RAG use curated corpora (stubs until full dumps are mounted); mock mode is for software testing only.
+4. Workflow/bio RAG use curated corpora (stubs until full dumps are mounted); mock mode is for software testing only.  
+5. Exported `.nf`/`.smk` wrap `meta-agent run` with the executed DAG recorded as provenance comments; full native process graphs depend on mounted tools/DBs.

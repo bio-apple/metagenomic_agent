@@ -113,11 +113,26 @@ def execute_swarm(state: AgentState) -> dict:
             )
 
     artifacts["monitor"] = monitor.snapshot()
-    memory.update(artifacts=artifacts, dag=dag)
+
+    # Summary-driven context: statistical metadata only (never raw sequences)
+    from metagenomic_agent.coordinator.summary import write_pipeline_summary
+    from metagenomic_agent.report.workflow_export import resolve_run_seed
+
+    run_seed = resolve_run_seed({**state, "artifacts": artifacts, "run_id": run_id})
+    artifacts["run_seed"] = run_seed
+    summary_full = write_pipeline_summary({**state, "artifacts": artifacts, "dag": dag, "run_id": run_id})
+    llm_ctx = summary_full.pop("_llm_context", "")
+    artifacts["pipeline_summary"] = {k: v for k, v in summary_full.items() if not k.startswith("_")}
+    artifacts["llm_context"] = llm_ctx
+
+    memory.update(artifacts=artifacts, dag=dag, pipeline_summary=artifacts["pipeline_summary"], run_seed=run_seed)
     result: dict[str, Any] = {
         "artifacts": artifacts,
         "dag": dag,
-        "messages": messages,
+        "messages": messages
+        + [
+            f"Pipeline summary written (metadata-only context); seed={run_seed}",
+        ],
         "agent_messages": agent_messages,
         "run_id": run_id,
     }

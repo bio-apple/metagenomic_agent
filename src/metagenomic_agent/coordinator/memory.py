@@ -16,8 +16,10 @@ class ContextMemory:
             "project": {},
             "samples": [],
             "artifacts": {},
+            "pipeline_summary": {},
             "history": [],
             "dag": [],
+            "run_seed": None,
         }
         if self.path.exists():
             loaded = json.loads(self.path.read_text())
@@ -33,9 +35,23 @@ class ContextMemory:
                 self._data.setdefault("artifacts", {}).update(value)
             elif key == "project" and isinstance(value, dict):
                 self._data["project"] = {**(self._data.get("project") or {}), **value}
+            elif key == "pipeline_summary" and isinstance(value, dict):
+                self._data["pipeline_summary"] = value
             else:
                 self._data[key] = value
         self.flush()
+
+    def llm_safe_view(self) -> dict[str, Any]:
+        """Return a context payload without raw sequence paths' file contents."""
+        return {
+            "project": self.project,
+            "pipeline_summary": self._data.get("pipeline_summary")
+            or (self._data.get("artifacts") or {}).get("pipeline_summary")
+            or {},
+            "run_seed": self._data.get("run_seed"),
+            "dag": self._data.get("dag") or [],
+            "history_tail": (self._data.get("history") or [])[-20:],
+        }
 
     def append_history(self, event: str) -> None:
         self._data.setdefault("history", []).append(event)

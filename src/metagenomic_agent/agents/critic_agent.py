@@ -70,6 +70,10 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             recommendations.append("Verify taxonomy database and sample origin")
 
     passed = len(warnings) == 0
+    from metagenomic_agent.coordinator.summary import get_llm_context
+
+    details["llm_context_preview"] = get_llm_context(state, max_chars=2000)
+    details["pipeline_summary_ref"] = (artifacts.get("pipeline_summary") or {}).get("path")
     critic: CriticResult = {
         "passed": passed,
         "warnings": list(dict.fromkeys(warnings)),

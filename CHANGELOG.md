@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0
+
+- Summary-driven pipeline context: Q30 / reads / N50 / CheckM completeness only — never raw sequences in LLM window
+- Post-run reproducible export: `workflow/reproducible.nf` · `.smk`, `seeds.json`, `config_snapshot.yaml`
+- Extended reproducibility bundle with seed + summary references
+
 ## 0.10.0
 
 - Authority-bound RAG (GTDB, NCBI Taxonomy, KEGG, UniProt, CARD): ungrounded taxa blocked

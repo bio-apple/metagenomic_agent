@@ -1,4 +1,4 @@
-# 架构说明（v0.10 · 多智能体 + 容器沙盒 + 抗幻觉）
+# 架构说明（v0.11 · 多智能体 + 摘要上下文 + 可复现）
 
 源码：`src/metagenomic_agent/`。
 
@@ -68,6 +68,17 @@ parse → router → supervisor → tool_specialist → plan_validator
 | 文献 | `agents/literature_agent.py` | 过滤未锚定分类单元 |
 
 配置：`interpretation.require_grounding` / `require_evidence_chain`；`rag.authority_dbs`。
+
+## 长上下文与可复现（v0.11）
+
+| 组件 | 路径 | 作用 |
+|------|------|------|
+| Pipeline summary | `coordinator/summary.py` | 抽取 Q30 / reads / N50 / CheckM；禁止序列入窗 |
+| LLM-safe memory | `coordinator/memory.py` → `llm_safe_view()` | 持久化摘要而非原始 Fastq 内容 |
+| 工作流导出 | `report/workflow_export.py` | 事后 `reproducible.nf` / `.smk` + seed |
+| 复现包 | `report/reproducibility.py` | manifest + CWL + seeds + config snapshot |
+
+配置：`summary.enabled`、`reproducibility.auto_export` / `seed`。
 
 ## 工作流 RAG 与 XAI
 
