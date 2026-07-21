@@ -1,6 +1,6 @@
 # 使用指南
 
-面向 **v0.15**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
+面向 **v0.16**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
 
 ## CLI
 
@@ -90,6 +90,10 @@ S2	Control
 | `evidence/claims.md` | 抗幻觉证据链 |
 | `evidence/evidence_table.md` | 文献证据表 |
 | `context/pipeline_summary.json` | LLM 用统计摘要 |
+| `planner/planner_plan.md` | Planner：实验设计与整体 Pipeline |
+| `executor/submit.slurm` · `job.k8s.yaml` | Executor：HPC / K8s 提交规格 |
+| `critic/qc_critic.md` | QC & Critic：Q20/Q30、污染、CheckM |
+| `reporter/biological_report.md` | Reporter：多样性与通路解读 |
 | `workflow/params.yaml` · `params.json` | 校验后的引擎参数（Schema + 任务图） |
 | `workflow/ENGINE_README.md` | Nextflow/Snakemake 启动说明 |
 | `workflow/reproducible.nf` · `.smk` · `seeds.json` | 可复现导出 |

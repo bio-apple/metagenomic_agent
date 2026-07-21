@@ -37,6 +37,7 @@ def write_fastp(outdir: Path, sample_id: str) -> dict[str, Any]:
         "fastp_html": str(outdir / f"{sample_id}.fastp.html"),
         "clean_r1": str(outdir / f"{sample_id}.clean_R1.fastq"),
         "clean_r2": str(outdir / f"{sample_id}.clean_R2.fastq"),
+        "Q20": 98,
         "Q30": 95,
         "adapter_removed": True,
         "status": "PASS",

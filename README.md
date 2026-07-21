@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.15.0` · Agent→YAML/JSON→Nextflow/Snakemake · 工具 Pydantic Schema · 自愈改参重试。
+**版本** `0.16.0` · 工具手册/SOP RAG · Planner/Executor/QC-Critic/Reporter 分工。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -20,9 +20,8 @@ pytest -q && meta-agent version
 ## 流水线
 
 ```
-Router → Bio Reasoning → Supervisor → Tool Specialist (Schema + contracts)
-  → export params.yaml → resource estimate → HITL
-  → Swarm / Nextflow|Snakemake (-resume) → self-heal(改参) → Report
+Router → Bio Reasoning (SOP+manuals) → Supervisor → Planner
+  → Executor (params / Slurm / K8s) → QC & Critic → Reporter → Report
 ```
 
 ## 文档

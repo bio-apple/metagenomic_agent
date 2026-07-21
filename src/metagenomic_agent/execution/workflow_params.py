@@ -37,8 +37,11 @@ def _plan_time_params(tool: str, raw: dict[str, Any], state: dict[str, Any]) -> 
         data.setdefault("contigs", data.get("contigs") or f"{outdir}/contigs.fa")
     if name in {"humann3", "humann"}:
         data.setdefault("input", data.get("input") or r1)
-    if name == "checkm2":
+    if name in {"checkm2", "gtdbtk"}:
         data.setdefault("bins_dir", data.get("bins") or data.get("bins_dir") or f"{outdir}/bins")
+    if name == "bakta":
+        data.setdefault("input", data.get("input") or data.get("contigs") or f"{outdir}/contigs.fa")
+        data.setdefault("db", data.get("db") or "<bakta_db>")
     return data
 
 

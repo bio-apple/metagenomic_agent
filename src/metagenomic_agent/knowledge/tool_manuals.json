@@ -1,0 +1,149 @@
+{
+  "version": "0.16.0",
+  "description": "Curated tool manuals & parameter notes with official documentation links (offline RAG).",
+  "tools": [
+    {
+      "id": "kraken2",
+      "name": "Kraken 2",
+      "category": "taxonomy",
+      "docs": [
+        {"title": "Kraken 2 GitHub / Manual", "url": "https://github.com/DerrickWood/kraken2/wiki/Manual"},
+        {"title": "Kraken 2 paper", "url": "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1891-0"}
+      ],
+      "tags": ["taxonomy", "k-mer", "shotgun", "virus_screen", "hpc"],
+      "when_to_use": [
+        "Large cohort shotgun taxonomic profiling",
+        "Fast k-mer screening before marker-gene tools",
+        "Viral / custom DB screens when DB is indexed"
+      ],
+      "key_params": {
+        "--db": "Path to Kraken 2 database (must contain hash.k2d, opts.k2d, taxo.k2d)",
+        "--threads / -t": "CPU threads (1–256)",
+        "--confidence": "Minimum confidence (0–1); start 0.05–0.1 for metagenomes",
+        "--memory-mapping": "Prefer for multi-sample runs sharing one DB",
+        "--report": "Standard Kraken report for Bracken / MultiQC"
+      },
+      "pitfalls": [
+        "Unindexed or incomplete DB → missing_db failures",
+        "Results are database-dependent; do not over-interpret species without markers",
+        "Pair with MetaPhlAn for higher-precision gut profiles when compute allows"
+      ],
+      "resource_hints": {"threads": 8, "memory_gb": 32, "notes": "Standard DB may need 30–100+ GB RAM"},
+      "sop_refs": ["assay_shotgun_default", "env_gut_host_filter"]
+    },
+    {
+      "id": "gtdbtk",
+      "name": "GTDB-Tk",
+      "category": "mag_taxonomy",
+      "docs": [
+        {"title": "GTDB-Tk documentation", "url": "https://ecogenomics.github.io/GTDBTk/"},
+        {"title": "GTDB", "url": "https://gtdb.ecogenomic.org/"}
+      ],
+      "tags": ["mag", "taxonomy", "gtdb", "bins", "classify_wf"],
+      "when_to_use": [
+        "Taxonomic assignment of MAGs / bins after CheckM2 QC",
+        "Standardize prokaryotic taxonomy to GTDB releases"
+      ],
+      "key_params": {
+        "classify_wf": "End-to-end classify workflow on genome directory",
+        "--genome_dir": "Directory of .fa/.fna bins",
+        "--out_dir": "Output directory",
+        "--cpus": "Threads",
+        "--extension": "Genome file extension (fa/fna)",
+        "GTDBTK_DATA_PATH": "Required env pointing to GTDB-Tk reference data"
+      },
+      "pitfalls": [
+        "Requires large reference data download; set GTDBTK_DATA_PATH",
+        "Run after CheckM2; filter low-completeness / high-contamination bins first",
+        "Not a substitute for read-level profilers (Kraken2/MetaPhlAn)"
+      ],
+      "resource_hints": {"threads": 16, "memory_gb": 64, "notes": "Reference data tens–hundreds of GB"},
+      "sop_refs": ["mag_qc_gate", "assay_shotgun_default"]
+    },
+    {
+      "id": "bakta",
+      "name": "Bakta",
+      "category": "annotation",
+      "docs": [
+        {"title": "Bakta documentation", "url": "https://github.com/oschwengers/bakta"},
+        {"title": "Bakta paper", "url": "https://doi.org/10.1099/mgen.0.000685"}
+      ],
+      "tags": ["annotation", "mag", "prokaryote", "gbff", "gff3"],
+      "when_to_use": [
+        "Rapid prokaryotic genome / MAG annotation (CDS, rRNA, tRNA, CRISPR)",
+        "Prefer over legacy Prokka for up-to-date DB when available"
+      ],
+      "key_params": {
+        "--db": "Bakta database directory",
+        "--input": "Genome FASTA",
+        "--output": "Output directory",
+        "--prefix": "File prefix",
+        "--threads": "CPU threads",
+        "--compliant": "NCBI compliance mode when submitting"
+      },
+      "pitfalls": [
+        "Needs Bakta DB download; keep DB version pinned for reproducibility",
+        "Annotate only QC-passed MAGs (CheckM2 gates)",
+        "Eukaryotic / viral genomes need different annotators"
+      ],
+      "resource_hints": {"threads": 8, "memory_gb": 16, "notes": "DB size significant; use SSD"},
+      "sop_refs": ["mag_qc_gate"]
+    },
+    {
+      "id": "checkm2",
+      "name": "CheckM2",
+      "category": "mag_qc",
+      "docs": [
+        {"title": "CheckM2 GitHub", "url": "https://github.com/chklovski/CheckM2"},
+        {"title": "CheckM2 paper", "url": "https://doi.org/10.1038/s41592-023-01940-w"}
+      ],
+      "tags": ["mag", "qc", "completeness", "contamination", "bins"],
+      "when_to_use": [
+        "Estimate MAG completeness and contamination after binning",
+        "Gate bins before GTDB-Tk / Bakta / publication"
+      ],
+      "key_params": {
+        "predict": "Main CLI subcommand",
+        "--input": "Directory of bins or genome files",
+        "--output-directory": "Results directory",
+        "-t / --threads": "Threads",
+        "extension": "fa / fna"
+      },
+      "pitfalls": [
+        "Needs CheckM2 DIAMOND DB; first-run download can fail offline",
+        "Common gates: completeness ≥50% and contamination ≤10% (medium quality); ≥90%/≤5% high quality",
+        "Do not interpret taxonomy from CheckM2 alone"
+      ],
+      "resource_hints": {"threads": 8, "memory_gb": 32},
+      "quality_gates": {
+        "medium_quality": {"completeness_min": 50, "contamination_max": 10},
+        "high_quality": {"completeness_min": 90, "contamination_max": 5}
+      },
+      "sop_refs": ["mag_qc_gate"]
+    },
+    {
+      "id": "fastqc",
+      "name": "FastQC",
+      "category": "qc",
+      "docs": [{"title": "FastQC", "url": "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/"}],
+      "tags": ["qc", "q20", "q30", "reads"],
+      "when_to_use": ["Per-sample raw read QC before trimming"],
+      "key_params": {"inputs": "FASTQ paths", "-t": "threads", "-o": "outdir"},
+      "pitfalls": ["Adapter content / per-base quality inform Trimmomatic/fastp settings"],
+      "resource_hints": {"threads": 4, "memory_gb": 4},
+      "sop_refs": ["env_gut_host_filter", "env_soil_prep", "env_ocean_prep"]
+    },
+    {
+      "id": "trimmomatic",
+      "name": "Trimmomatic",
+      "category": "qc",
+      "docs": [{"title": "Trimmomatic", "url": "http://www.usadellab.org/cms/?page=trimmomatic"}],
+      "tags": ["qc", "trim", "adapters"],
+      "when_to_use": ["Adapter/quality trimming when fastp is unavailable"],
+      "key_params": {"LEADING": "3", "TRAILING": "3", "MINLEN": "36", "adapters": "fasta"},
+      "pitfalls": ["Prefer tool-specific adapter files; verify PE vs SE mode"],
+      "resource_hints": {"threads": 8, "memory_gb": 8},
+      "sop_refs": ["env_soil_prep", "env_ocean_prep"]
+    }
+  ]
+}

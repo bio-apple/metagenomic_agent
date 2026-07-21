@@ -10,6 +10,7 @@ from metagenomic_agent.knowledge.domain_kb import load_tool_domain_kb, recommend
 from metagenomic_agent.messaging import append_msg, emit
 from metagenomic_agent.skills.contracts import Severity
 from metagenomic_agent.skills.registry import get_skill
+from metagenomic_agent.knowledge.domain_rag import retrieve_tool_manuals
 from metagenomic_agent.tools.schemas import TOOL_SCHEMA_REGISTRY, validate_tool_params
 
 
@@ -129,6 +130,9 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         if name in TOOL_SCHEMA_REGISTRY:
             schema_result = validate_tool_params(name, schema_params, strict=False)
 
+        manuals = retrieve_tool_manuals(name, tool=name, top_k=1)
+        manual = manuals[0] if manuals else None
+
         specs.append(
             {
                 "tool": name,
@@ -140,6 +144,14 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
                 "notes": meta.get("strengths"),
                 "skill_contract": skill_meta,
                 "schema_validation": schema_result.model_dump() if schema_result else None,
+                "manual": {
+                    "docs": (manual or {}).get("docs"),
+                    "key_params": (manual or {}).get("key_params"),
+                    "pitfalls": ((manual or {}).get("pitfalls") or [])[:3],
+                    "resource_hints": (manual or {}).get("resource_hints"),
+                }
+                if manual
+                else None,
                 "execution_policy": "params_yaml_then_engine_or_sandbox_no_llm_shell",
             }
         )

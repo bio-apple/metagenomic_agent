@@ -9,9 +9,12 @@ from langgraph.graph import END, StateGraph
 from metagenomic_agent.agents import bio_reasoning_agent
 from metagenomic_agent.agents import (
     critic_agent,
+    executor_agent,
     literature_agent,
     pi_agent,
     plan_validator,
+    planner_agent,
+    reporter_agent,
     router_agent,
     supervisor,
     tool_specialist,
@@ -23,7 +26,6 @@ from metagenomic_agent.evaluation.quality_score import write_quality_report
 from metagenomic_agent.evaluation.xai import write_xai_report
 from metagenomic_agent.execution.dag_export import export_workflow_dag
 from metagenomic_agent.execution.resource_estimate import write_resource_estimate
-from metagenomic_agent.execution.executor import execute_swarm
 from metagenomic_agent.execution.workflow_params import write_workflow_params
 from metagenomic_agent.execution.self_heal import (
     apply_self_heal,
@@ -238,19 +240,22 @@ def build_graph():
     g.add_node("supervisor", supervisor.plan)
     g.add_node("tool_specialist", tool_specialist.run)
     g.add_node("plan_validator", plan_validator.run)
+    g.add_node("planner", planner_agent.run)
     g.add_node("export_dag", _export_dag)
     g.add_node("workflow_agent", workflow_agent.run)
     g.add_node("contract_check", contract_check)
     g.add_node("hitl", hitl_checkpoint)
-    g.add_node("execute_swarm", execute_swarm)
+    # Executor wraps swarm + HPC/K8s specs (role: Executor/Bioinfo)
+    g.add_node("execute_swarm", executor_agent.run)
     g.add_node("validate", validate)
     g.add_node("quality_scores", _quality_scores)
     g.add_node("hitl_runtime", hitl_checkpoint)
     g.add_node("self_heal", _self_heal)
-    g.add_node("critic", critic_agent.run)
+    g.add_node("critic", critic_agent.run)  # QC & Critic
     g.add_node("literature", literature_agent.run)
     g.add_node("pi_review", pi_agent.run)
     g.add_node("visualization", visualization_agent.run)
+    g.add_node("reporter", reporter_agent.run)
     g.add_node("xai", _xai)
     g.add_node("report", report_agent.run)
 
@@ -260,7 +265,8 @@ def build_graph():
     g.add_edge("bio_reasoning", "supervisor")
     g.add_edge("supervisor", "tool_specialist")
     g.add_edge("tool_specialist", "plan_validator")
-    g.add_edge("plan_validator", "export_dag")
+    g.add_edge("plan_validator", "planner")
+    g.add_edge("planner", "export_dag")
     g.add_edge("export_dag", "workflow_agent")
     g.add_edge("workflow_agent", "contract_check")
     g.add_edge("contract_check", "hitl")
@@ -277,7 +283,8 @@ def build_graph():
     g.add_conditional_edges(
         "pi_review", _route_after_pi, {"self_heal": "self_heal", "visualization": "visualization"}
     )
-    g.add_edge("visualization", "xai")
+    g.add_edge("visualization", "reporter")
+    g.add_edge("reporter", "xai")
     g.add_edge("xai", "report")
     g.add_edge("report", END)
     return g.compile()

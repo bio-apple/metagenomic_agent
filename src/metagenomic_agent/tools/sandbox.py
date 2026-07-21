@@ -140,6 +140,8 @@ class SandboxExecutor:
             "humann3",
             "humann",
             "checkm2",
+            "gtdbtk",
+            "bakta",
             "metaphlan",
         }:
             from metagenomic_agent.tools.schemas import validate_tool_params

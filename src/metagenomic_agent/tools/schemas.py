@@ -157,6 +157,30 @@ class CheckM2Params(BaseToolParams):
         return _path_ok(v)
 
 
+class GTDBTkParams(BaseToolParams):
+    tool: Literal["gtdbtk"] = "gtdbtk"
+    bins_dir: str
+    extension: str = Field(default="fa", pattern=r"^[A-Za-z0-9_.-]{1,16}$")
+    threads: int = Field(default=16, ge=1, le=256)
+
+    @field_validator("bins_dir")
+    @classmethod
+    def _v_bins(cls, v: str) -> str:
+        return _path_ok(v)
+
+
+class BaktaParams(BaseToolParams):
+    tool: Literal["bakta"] = "bakta"
+    input: str
+    db: str
+    prefix: str = Field(default="bakta", pattern=r"^[A-Za-z0-9_.-]{1,64}$")
+
+    @field_validator("input", "db")
+    @classmethod
+    def _v_paths(cls, v: str) -> str:
+        return _path_ok(v)
+
+
 class MetaPhlAnParams(BaseToolParams):
     tool: Literal["metaphlan"] = "metaphlan"
     r1: str
@@ -181,6 +205,8 @@ TOOL_SCHEMA_REGISTRY: dict[str, type[BaseToolParams]] = {
     "humann3": HUMAnN3Params,
     "humann": HUMAnN3Params,
     "checkm2": CheckM2Params,
+    "gtdbtk": GTDBTkParams,
+    "bakta": BaktaParams,
     "metaphlan": MetaPhlAnParams,
     "metaphlan4": MetaPhlAnParams,
 }

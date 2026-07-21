@@ -18,8 +18,8 @@
       "notes": "Resistance/virulence: CARD/VFDB via DIAMOND or specialized profilers."
     },
     "mag_recovery": {
-      "preferred": ["megahit", "metaspades", "metabat2", "checkm2"],
-      "notes": "Assembly-binning-QC pipeline for MAGs."
+      "preferred": ["megahit", "metaspades", "metabat2", "checkm2", "gtdbtk", "bakta"],
+      "notes": "Assembly-binning-QC-taxonomy-annotation pipeline for MAGs."
     }
   },
   "tools": {
@@ -107,6 +107,25 @@
       "optional_params": ["threads"],
       "defaults": {"threads": 8},
       "command_template": "checkm2 predict --input {bins} --output-directory {output} -t {threads}"
+    },
+    "gtdbtk": {
+      "specialty": ["mag_recovery", "mag_taxonomy"],
+      "strengths": ["gtdb_taxonomy", "classify_wf"],
+      "weaknesses": ["large_reference_data"],
+      "required_params": ["bins"],
+      "optional_params": ["threads", "extension"],
+      "defaults": {"threads": 16, "extension": "fa"},
+      "command_template": "gtdbtk classify_wf --genome_dir {bins} --out_dir {output} --cpus {threads} --extension {extension}"
+    },
+    "bakta": {
+      "specialty": ["mag_recovery", "annotation"],
+      "strengths": ["fast_prokaryote_annotation"],
+      "weaknesses": ["needs_bakta_db"],
+      "required_params": ["input", "db"],
+      "optional_params": ["threads", "prefix"],
+      "defaults": {"threads": 8, "prefix": "bakta"},
+      "command_template": "bakta --db {db} --input {input} --output {output} --prefix {prefix} --threads {threads}",
+      "status": "registered_for_routing"
     },
     "diamond": {
       "specialty": ["amr_virulence", "function"],

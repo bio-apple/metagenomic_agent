@@ -11,6 +11,13 @@ from pathlib import Path
 from typing import Any
 
 from metagenomic_agent.coordinator.memory import ContextMemory
+from metagenomic_agent.knowledge.domain_rag import (
+    detect_sample_environment,
+    domain_context_block,
+    manual_citations,
+    retrieve_sops,
+    retrieve_tool_manuals,
+)
 from metagenomic_agent.knowledge.workflow_rag import retrieve_workflow_snippets
 from metagenomic_agent.messaging import append_msg, emit
 
@@ -120,8 +127,11 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
     if cot and cot.get("assembler"):
         assembler = cot["assembler"]
 
-    # Force external KB retrieval (nf-core / workflow snippets + best practices)
+    # Force external KB retrieval (nf-core / SOP / tool manuals + best practices)
     wf_hits = retrieve_workflow_snippets(query, engine=None, top_k=3)
+    sop_hits = retrieve_sops(query, top_k=3)
+    manual_hits = retrieve_tool_manuals(query, top_k=3)
+    env = detect_sample_environment(query)
     bp_excerpt = ""
     if BP_PATH.exists():
         bp_excerpt = BP_PATH.read_text(encoding="utf-8")[:800]
@@ -144,6 +154,16 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
                 "score": h.get("score"),
             }
         )
+    for s in sop_hits:
+        citations.append(
+            {
+                "source": f"sop:{s.get('id')}",
+                "url": "",
+                "note": s.get("title"),
+                "score": s.get("score"),
+            }
+        )
+    citations.extend(manual_citations(manual_hits))
 
     chain = list((cot or {}).get("chain") or [])
     if not chain:
@@ -182,6 +202,16 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
         rationale.append("Differential analysis requested but groups missing — will escalate via HITL / demo_mode.")
     if bp_excerpt:
         rationale.append("Best-practices KB loaded for Supervisor handoff (see audit trail).")
+    rationale.append(f"Sample environment inferred as `{env}` via domain SOP RAG.")
+    if sop_hits:
+        rationale.append("SOP hits: " + ", ".join(s.get("id", "") for s in sop_hits))
+    if manual_hits:
+        rationale.append("Tool manuals: " + ", ".join(m.get("id", "") for m in manual_hits))
+
+    # Assay override from SOP when 16S explicitly preferred without function need
+    for s in sop_hits:
+        if s.get("id") == "assay_16s_vs_shotgun" and assay == "amplicon_16s":
+            rationale.append("Assay SOP confirms 16S path; escalate to shotgun if pathways required.")
 
     next_experiments = []
     if disease == "obesity":
@@ -221,6 +251,10 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
         "citations": citations,
         "cot_example_id": (cot or {}).get("id"),
         "workflow_rag_ids": [h.get("id") for h in wf_hits],
+        "sop_ids": [s.get("id") for s in sop_hits],
+        "tool_manual_ids": [m.get("id") for m in manual_hits],
+        "sample_environment": env,
+        "domain_context": domain_context_block(query),
         "next_experiments": next_experiments,
         "router_intent": router.get("primary_intent"),
         "router_domains": router.get("domains") or [],

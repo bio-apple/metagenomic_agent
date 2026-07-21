@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.0
+
+- Domain RAG: tool manuals (Kraken2/GTDB-Tk/Bakta/CheckM2) + SOP (16S vs Shotgun; gut/soil/ocean prep)
+- Explicit roles: Planner, Executor (Slurm/K8s specs), QC & Critic (Q20/Q30/CheckM), Reporter (diversity/pathways)
+- GTDB-Tk / Bakta schemas + tool_domain_kb entries; bio_reasoning cites SOP/manuals
+
 ## 0.15.0
 
 - Agent emits validated `workflow/params.yaml|json` for Nextflow/Snakemake (no free-form LLM shell)
