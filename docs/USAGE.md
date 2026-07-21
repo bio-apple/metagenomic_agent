@@ -1,6 +1,6 @@
 # 使用指南
 
-面向 **v0.18**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
+面向 **v0.19**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
 
 ## CLI
 
@@ -60,7 +60,10 @@ meta-agent version
 | `rag.*` | `keyword` \| `semantic`；`authority_dbs` |
 | `literature.*` | PubMed / Europe PMC / OpenAlex 等 |
 | `statistics.*` | `demo_mode`、`lefse_like`、`ancom_like` |
-| `hitl.auto_confirm` | CI 可 `true`；交互生产建议 `false` |
+| `hitl.auto_confirm` | CI/`--yes` 可 `true`；交互生产建议 `false` |
+| `hitl.require_assembly_confirm` | Assembly 提交前人工确认 |
+| `hitl.require_otu_filter_confirm` | 极低频 OTU/ASV 阈值人工确认 |
+| `statistics.min_prevalence` / `min_rel_abundance` | HITL 确认后的特征过滤阈值 |
 | `project.*` | 宿主/坐标系统/领域等 Memory 字段 |
 | `report.manuscript_template` | 手稿模板名 |
 | `pi.max_replans` | PI 复盘次数 |
@@ -99,6 +102,8 @@ S2	Control
 | `outdir/<sample>/assembly/checkpoint.json` | MEGAHIT/SPAdes 中间 Checkpoint |
 | `critic/qc_critic.md` · `bio_qc_chain.json` | QC 链：CheckM2 HQ、unclassified、Q20/Q30 |
 | `evidence/grounded_interp.md` | 表绑定解读（物种/p/q/effect 仅来自程序表） |
+| `hitl/critical_gates.json` · `CRITICAL_GATES.md` | Assembly / OTU 阈值 HITL 审计 |
+| `diversity_analysis/otu_asv_filter.json` | 低频特征剔除摘要 |
 | `reporter/biological_report.md` | Reporter：多样性与通路解读 |
 | `workflow/params.yaml` · `params.json` | 校验后的引擎参数（Schema + 任务图） |
 | `workflow/ENGINE_README.md` | Nextflow/Snakemake 启动说明 |

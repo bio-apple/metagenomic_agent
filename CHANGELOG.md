@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.0
+
+- Critical HITL gates: confirm before Assembly compute; choose OTU/ASV prevalence cutoffs
+- Mid-swarm re-checks; audit under `hitl/`; statistics apply confirmed filters
+
 ## 0.18.0
 
 - Automated bio QC chain: CheckM2 high-quality (≥90% / ≤5%) + Kraken2/MetaPhlAn unclassified gates

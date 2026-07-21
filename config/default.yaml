@@ -158,8 +158,19 @@ validation:
 
 hitl:
   auto_confirm: true  # set false to require interactive confirmation; CLI --yes overrides to true
+  # Critical gates (bioinformatician confirmation)
+  require_assembly_confirm: true  # before heavy Assembly/binning
+  require_otu_filter_confirm: true  # before rare OTU/ASV culling
+  gate_before_assembly_run: true  # mid-swarm re-check if not yet confirmed
+  gate_before_otu_filter: true
+  default_confirm_assembly: true  # auto default A=submit when auto_confirm
+  default_otu_filter: A  # A=balanced B=strict C=lenient D=none
 
 statistics:
   demo_mode: false  # if true (or mock without groups), use explicit synthetic case/control matrix
   lefse_like: true
   ancom_like: true
+  # Applied after HITL OTU/ASV gate (defaults = balanced preset)
+  min_prevalence: 0.1
+  min_rel_abundance: 1.0e-5
+  otu_filter_preset: balanced

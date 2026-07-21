@@ -150,6 +150,8 @@ def _self_heal(state: AgentState) -> dict:
 
 
 def _export_dag(state: AgentState) -> dict:
+    from metagenomic_agent.agents.hitl_gates import register_critical_gates
+
     info = export_workflow_dag(state)
     estimate = write_resource_estimate(state)
     # Agent → validated YAML/JSON params for Nextflow/Snakemake (no LLM shell)
@@ -163,6 +165,12 @@ def _export_dag(state: AgentState) -> dict:
         hitl.append(f"[Resources] {estimate.get('user_message')}")
     if int(wf_params.get("n_validation_errors") or 0) > 0 and state.get("mode") not in {"mock"}:
         hitl.append(f"[Schema] {wf_params['n_validation_errors']} tool param validation error(s)")
+    # Critical HITL: Assembly compute + OTU/ASV prevalence thresholds
+    gated = register_critical_gates(
+        {**state, "artifacts": arts, "hitl_pending": hitl, "messages": state.get("messages") or []}
+    )
+    arts = gated.get("artifacts") or arts
+    hitl = gated.get("hitl_pending") or hitl
     return {
         "artifacts": arts,
         "hitl_pending": hitl,
@@ -171,7 +179,8 @@ def _export_dag(state: AgentState) -> dict:
             f"Exported workflow DAG ({info.get('n_nodes')} nodes)",
             estimate.get("user_message") or "resource estimate written",
             f"Wrote engine params ({wf_params.get('params_yaml')})",
-        ],
+        ]
+        + list(gated.get("messages") or [])[-1:],
     }
 
 

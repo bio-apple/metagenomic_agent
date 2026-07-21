@@ -131,6 +131,45 @@ def _synthetic_demo_matrix(n_case: int = 3, n_ctrl: int = 3) -> tuple[dict[str, 
     return matrix, groups
 
 
+def _filter_low_frequency(
+    matrix: dict[str, dict[str, float]],
+    *,
+    min_prevalence: float,
+    min_rel_abundance: float,
+) -> tuple[dict[str, dict[str, float]], dict[str, Any]]:
+    """Drop ultra-low-frequency OTU/ASV/genus features after HITL-confirmed thresholds."""
+    if not matrix:
+        return matrix, {"n_before": 0, "n_after": 0, "removed": []}
+    n = len(matrix)
+    taxa: set[str] = set()
+    for abund in matrix.values():
+        taxa |= set(abund)
+    keep: set[str] = set()
+    removed: list[str] = []
+    for t in taxa:
+        present = 0
+        max_ab = 0.0
+        for abund in matrix.values():
+            v = float(abund.get(t) or 0.0)
+            max_ab = max(max_ab, v)
+            if v >= min_rel_abundance:
+                present += 1
+        prev = present / n if n else 0.0
+        if prev >= min_prevalence and max_ab >= min_rel_abundance:
+            keep.add(t)
+        else:
+            removed.append(t)
+    filtered = {sid: {t: v for t, v in abund.items() if t in keep} for sid, abund in matrix.items()}
+    return filtered, {
+        "n_before": len(taxa),
+        "n_after": len(keep),
+        "n_removed": len(removed),
+        "removed_preview": removed[:40],
+        "min_prevalence": min_prevalence,
+        "min_rel_abundance": min_rel_abundance,
+    }
+
+
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
     outdir = Path(state["outdir"]) / "diversity_analysis"
     biomarker_dir = Path(state["outdir"]) / "biomarkers"
@@ -140,7 +179,8 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     matrix = _load_genus_matrix(state.get("artifacts", {}).get("taxonomy_profile"), state.get("artifacts", {}))
     samples = state.get("samples", [])
     groups = {s["sample_id"]: (s.get("group") or "unknown") for s in samples}
-    demo_mode = bool(state.get("config", {}).get("statistics", {}).get("demo_mode", False))
+    stats_cfg = state.get("config", {}).get("statistics", {}) or {}
+    demo_mode = bool(stats_cfg.get("demo_mode", False))
     notes: list[str] = []
 
     real_groups = {g for g in groups.values() if g != "unknown"}
@@ -150,6 +190,19 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             notes.append("demo_mode: used synthetic case/control matrix for differential demo (not real sample labels)")
         else:
             notes.append("Insufficient group labels for differential abundance; diversity-only")
+
+    # HITL-confirmed OTU/ASV (genus-feature) prevalence filter
+    min_prev = float(stats_cfg.get("min_prevalence", 0.1))
+    min_ab = float(stats_cfg.get("min_rel_abundance", 1e-5))
+    matrix, filter_meta = _filter_low_frequency(matrix, min_prevalence=min_prev, min_rel_abundance=min_ab)
+    notes.append(
+        f"OTU/ASV filter preset={stats_cfg.get('otu_filter_preset', 'custom')}: "
+        f"kept {filter_meta['n_after']}/{filter_meta['n_before']} features "
+        f"(prevalence≥{min_prev}, rel_ab≥{min_ab})"
+    )
+    (outdir / "otu_asv_filter.json").write_text(
+        __import__("json").dumps(filter_meta, indent=2), encoding="utf-8"
+    )
 
     alpha_lines = ["sample\tgroup\tshannon\trichness"]
     for sid, abund in matrix.items():
@@ -257,11 +310,13 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "lefse_list": lefse_rows[:20],
         "ancom_list": ancom_rows[:20],
         "groups": groups,
-        "methods": methods,
+        "methods": methods + ["otu_asv_prevalence_filter"],
         "notes": notes,
+        "otu_asv_filter": filter_meta,
         "disclaimer": (
             "Default differential abundance: Mann-Whitney U + BH-FDR. "
             "Also exports lefse_like (Cohen's d proxy) and ancom_like (CLR+MWU). "
+            "Ultra-low-frequency features are culled using HITL-confirmed prevalence thresholds. "
             "These are lightweight Python approximations — for journal submission prefer "
             "official LEfSe / ANCOM-BC / MaAsLin2 on exported tables."
         ),

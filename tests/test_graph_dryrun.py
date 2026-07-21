@@ -92,6 +92,8 @@ def test_graph_dryrun_mock(tmp_path: Path):
     assert (out / "executor" / "job.k8s.yaml").exists()
     assert (out / "executor" / "cluster_sense.json").exists()
     assert (out / "reporter" / "biological_report.md").exists()
+    assert (out / "hitl" / "critical_gates.json").exists()
+    assert (out / "diversity_analysis" / "otu_asv_filter.json").exists()
     assert (out / "workflow" / "generated.nf").exists()
     assert (out / "xai" / "feature_importance.md").exists()
     assert final.get("critic") is not None

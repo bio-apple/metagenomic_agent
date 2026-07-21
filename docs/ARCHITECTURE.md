@@ -1,20 +1,26 @@
 # 架构说明
 
-面向 **v0.18**。详见 [USAGE.md](USAGE.md)、[ROADMAP.md](ROADMAP.md)。
+面向 **v0.19**。详见 [USAGE.md](USAGE.md)、[ROADMAP.md](ROADMAP.md)。
 
-## 设计
+## Human-in-the-Loop
+
+关键节点需生信人员确认后再继续：
+
+| 触发点 | 时机 | 选项 |
+|--------|------|------|
+| **Assembly 算力** | 规划导出 / 执行前 | 确认提交 · 改 MEGAHIT · 跳过 |
+| **OTU/ASV 低频剔除** | 规划导出 / 统计前 | 均衡/严格/宽松/不剔除 |
 
 ```
-… → Executor → QC & Critic（bio QC 链）
-     → Literature → Reporter（表绑定解读）→ Report
+… → export_dag（注册 critical gates）→ HITL 确认
+  → Executor → [再确认 Assembly] → … → [再确认 OTU 阈值] → Statistics
 ```
 
-| 主题 | 路径 |
+| 模块 | 路径 |
 |------|------|
-| CheckM2 / 分类率 QC 链 | `validators/bio_qc.py` → `critic/bio_qc_chain.json` |
-| High-quality MAG 门控 | Completeness ≥90% · Contamination ≤5% |
-| Unclassified 过高 | 提示换库 / 提高 Kraken2 confidence |
-| 幻觉护栏 | `knowledge/grounded_interp.py`：物种/p/q/effect 必须来自 biomarkers·LEfSe 表 |
-| 证据链 | `evidence_chain.py` + `interpretation.require_evidence_chain` |
+| 门控定义 | `agents/hitl_gates.py` |
+| 动作应用 | `agents/hitl.py` |
+| 审计 | `hitl/critical_gates.json` |
+| 过滤执行 | `statistics` → `diversity_analysis/otu_asv_filter.json` |
 
-High-quality MAG 与 taxonomy unclassified 在 Critic / technical validator 共用同一阈值源（`config.validation`）。
+交互生产：`hitl.auto_confirm: false`（CLI 不加 `--yes`）。

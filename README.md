@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.18.0` · CheckM2/分类 QC 链 · 表绑定抗幻觉解读（p/q/effect）。
+**版本** `0.19.0` · HITL：Assembly 算力确认 · OTU/ASV 低频阈值确认。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 

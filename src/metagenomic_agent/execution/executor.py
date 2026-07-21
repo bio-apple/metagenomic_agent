@@ -119,6 +119,55 @@ def execute_swarm(state: AgentState) -> dict:
             memory.append_history(f"cache:{node['id']}")
             continue
 
+        # Mid-swarm critical HITL: confirm before Assembly / before statistics OTU filter
+        hitl_cfg = (state.get("config") or {}).get("hitl") or {}
+        auto_hitl = bool(state.get("hitl_auto_confirm") or hitl_cfg.get("auto_confirm", True))
+        if agent_name == "assembly" and hitl_cfg.get("gate_before_assembly_run", True):
+            if not artifacts.get("assembly_confirmed") and node.get("params", {}).get("hitl_skipped"):
+                node["status"] = "skipped"
+                messages.append(f"SKIP assembly node={node['id']} (HITL declined)")
+                continue
+            if not artifacts.get("assembly_confirmed") and not node.get("params", {}).get("hitl_confirmed"):
+                from metagenomic_agent.agents.hitl_gates import build_assembly_gate, confirm_gate_inline
+
+                gate = build_assembly_gate({**state, "artifacts": artifacts, "dag": dag, "config": state.get("config")})
+                if gate:
+                    action, patch = confirm_gate_inline(
+                        {**state, "artifacts": artifacts, "dag": dag, "config": state.get("config")},
+                        gate,
+                        auto=auto_hitl,
+                    )
+                    if "config" in patch:
+                        state = {**state, "config": patch["config"]}
+                    if "dag" in patch:
+                        dag = patch["dag"]
+                        node = next((n for n in dag if n.get("id") == node.get("id")), node)
+                    if patch.get("artifacts"):
+                        artifacts = {**artifacts, **patch["artifacts"]}
+                    messages.extend(patch.get("messages") or [])
+                    monitor.log("swarm", "hitl_assembly", action=action)
+                    if action == "skip_assembly" or node.get("status") == "skipped":
+                        node["status"] = "skipped"
+                        messages.append(f"SKIP assembly after HITL action={action}")
+                        continue
+        if agent_name in {"statistics", "stats"} and hitl_cfg.get("gate_before_otu_filter", True):
+            if not artifacts.get("otu_filter_confirmed"):
+                from metagenomic_agent.agents.hitl_gates import build_otu_filter_gate, confirm_gate_inline
+
+                gate = build_otu_filter_gate({**state, "artifacts": artifacts, "dag": dag, "config": state.get("config")})
+                if gate:
+                    action, patch = confirm_gate_inline(
+                        {**state, "artifacts": artifacts, "dag": dag, "config": state.get("config")},
+                        gate,
+                        auto=auto_hitl,
+                    )
+                    if "config" in patch:
+                        state = {**state, "config": patch["config"]}
+                    if patch.get("artifacts"):
+                        artifacts = {**artifacts, **patch["artifacts"]}
+                    messages.extend(patch.get("messages") or [])
+                    monitor.log("swarm", "hitl_otu_filter", action=action)
+
         t0 = time.time()
         messages.append(f"Running agent={agent_name} node={node['id']}")
         monitor.log("swarm", "start", node=node["id"], agent=agent_name)

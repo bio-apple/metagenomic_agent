@@ -74,6 +74,57 @@ def _apply_action(state: AgentState, action: str) -> dict[str, Any]:
     elif action == "re_qc":
         arts["re_qc_requested"] = True
         messages.append("HITL: re-QC requested")
+    elif action == "confirm_assembly":
+        bio["enable_assembly"] = True
+        cfg.setdefault("pipeline", {})["enable_assembly"] = True
+        arts["assembly_confirmed"] = True
+        for n in dag:
+            if n.get("agent") == "assembly":
+                n["status"] = "pending"
+                n.setdefault("params", {})["hitl_confirmed"] = True
+        messages.append("HITL: Assembly compute confirmed by analyst")
+    elif action == "confirm_assembly_megahit":
+        bio["enable_assembly"] = True
+        bio["assembler_preference"] = "megahit"
+        cfg.setdefault("pipeline", {})["enable_assembly"] = True
+        cfg.setdefault("pipeline", {})["default_assembler"] = "megahit"
+        arts["assembly_confirmed"] = True
+        for n in dag:
+            if n.get("agent") == "assembly":
+                n["status"] = "pending"
+                n.setdefault("params", {})["assembler"] = "megahit"
+                n["params"]["hitl_confirmed"] = True
+                tools = [t for t in (n.get("tools") or []) if t != "metaspades"]
+                if "megahit" not in tools:
+                    tools.insert(0, "megahit")
+                n["tools"] = tools
+        messages.append("HITL: Assembly confirmed with MEGAHIT (memory-efficient)")
+    elif action == "skip_assembly":
+        bio["enable_assembly"] = False
+        cfg.setdefault("pipeline", {})["enable_assembly"] = False
+        arts["assembly_confirmed"] = False
+        for n in dag:
+            if n.get("agent") == "assembly":
+                n["status"] = "skipped"
+                n.setdefault("params", {})["hitl_skipped"] = True
+        messages.append("HITL: Assembly skipped — analyst declined heavy compute")
+    elif action in {
+        "otu_filter_balanced",
+        "otu_filter_strict",
+        "otu_filter_lenient",
+        "otu_filter_none",
+    }:
+        from metagenomic_agent.agents.hitl_gates import apply_otu_preset
+
+        preset = action.replace("otu_filter_", "")
+        cfg = apply_otu_preset(cfg, preset)
+        arts["otu_filter_confirmed"] = True
+        arts["otu_filter_preset"] = preset
+        messages.append(
+            f"HITL: OTU/ASV filter preset=`{preset}` "
+            f"(prevalence≥{cfg['statistics']['min_prevalence']}, "
+            f"rel_ab≥{cfg['statistics']['min_rel_abundance']})"
+        )
 
     arts["bio_reasoning"] = bio
     arts.setdefault("hitl_decisions", []).append(action)
@@ -119,6 +170,12 @@ def hitl_checkpoint(state: AgentState) -> dict[str, Any]:
             patch.setdefault("messages", []).extend(applied.get("messages") or [])
         arts["hitl_decisions"] = decisions
         patch["artifacts"] = {**arts, "hitl_options": []}
+        from metagenomic_agent.agents.hitl_gates import write_hitl_log
+
+        log_path = write_hitl_log({**state, **patch, "artifacts": arts}, decisions)
+        if log_path:
+            arts["hitl_log"] = log_path
+            patch["artifacts"] = {**arts, "hitl_options": []}
         msg = emit("hitl", "executor", "hitl", {"action": "auto_confirm", "decisions": decisions})
         patch["agent_messages"] = append_msg(state.get("agent_messages"), msg)
         return patch
@@ -176,6 +233,12 @@ def hitl_checkpoint(state: AgentState) -> dict[str, Any]:
     arts["hitl_decisions"] = decisions
     arts["hitl_options"] = []
     patch["artifacts"] = arts
+    from metagenomic_agent.agents.hitl_gates import write_hitl_log
+
+    log_path = write_hitl_log({**state, **patch, "artifacts": arts}, decisions)
+    if log_path:
+        arts["hitl_log"] = log_path
+        patch["artifacts"] = arts
     msg = emit("hitl", "executor", "hitl", {"action": "confirmed", "decisions": decisions})
     patch["agent_messages"] = append_msg(state.get("agent_messages"), msg)
     patch["messages"].append("HITL: user confirmed")
