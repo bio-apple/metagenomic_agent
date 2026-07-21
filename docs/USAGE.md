@@ -110,7 +110,7 @@ docker compose up --build
 | `report.manuscript_template` | 手稿模板名 |
 | `pi.max_replans` | PI 复盘次数 |
 
-参考库目录说明见 [database/README.md](../database/README.md)。
+参考库**构建与目录契约**见 [database/README.md](../database/README.md)（含 Kraken2 / MetaPhlAn / GTDB / CARD 逐步命令）；辅助脚本 `scripts/build_databases.sh`。
 
 ## 元数据示例
 

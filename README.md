@@ -31,7 +31,7 @@ Planner → HITL → Swarm(QC/Tax/Func/Resistance/Stats)
 | [docs/USAGE.md](docs/USAGE.md) | CLI / API / 配置 / 产物 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构与设计（开发者必读） |
 | [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md) | Linux ≥256 GB 部署 |
-| [database/README.md](database/README.md) | 参考库 / 知识目录 |
+| [database/README.md](database/README.md) | 参考库目录契约与**构建步骤** |
 | [CHANGELOG.md](CHANGELOG.md) | 版本历史 |
 
 ## License

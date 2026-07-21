@@ -43,6 +43,7 @@ parse → router → bio_reasoning → supervisor → tool_specialist → plan_v
 ## 知识与抗幻觉
 
 - Hybrid RAG（`rag.mode=hybrid`）+ Microbiome KG（`knowledge/microbiome_kg.py`）
+- 全量参考库构建：见 [database/README.md](../database/README.md)（Kraken2 / MetaPhlAn / GTDB / CARD…）
 - 表绑定：`require_evidence_chain`（物种/p/q/effect 来自程序表）
 - 推理审计：`outdir/reasoning/chain.md`
 - 项目 Memory：`ContextMemory.retrieve`（TF-IDF）
