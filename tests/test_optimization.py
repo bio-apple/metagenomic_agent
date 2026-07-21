@@ -23,8 +23,10 @@ def test_self_heal_downgrades_assembler():
     assert "downgrade_assembler" in actions
     new_dag, patch = apply_self_heal(dag, actions, {"linux": {"threads": 16, "memory_gb": 64}})
     assert new_dag[0]["params"]["assembler"] == "megahit"
+    assert "increase_memory" in actions
     assert patch["linux"]["threads"] == 8
-    assert patch["linux"]["memory_gb"] == 32
+    # OOM first raises memory ceiling (64 → 128), while reducing threads
+    assert patch["linux"]["memory_gb"] == 128
 
 
 def test_rag_akkermansia():

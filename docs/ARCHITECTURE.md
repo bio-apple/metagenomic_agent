@@ -1,28 +1,32 @@
 # 架构说明
 
-面向 **v0.14**。详见 [USAGE.md](USAGE.md)、[ROADMAP.md](ROADMAP.md)。
+面向 **v0.15**。详见 [USAGE.md](USAGE.md)、[ROADMAP.md](ROADMAP.md)。
 
 ## 设计
 
 ```
-User → Router → Bio Reasoning (CoT + nf-core/BioStars citations + audit)
-     → Supervisor → Tool Specialist (skill I/O contracts, not free-form shell)
-     → resource estimate → HITL → Swarm + step cache
+User → Router → Bio Reasoning
+     → Supervisor → Tool Specialist (Pydantic Schema + skill contracts)
+     → params.yaml/json → resource estimate → HITL
+     → LangGraph swarm 或 Nextflow/Snakemake（-resume / --rerun-incomplete）
+     → 失败：日志摘要 → 自愈改参 → 重写 params → 重试
      → interpretation → lite dashboard → report
 ```
 
 | 主题 | 路径 |
 |------|------|
-| 技能契约 | `skills/contracts.py` · `skills/registry.py` · `tool_specialist.py` |
+| 工具 Schema | `tools/schemas.py`（FastQC/Trimmomatic/MEGAHIT/MetaBAT2/HUMAnN3/Kraken2…） |
+| 引擎参数手递 | `execution/workflow_params.py` → `outdir/workflow/params.yaml` |
+| 引擎启动 | `execution/engine.py`（读 params，禁止 LLM 自由 shell） |
+| 自愈循环 | `execution/self_heal.py`（OOM 增内存、缺库/缺文件分类） |
+| 技能契约 | `skills/contracts.py` · `tool_specialist.py` |
 | 步骤缓存 | `execution/step_cache.py` |
-| 资源预估 | `execution/resource_estimate.py` |
-| CoT 推理 | `knowledge/bio_cot_examples.json` · `bio_reasoning_agent.py` |
-| 轻量可视化 | `report/interactive.py`（`visualization.lite`） |
-| 引擎 resume | `execution/engine.py`（nf `-resume` / smk `--rerun-incomplete`） |
 
 ```
 parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
-  → export_dag(+resource_estimate) → workflow_agent → contract → HITL
-  → swarm(cache) → validate → quality → HITL(runtime) → …
+  → export_dag(+params.yaml + resource_estimate) → workflow_agent → contract → HITL
+  → swarm|external engine → validate → quality → HITL(runtime) → self-heal*
   → visualization → xai → report
 ```
+
+**策略**：Agent 理解需求并产出校验后的配置；底层调度已模块化的 Nextflow / Snakemake（或带 step cache 的 LangGraph）。

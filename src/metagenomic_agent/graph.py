@@ -24,8 +24,11 @@ from metagenomic_agent.evaluation.xai import write_xai_report
 from metagenomic_agent.execution.dag_export import export_workflow_dag
 from metagenomic_agent.execution.resource_estimate import write_resource_estimate
 from metagenomic_agent.execution.executor import execute_swarm
+from metagenomic_agent.execution.workflow_params import write_workflow_params
 from metagenomic_agent.execution.self_heal import (
     apply_self_heal,
+    patch_workflow_params_on_heal,
+    summarize_error_logs,
     classify_from_errors,
     deep_merge_config,
     summarize_heal_for_user,
@@ -95,14 +98,44 @@ def _self_heal(state: AgentState) -> dict:
         actions.append("loosen_qc")
 
     actions = list(dict.fromkeys(actions))
+    log_digest = summarize_error_logs(errors)
     new_dag, cfg_patch = apply_self_heal(list(state.get("dag", [])), actions, state.get("config"))
     new_dag = apply_recovery(new_dag, actions)
     new_config = deep_merge_config(dict(state.get("config") or {}), cfg_patch)
     artifacts = dict(state.get("artifacts") or {})
     artifacts["errors"] = []
     artifacts["self_heal_actions"] = actions
+    artifacts["self_heal_error_digest"] = log_digest
     summary = summarize_heal_for_user(actions, errors)
     artifacts["self_heal_summary"] = summary
+
+    # Rewrite engine params.yaml/json with healed resources (structured retry, not shell rewrite)
+    healed_state = {**state, "dag": new_dag, "config": new_config, "artifacts": artifacts}
+    try:
+        from pathlib import Path
+        import yaml
+
+        prev = artifacts.get("workflow_params") or {}
+        yml_path = prev.get("params_yaml")
+        base_params: dict = {}
+        if yml_path and Path(yml_path).exists():
+            base_params = yaml.safe_load(Path(yml_path).read_text(encoding="utf-8")) or {}
+        if base_params:
+            patched = patch_workflow_params_on_heal(base_params, cfg_patch, actions)
+            Path(yml_path).write_text(
+                yaml.safe_dump(patched, sort_keys=False, allow_unicode=True), encoding="utf-8"
+            )
+            js = prev.get("params_json")
+            if js:
+                import json
+
+                Path(js).write_text(json.dumps(patched, indent=2, ensure_ascii=False), encoding="utf-8")
+            artifacts["workflow_params_healed"] = True
+        else:
+            artifacts["workflow_params"] = write_workflow_params(healed_state)
+    except Exception as exc:  # noqa: BLE001
+        artifacts["workflow_params_heal_error"] = str(exc)
+
     return {
         "dag": new_dag,
         "config": new_config,
@@ -117,12 +150,17 @@ def _self_heal(state: AgentState) -> dict:
 def _export_dag(state: AgentState) -> dict:
     info = export_workflow_dag(state)
     estimate = write_resource_estimate(state)
+    # Agent → validated YAML/JSON params for Nextflow/Snakemake (no LLM shell)
+    wf_params = write_workflow_params(state)
     arts = dict(state.get("artifacts") or {})
     arts["workflow_dag"] = info
     arts["resource_estimate"] = estimate
+    arts["workflow_params"] = wf_params
     hitl = list(state.get("hitl_pending") or [])
     if estimate.get("warnings") and state.get("mode") not in {"mock"}:
         hitl.append(f"[Resources] {estimate.get('user_message')}")
+    if int(wf_params.get("n_validation_errors") or 0) > 0 and state.get("mode") not in {"mock"}:
+        hitl.append(f"[Schema] {wf_params['n_validation_errors']} tool param validation error(s)")
     return {
         "artifacts": arts,
         "hitl_pending": hitl,
@@ -130,6 +168,7 @@ def _export_dag(state: AgentState) -> dict:
         + [
             f"Exported workflow DAG ({info.get('n_nodes')} nodes)",
             estimate.get("user_message") or "resource estimate written",
+            f"Wrote engine params ({wf_params.get('params_yaml')})",
         ],
     }
 

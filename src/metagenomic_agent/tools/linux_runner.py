@@ -70,6 +70,23 @@ def classify_error(returncode: int | None, stderr: str = "") -> str:
             return "resource"
         if "conda" in text and ("not found" in text or "environment" in text):
             return "missing_binary"
+        # DB / index problems (Kraken2, Bowtie, HUMAnN, …)
+        if any(
+            k in text
+            for k in (
+                "database not found",
+                "db not found",
+                "index not found",
+                "cannot find taxonomy",
+                "hash.k2d",
+                "opts.k2d",
+                "please download",
+                "database directory",
+            )
+        ):
+            return "missing_db"
+        if "no such file or directory" in text or "file not found" in text or "cannot open" in text:
+            return "missing_file"
         return "logic"
     return "unknown"
 

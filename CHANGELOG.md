@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0
+
+- Agent emits validated `workflow/params.yaml|json` for Nextflow/Snakemake (no free-form LLM shell)
+- Pydantic schemas for FastQC / Trimmomatic / MEGAHIT / MetaBAT2 / HUMAnN3 / Kraken2 (+ fastp, CheckM2, MetaPhlAn)
+- Self-heal loop: error digest → increase memory / fix paths / switch tools → rewrite params → retry
+
 ## 0.14.0
 
 - Skill-contract-aware Tool Specialist; LangGraph step cache (`cache/steps`) for resume

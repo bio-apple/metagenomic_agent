@@ -1,6 +1,6 @@
 # 使用指南
 
-面向 **v0.12**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
+面向 **v0.15**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
 
 ## CLI
 
@@ -42,6 +42,7 @@ meta-agent version
 
 | 段 | 作用 |
 |------|------|
+| `execution.engine` | `langgraph`（默认）\| `nextflow` \| `snakemake`；后两者读 Agent 写出的 params |
 | `sandbox.*` | 容器后端、`prefer_container`、`platform`、mock 回退 |
 | `docker.*` / `linux.*` | 镜像平台、线程、内存 |
 | `routing.*` | gLM / 双路 / ε-greedy |
@@ -53,7 +54,6 @@ meta-agent version
 | `reproducibility.*` | `auto_export`、`seed` |
 | `visualization.*` | `default_q`、`lite`（按需加载）、`max_inline_biomarkers` |
 | `cache.enabled` | LangGraph 步骤缓存 |
-| `execution.engine` | `langgraph` \| `snakemake` \| `nextflow` |
 | `rag.*` | `keyword` \| `semantic`；`authority_dbs` |
 | `literature.*` | PubMed / Europe PMC / OpenAlex 等 |
 | `statistics.*` | `demo_mode`、`lefse_like`、`ancom_like` |
@@ -90,6 +90,8 @@ S2	Control
 | `evidence/claims.md` | 抗幻觉证据链 |
 | `evidence/evidence_table.md` | 文献证据表 |
 | `context/pipeline_summary.json` | LLM 用统计摘要 |
+| `workflow/params.yaml` · `params.json` | 校验后的引擎参数（Schema + 任务图） |
+| `workflow/ENGINE_README.md` | Nextflow/Snakemake 启动说明 |
 | `workflow/reproducible.nf` · `.smk` · `seeds.json` | 可复现导出 |
 | `workflow/generated.nf` · `.smk` | 规划期 RAG 草稿 |
 | `reproducibility/run_manifest.json` | 运行清单 + CWL |

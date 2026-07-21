@@ -3,7 +3,9 @@ workdir: ./workdir
 max_retries: 2
 
 execution:
-  engine: langgraph  # langgraph | snakemake | nextflow  (nf: -resume; smk: --rerun-incomplete)
+  engine: langgraph  # langgraph | snakemake | nextflow
+  # Agent writes outdir/workflow/params.yaml; engines consume it (no LLM free-form shell)
+  # nf: -resume; smk: --rerun-incomplete
 
 # Prefer container isolation for bio tools (MCP-style sandbox). Avoid fragile host binaries.
 sandbox:

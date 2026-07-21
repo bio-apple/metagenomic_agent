@@ -128,7 +128,43 @@ class SandboxExecutor:
             return SandboxBackend.DOCKER
         return self.backend
 
-    def execute(self, req: ToolCallRequest) -> ToolCallResponse:
+    def execute(self, req: ToolCallRequest, *, schema_params: dict[str, Any] | None = None) -> ToolCallResponse:
+        # Optional Pydantic schema gate before any sandbox/backend launch
+        if schema_params is not None or req.tool in {
+            "fastp",
+            "fastqc",
+            "trimmomatic",
+            "kraken2",
+            "megahit",
+            "metabat2",
+            "humann3",
+            "humann",
+            "checkm2",
+            "metaphlan",
+        }:
+            from metagenomic_agent.tools.schemas import validate_tool_params
+
+            payload = dict(schema_params or {})
+            payload.setdefault("threads", req.threads)
+            payload.setdefault("memory_gb", req.memory_gb)
+            if req.workdir:
+                payload.setdefault("outdir", req.workdir)
+            vr = validate_tool_params(req.tool, payload, strict=False)
+            if not vr.ok and schema_params is not None:
+                return ToolCallResponse(
+                    ok=False,
+                    tool=req.tool,
+                    backend=self.backend.value,
+                    command=" ".join(req.argv),
+                    classified="logic",
+                    user_message=f"参数 Schema 校验失败: {'; '.join(vr.errors)}",
+                    recovery_hints=["修正 YAML/JSON 参数后重试", "检查路径 / threads / memory_gb"],
+                    stderr="; ".join(vr.errors),
+                )
+            if vr.ok:
+                req.threads = int(vr.params.get("threads", req.threads))
+                req.memory_gb = int(vr.params.get("memory_gb", req.memory_gb))
+
         backend = self.resolve_backend(req)
         if backend == SandboxBackend.MOCK:
             return ToolCallResponse(

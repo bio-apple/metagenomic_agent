@@ -10,6 +10,7 @@ from metagenomic_agent.knowledge.domain_kb import load_tool_domain_kb, recommend
 from metagenomic_agent.messaging import append_msg, emit
 from metagenomic_agent.skills.contracts import Severity
 from metagenomic_agent.skills.registry import get_skill
+from metagenomic_agent.tools.schemas import TOOL_SCHEMA_REGISTRY, validate_tool_params
 
 
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -110,6 +111,24 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             }
             contract_notes.extend(soft)
 
+        # Pydantic schema validation (structured tool calling — not free-form shell)
+        schema_params = {
+            **{k: params[k] for k in param_keys if k in params},
+            "threads": params.get("threads") or linux.get("threads", 8),
+            "memory_gb": int(linux.get("memory_gb", 16)),
+            "outdir": state.get("outdir") or "results",
+            "r1": params.get("r1") or upstream_stub.get("r1"),
+            "r2": params.get("r2") or sample0.get("r2"),
+            "db": params.get("db"),
+            "input": params.get("input") or params.get("r1"),
+            "inputs": [params.get("r1") or upstream_stub.get("r1")],
+            "contigs": params.get("contigs") or upstream_stub.get("contigs"),
+            "bins_dir": params.get("bins") or upstream_stub.get("bins_dir"),
+        }
+        schema_result = None
+        if name in TOOL_SCHEMA_REGISTRY:
+            schema_result = validate_tool_params(name, schema_params, strict=False)
+
         specs.append(
             {
                 "tool": name,
@@ -120,6 +139,8 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
                 "missing_required": missing_req if state.get("mode") != "mock" else [],
                 "notes": meta.get("strengths"),
                 "skill_contract": skill_meta,
+                "schema_validation": schema_result.model_dump() if schema_result else None,
+                "execution_policy": "params_yaml_then_engine_or_sandbox_no_llm_shell",
             }
         )
 

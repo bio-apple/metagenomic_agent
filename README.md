@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.14.0` · 技能契约 + 步骤缓存 · CoT 生物推理审计 · 轻量 Dashboard · 生产资源预估 / `-resume`。
+**版本** `0.15.0` · Agent→YAML/JSON→Nextflow/Snakemake · 工具 Pydantic Schema · 自愈改参重试。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -20,9 +20,9 @@ pytest -q && meta-agent version
 ## 流水线
 
 ```
-Router → Bio Reasoning (CoT+citations) → Supervisor → Tool Specialist (contracts)
-  → resource estimate → HITL → Swarm (step cache) → HITL(runtime)
-  → Critic → Literature → Viz (lite) → Report
+Router → Bio Reasoning → Supervisor → Tool Specialist (Schema + contracts)
+  → export params.yaml → resource estimate → HITL
+  → Swarm / Nextflow|Snakemake (-resume) → self-heal(改参) → Report
 ```
 
 ## 文档

@@ -1,13 +1,18 @@
-# Prefer single-shot agent orchestration; staged markers document the canonical DAG.
+# Params-driven Snakemake handoff — Agent writes snakemake_config.yaml + params.yaml.
+# Prefer --configfile from outdir/workflow/snakemake_config.yaml (written by the Agent).
+
 configfile: "config/default.yaml"
 
 INPUT_DIR = config.get("input_dir", "tests/fixtures/fastq")
 OUTDIR = config.get("outdir", "results")
 MODE = config.get("mode", "mock")
+THREADS = int(config.get("threads", 4))
+MEMORY_GB = int(config.get("memory_gb", 32))
 QUERY = config.get(
     "query",
     "Analyze shotgun metagenomic samples and identify microbial biomarkers.",
 )
+AGENT_PARAMS = config.get("agent_params", "")
 
 
 rule all:
@@ -19,7 +24,7 @@ rule all:
 
 
 rule run_agent:
-    """End-to-end LangGraph agent (QC→Tax→Stats→Evidence→Viz→Report)."""
+    """End-to-end LangGraph agent; resources from Agent-emitted YAML (not LLM shell)."""
     output:
         report=f"{OUTDIR}/final_report.html",
         taxonomy=f"{OUTDIR}/taxonomy_profile.tsv",
@@ -31,8 +36,12 @@ rule run_agent:
         outdir=OUTDIR,
         mode=MODE,
         query=QUERY,
+        agent_params=AGENT_PARAMS,
+        memory_gb=MEMORY_GB,
+    threads: THREADS
     shell:
         """
+        # agent_params={params.agent_params} memory_gb={params.memory_gb}
         meta-agent run \
           --input {params.input_dir} \
           --outdir {params.outdir} \
@@ -42,7 +51,6 @@ rule run_agent:
         """
 
 
-# Canonical stage documentation targets (satisfied after run_agent)
 rule stage_qc:
     input: rules.run_agent.output.quality
     output: touch(f"{OUTDIR}/.stage_qc")
