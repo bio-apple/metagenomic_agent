@@ -4,7 +4,8 @@
 
 - Design-doc agents: Resistance/Virulence, Evidence Integration, Scientific Reviewer, Reflection, Code
 - Microbiome Knowledge Graph; Centrifuge + QC MultiQC score; MetaAgentScore + planning/error/reasoning benchmarks
-- Graph: literature → evidence → reviewer → reflection → code → report; DESIGN.md + docx archived
+- Graph: literature → evidence → reviewer → reflection → code → report
+- Docs: keep USAGE / ARCHITECTURE / DEPLOY_LINUX / database README / CHANGELOG only（无多组学路线图）
 
 ## 0.22.0
 
