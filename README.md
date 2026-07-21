@@ -54,19 +54,61 @@ No materials are available “upon request.” The bundled demo uses `--mode moc
 
 ## Quick start
 
+Production path has **three steps**: deploy the software (Docker) → download local reference databases → run the agent.
+
+### 1. Software deployment (Docker)
+
+Reference databases are **not** baked into the image (too large). Build the orchestration layer only:
+
 ```bash
 git clone https://github.com/bio-apple/metagenomic_agent.git
 cd metagenomic_agent
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
 
-# Reviewer path (no reference DBs / GPU)
-bash scripts/reproduce_demo.sh
+docker compose up --build -d
+# API / Web UI: http://127.0.0.1:8000/ui
 ```
 
-Manual equivalent:
+Optional local (non-Docker) install for development / mock demos:
 
 ```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+meta-agent version
+```
+
+Requirements: Docker Engine (recommended) or Python ≥ 3.10. Optional: `OPENAI_API_KEY` for LLM-enhanced paths. Large-memory Linux notes: [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md).
+
+### 2. Local database download
+
+Build or download reference libraries on the **host** (or a shared FS), then point `paths.*` at them. Databases stay outside the image.
+
+```bash
+export DB_ROOT=/ref/databases   # or: $(pwd)/database
+bash scripts/build_databases.sh --layout
+
+# Minimal production set (examples — see full steps in database/README.md):
+#   host Bowtie2 index → paths.host_index
+#   Kraken2 standard   → paths.kraken2_db   (set KRAKEN_TARBALL_URL, then --kraken-download)
+#   MetaPhlAn          → paths.metaphlan_db (--metaphlan)
+bash scripts/build_databases.sh --check
+```
+
+Merge `$DB_ROOT/PATHS.example.yaml` into `config/site.yaml` (absolute paths).  
+Full recipes: [database/README.md](database/README.md).
+
+When starting Compose with real DBs:
+
+```bash
+META_REF=/ref/databases docker compose up --build -d
+```
+
+### 3. Run the agent
+
+**Smoke / reviewer demo** (no reference DBs; mock tools):
+
+```bash
+bash scripts/reproduce_demo.sh
+# or:
 meta-agent run \
   -i examples/demo_data/fastq \
   --metadata examples/demo_data/metadata.tsv \
@@ -75,17 +117,22 @@ meta-agent run \
 # → results/demo/final_report.html
 ```
 
-Requirements: Python ≥ 3.10. Optional: Docker / Apptainer, `OPENAI_API_KEY` (LLM-enhanced paths only).
-
-Production (real tools + databases):
+**Production** (real tools + local DBs via Docker/Apptainer):
 
 ```bash
 meta-agent run -i /data/fastq -o /data/out --mode docker \
-  -c config/default.yaml --metadata /data/meta.tsv \
+  -c config/site.yaml --metadata /data/meta.tsv \
   -q "IBD vs healthy biomarker discovery"
 ```
 
-Web UI: `meta-agent serve --host 127.0.0.1 --port 8000` → http://127.0.0.1:8000/ui
+Web UI / API (after `docker compose up` or local `serve`):
+
+```bash
+meta-agent serve --host 127.0.0.1 --port 8000
+# → http://127.0.0.1:8000/ui
+```
+
+CLI details: [docs/USAGE.md](docs/USAGE.md).
 
 ## Documentation
 

@@ -54,19 +54,61 @@ Input (FASTQ, query, metadata)
 
 ## 快速开始
 
+生产路径分 **三步**：软件部署（Docker）→ 本地下载参考数据库 → 运行 Agent。
+
+### 1. 软件部署（Docker）
+
+参考库**不会**打进镜像（体积过大）。只构建编排层：
+
 ```bash
 git clone https://github.com/bio-apple/metagenomic_agent.git
 cd metagenomic_agent
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
 
-# Reviewer path (no reference DBs / GPU)
-bash scripts/reproduce_demo.sh
+docker compose up --build -d
+# API / Web UI: http://127.0.0.1:8000/ui
 ```
 
-手动等价：
+可选：本地（非 Docker）安装，用于开发 / mock 演示：
 
 ```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+meta-agent version
+```
+
+要求：Docker Engine（推荐）或 Python ≥ 3.10。可选：`OPENAI_API_KEY`（LLM 增强路径）。大内存 Linux 说明：[docs/DEPLOY_LINUX.zh-CN.md](docs/DEPLOY_LINUX.zh-CN.md)。
+
+### 2. 本地下载数据库
+
+在**宿主机**（或共享文件系统）构建/下载参考库，再通过 `paths.*` 指向；数据库始终在镜像外。
+
+```bash
+export DB_ROOT=/ref/databases   # 或：$(pwd)/database
+bash scripts/build_databases.sh --layout
+
+# 生产最小集（示例 — 完整步骤见 database/README.zh-CN.md）：
+#   宿主 Bowtie2 索引 → paths.host_index
+#   Kraken2 标准库   → paths.kraken2_db   （设置 KRAKEN_TARBALL_URL 后 --kraken-download）
+#   MetaPhlAn        → paths.metaphlan_db （--metaphlan）
+bash scripts/build_databases.sh --check
+```
+
+将 `$DB_ROOT/PATHS.example.yaml` 合并进 `config/site.yaml`（使用绝对路径）。  
+完整配方：[database/README.zh-CN.md](database/README.zh-CN.md)。
+
+使用真实库启动 Compose：
+
+```bash
+META_REF=/ref/databases docker compose up --build -d
+```
+
+### 3. 运行 Agent
+
+**冒烟 / 审稿演示**（无需参考库；mock 工具）：
+
+```bash
+bash scripts/reproduce_demo.sh
+# 或：
 meta-agent run \
   -i examples/demo_data/fastq \
   --metadata examples/demo_data/metadata.tsv \
@@ -75,17 +117,22 @@ meta-agent run \
 # → results/demo/final_report.html
 ```
 
-要求：Python ≥ 3.10。可选：Docker / Apptainer、`OPENAI_API_KEY`（仅 LLM 增强路径）。
-
-生产（真实工具 + 数据库）：
+**生产**（真实工具 + 本地库，Docker/Apptainer）：
 
 ```bash
 meta-agent run -i /data/fastq -o /data/out --mode docker \
-  -c config/default.yaml --metadata /data/meta.tsv \
+  -c config/site.yaml --metadata /data/meta.tsv \
   -q "IBD vs healthy biomarker discovery"
 ```
 
-Web UI：`meta-agent serve --host 127.0.0.1 --port 8000` → http://127.0.0.1:8000/ui
+Web UI / API（`docker compose up` 或本地 `serve` 之后）：
+
+```bash
+meta-agent serve --host 127.0.0.1 --port 8000
+# → http://127.0.0.1:8000/ui
+```
+
+CLI 细节：[docs/USAGE.zh-CN.md](docs/USAGE.zh-CN.md)。
 
 ## 文档
 
