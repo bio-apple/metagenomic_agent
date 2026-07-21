@@ -23,6 +23,14 @@ linux:
   slurm_queue: normal
   nextflow_executor: local
 
+routing:
+  enable_glm: true
+  dual_path: true
+  short_read_glm_assist: false
+  epsilon: 0.15
+  short_read_tools: ["kraken2", "metaphlan"]
+  long_read_tools: ["microcafe", "microrag"]
+
 paths:
   host_index: ""
   kraken2_db: "database/kraken_db"
@@ -30,6 +38,7 @@ paths:
   gtdb: "database/gtdb"
   eggnog: "database/eggnog"
   diamond_db: ""
+  glm_weights: ""
 
 pipeline:
   enable_host_filter: true

@@ -4,6 +4,7 @@ from metagenomic_agent.tools import (
     binning,
     fastp,
     functional,
+    glm,
     host_filter,
     kraken,
     linux_runner,
@@ -21,5 +22,6 @@ __all__ = [
     "megahit",
     "functional",
     "binning",
+    "glm",
     "linux_runner",
 ]

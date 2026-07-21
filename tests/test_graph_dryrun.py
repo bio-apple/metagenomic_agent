@@ -72,6 +72,8 @@ def test_graph_dryrun_mock(tmp_path: Path):
     assert (out / "report" / "reproduce.sh").exists()
     assert "--query" in (out / "report" / "reproduce.sh").read_text()
     assert (out / "logs" / "events.jsonl").exists()
+    assert (out / "contract_check.json").exists()
+    assert (out / "reproducibility" / "meta_agent.cwl").exists()
     assert final.get("critic") is not None
     assert final.get("literature") is not None
     assert final.get("agent_messages") is not None

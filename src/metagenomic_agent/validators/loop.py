@@ -17,6 +17,7 @@ def validate(state: AgentState) -> dict:
     messages.append(f"Validation {'PASS' if passed else 'FAIL'}")
     messages.extend(technical.get("messages", []))
     messages.extend(biological.get("messages", []))
+    messages.extend([f"BIO-WARN: {w}" for w in biological.get("warnings", [])])
 
     result: ValidationResult = {
         "passed": passed,
@@ -25,4 +26,6 @@ def validate(state: AgentState) -> dict:
         "recovery_actions": actions,
         "messages": technical.get("messages", []) + biological.get("messages", []),
     }
-    return {"validation": result, "messages": messages}
+    artifacts = dict(state.get("artifacts") or {})
+    artifacts["biological_warnings"] = biological.get("warnings") or []
+    return {"validation": result, "messages": messages, "artifacts": artifacts}

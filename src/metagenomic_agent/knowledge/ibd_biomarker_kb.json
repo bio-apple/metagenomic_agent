@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "domain": "IBD",
+  "description": "Context-aware biomarker expectations for inflammatory bowel disease studies",
+  "contexts": {
+    "ibd": {
+      "aliases": ["ibd", "crohn", "ulcerative colitis", "炎症性肠病", "克罗恩", "溃疡性结肠炎"],
+      "expected_depleted": ["Faecalibacterium", "Roseburia", "Bifidobacterium"],
+      "expected_enriched": ["Escherichia", "Enterococcus", "Ruminococcus"],
+      "healthy_enriched": ["Faecalibacterium", "Bacteroides", "Bifidobacterium"],
+      "pathogen_alert": ["Salmonella", "Shigella", "Vibrio", "Clostridioides"],
+      "notes": "Literature-supported directional associations; not diagnostic criteria."
+    },
+    "healthy_gut": {
+      "aliases": ["healthy", "健康", "control gut", "healthy microbiome"],
+      "expected_depleted": [],
+      "expected_enriched": ["Faecalibacterium", "Bacteroides", "Bifidobacterium", "Prevotella"],
+      "pathogen_alert": ["Salmonella", "Shigella", "Vibrio"],
+      "notes": "High pathogen load in healthy-labeled cohorts should warn."
+    },
+    "tumor_microbiome": {
+      "aliases": ["tumor", "cancer", "肿瘤", "oncomicrobiome"],
+      "expected_enriched": ["Fusobacterium"],
+      "expected_depleted": [],
+      "pathogen_alert": [],
+      "notes": "Tissue/context dependent; use as soft prior only."
+    }
+  }
+}

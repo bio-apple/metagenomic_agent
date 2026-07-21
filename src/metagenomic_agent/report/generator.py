@@ -267,8 +267,13 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
 
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
     paths = generate(state)
+    from metagenomic_agent.report.reproducibility import write_reproducibility_bundle
+
+    bundle = write_reproducibility_bundle(state)
+    arts = {**state.get("artifacts", {}), "report": paths, "reproducibility": bundle}
     return {
         "report_path": paths["html"],
-        "artifacts": {**state.get("artifacts", {}), "report": paths},
-        "messages": state.get("messages", []) + [f"Report written to {paths['html']}"],
+        "artifacts": arts,
+        "messages": state.get("messages", [])
+        + [f"Report written to {paths['html']}", f"Reproducibility bundle: {bundle.get('manifest')}"],
     }
