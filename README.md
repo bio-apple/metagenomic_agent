@@ -96,6 +96,7 @@ Web UI: `meta-agent serve --host 127.0.0.1 --port 8000` → http://127.0.0.1:800
 | [docs/SELF_HEAL.md](docs/SELF_HEAL.md) | Self-heal FPR analysis and HITL policy |
 | [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md) | Linux ≥256 GB / HPC deployment |
 | [database/README.md](database/README.md) | Reference database layout and **build steps** |
+| [docs/manuscript/application_note.md](docs/manuscript/application_note.md) | **Application Note** manuscript draft |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 
 ## Citation

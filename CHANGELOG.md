@@ -4,6 +4,7 @@
 
 - Self-Heal reliability: node-scoped heuristics, high-risk HITL gate (`confirm_self_heal`), FPR scenario suite (`evaluation/self_heal_fpr`) + [docs/SELF_HEAL.md](docs/SELF_HEAL.md)
 - README: journal-style polish + graphical abstract [`docs/figures/overview.svg`](docs/figures/overview.svg)
+- Application Note manuscript draft: [`docs/manuscript/application_note.md`](docs/manuscript/application_note.md)
 
 ## 0.23.0
 
