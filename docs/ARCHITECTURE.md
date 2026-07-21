@@ -1,6 +1,6 @@
 # 架构说明（v0.20）
 
-CLI / 配置 / 产物见 [USAGE.md](USAGE.md)；能力对照见 [ROADMAP.md](ROADMAP.md)。
+CLI / 配置 / 产物见 [USAGE.md](USAGE.md)。
 
 ## 编排主链
 
@@ -48,4 +48,4 @@ parse → router → bio_reasoning → supervisor → tool_specialist → plan_v
 
 ## 局限
 
-全量 CAMI 基准与向量化项目 Memory 仍为部分能力，见 [ROADMAP.md](ROADMAP.md)。
+全量 CAMI 基准与向量化项目 Memory 仍为部分能力。

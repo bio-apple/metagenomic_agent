@@ -35,7 +35,6 @@ Router → Planner → HITL → Executor (cluster → BioContainers + checkpoint
 |------|------|
 | [docs/USAGE.md](docs/USAGE.md) | CLI / API / 配置 / 产物 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构与 Methods 要点 |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | 能力对照 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本历史 |
 | [database/README.md](database/README.md) | 参考库路径 |
 

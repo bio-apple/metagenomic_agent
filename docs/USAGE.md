@@ -1,6 +1,6 @@
 # 使用指南（v0.20）
 
-架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，能力对照见 [ROADMAP.md](ROADMAP.md)。
+架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## CLI
 
