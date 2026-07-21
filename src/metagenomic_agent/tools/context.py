@@ -13,8 +13,11 @@ from metagenomic_agent.tools.linux_runner import CommandResult
 ExecMode = Literal["mock", "local", "conda", "docker", "apptainer"]
 
 
+# BioContainers (quay.io/biocontainers) — pin tags for reproducibility
 DEFAULT_IMAGES: dict[str, str] = {
     "fastp": "quay.io/biocontainers/fastp:0.23.4--h5f740d0_0",
+    "fastqc": "quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0",
+    "trimmomatic": "quay.io/biocontainers/trimmomatic:0.39--hdfd78af_2",
     "bowtie2": "quay.io/biocontainers/bowtie2:2.5.3--py39hd2f008b_0",
     "kneaddata": "quay.io/biocontainers/kneaddata:0.12.0--pyhdfd78af_1",
     "kraken2": "quay.io/biocontainers/kraken2:2.1.3--pl5321hdcf5f25_0",
@@ -22,10 +25,14 @@ DEFAULT_IMAGES: dict[str, str] = {
     "metaphlan": "quay.io/biocontainers/metaphlan:4.1.0--pyhca03a8a_0",
     "megahit": "quay.io/biocontainers/megahit:1.2.9--h43eeafb_4",
     "spades": "quay.io/biocontainers/spades:3.15.5--h95f258a_1",
+    "metaspades": "quay.io/biocontainers/spades:3.15.5--h95f258a_1",
     "metabat2": "quay.io/biocontainers/metabat2:2.15--h4ac6f70_1",
     "maxbin2": "quay.io/biocontainers/maxbin2:2.2.7--hdbdd923_5",
     "checkm2": "quay.io/biocontainers/checkm2:1.0.2--pyh7cba7a3_0",
     "gtdbtk": "quay.io/biocontainers/gtdbtk:2.4.0--pyhdfd78af_1",
+    "bakta": "quay.io/biocontainers/bakta:1.9.3--pyhdfd78af_0",
+    "humann": "quay.io/biocontainers/humann:3.8--pyhdfd78af_0",
+    "humann3": "quay.io/biocontainers/humann:3.8--pyhdfd78af_0",
     "diamond": "quay.io/biocontainers/diamond:2.1.9--h43eeafb_0",
 }
 
@@ -103,9 +110,33 @@ class ToolContext:
         return run_command(argv, check=check)
 
     def run_docker(self, tool: str, inner_cmd: str, volumes: dict[str, str], check: bool = True):
+        """Run in Docker or Apptainer/Singularity via sandbox (BioContainers images).
+
+        Historically named run_docker; when mode=apptainer the call is routed to
+        Apptainer so tool wrappers do not bypass HPC container runtimes.
+        """
+        import shlex
+
+        from metagenomic_agent.tools.docker_runner import RunResult
+
+        if self.mode in {"docker", "apptainer"}:
+            argv = shlex.split(inner_cmd) if isinstance(inner_cmd, str) else list(inner_cmd)
+            cr = self.run_tool(tool, argv, check=False, volumes=volumes)
+            ok = cr.status == "success"
+            if check and not ok:
+                raise RuntimeError(cr.error or cr.stderr or f"{tool} failed")
+            return RunResult(
+                ok=ok,
+                returncode=cr.returncode,
+                stdout=cr.stdout,
+                stderr=cr.stderr,
+                command=cr.command,
+            )
+
+        # Legacy direct docker path (local/conda callers that still invoke run_docker)
         image = self.images.get(tool) or self.images.get("fastp")
         if not image:
-            raise RuntimeError(f"No docker image configured for tool '{tool}'")
+            raise RuntimeError(f"No BioContainers image configured for tool '{tool}'")
         sandbox_cfg = (self.extra or {}).get("sandbox") or {}
         platform = sandbox_cfg.get("platform") or (self.extra.get("config") or {}).get("docker", {}).get("platform")
         return docker_run(

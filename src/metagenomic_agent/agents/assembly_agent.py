@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from metagenomic_agent.execution.checkpoint import load_assembly_checkpoint, write_assembly_checkpoint
 from metagenomic_agent.tools import binning, megahit
 from metagenomic_agent.tools.context import ToolContext
 from metagenomic_agent.tools.linux_runner import classify_error
@@ -21,15 +22,23 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         assembler = "metaspades"
     binners = list(params.get("binners") or ["metabat2", "maxbin2"])
     qc_arts = state.get("artifacts", {}).get("qc_host", {})
+    cache_cfg = (state.get("config") or {}).get("cache") or {}
+    per_sample_ckpt = bool(cache_cfg.get("per_sample_assembly", True))
     per_sample: dict[str, Any] = {}
     errors: list[dict[str, Any]] = []
+    checkpoints_reused = 0
 
     for sample in state["samples"]:
         sid = sample["sample_id"]
         upstream = qc_arts.get(sid, {})
         asm_dir = outdir / sid / "assembly"
         try:
-            if assembler == "metaspades":
+            # Checkpoint: reuse MEGAHIT/SPAdes contigs when re-asking / tweaking downstream
+            cached = load_assembly_checkpoint(asm_dir, sid) if per_sample_ckpt else None
+            if cached and cached.get("contigs"):
+                asm = dict(cached)
+                checkpoints_reused += 1
+            elif assembler == "metaspades":
                 try:
                     asm = binning.run_metaspades(sample, upstream, asm_dir, ctx)
                 except Exception as exc:  # noqa: BLE001 — self-heal: fall back to MEGAHIT
@@ -52,11 +61,19 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
             contigs = asm.get("contigs")
             if contigs:
+                # Always persist assembly checkpoint for long-running assemblers
+                write_assembly_checkpoint(asm_dir, asm)
                 bin_dir = outdir / sid / "binning"
-                bins = binning.run_binning(sid, contigs, upstream, bin_dir, ctx, binners=binners)
-                check = binning.run_checkm2(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
-                gtdb = binning.run_gtdbtk(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
-                asm = {**asm, **bins, **check, **gtdb}
+                # Skip re-binning only when full MAG summary already present
+                mag_done = (bin_dir / "bins").exists() and asm.get("n_bins")
+                if asm.get("checkpoint") and mag_done:
+                    pass
+                else:
+                    bins = binning.run_binning(sid, contigs, upstream, bin_dir, ctx, binners=binners)
+                    check = binning.run_checkm2(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
+                    gtdb = binning.run_gtdbtk(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
+                    asm = {**asm, **bins, **check, **gtdb}
+                    write_assembly_checkpoint(asm_dir, asm)
             per_sample[sid] = asm
         except Exception as exc:  # noqa: BLE001
             errors.append(
@@ -69,7 +86,10 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             )
             per_sample[sid] = {"error": str(exc), "status": "failed"}
 
-    result: dict[str, Any] = {"assembly": per_sample}
+    result: dict[str, Any] = {
+        "assembly": per_sample,
+        "assembly_checkpoints_reused": checkpoints_reused,
+    }
     if errors:
         result["errors"] = errors
     # Write MAG summary

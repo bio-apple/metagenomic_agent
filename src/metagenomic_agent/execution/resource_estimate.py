@@ -21,6 +21,8 @@ _STAGE_COST = {
 
 
 def estimate_resources(state: dict[str, Any]) -> dict[str, Any]:
+    from metagenomic_agent.execution.cluster import cap_resources, sense_cluster
+
     samples = state.get("samples") or []
     n = max(len(samples), 1)
     dag = state.get("dag") or []
@@ -29,6 +31,10 @@ def estimate_resources(state: dict[str, Any]) -> dict[str, Any]:
     avail_mem = float(linux.get("memory_gb") or 32)
     threads = int(linux.get("threads") or 8)
     mode = state.get("mode") or "mock"
+    sense = sense_cluster(cfg)
+    capped = cap_resources(cfg, sense)
+    threads = int(capped["linux"]["threads"])
+    avail_mem = float(capped["linux"]["memory_gb"])
 
     stages: list[dict[str, Any]] = []
     total_h = 0.0
@@ -64,18 +70,27 @@ def estimate_resources(state: dict[str, Any]) -> dict[str, Any]:
             "Prefer MEGAHIT over metaSPAdes or raise memory / use HPC."
         )
     if "assembly" in agents and mode not in {"mock"}:
-        warnings.append("Assembly/binning is long-running; enable execution.engine=nextflow|snakemake with -resume.")
+        warnings.append(
+            "Assembly/binning is long-running; enable cache.per_sample_assembly + "
+            "execution.engine=nextflow|snakemake (-resume / --rerun-incomplete)."
+        )
     if mode in {"docker", "apptainer"} and n >= 10:
-        warnings.append("Large cohort in containers: ensure disk for image layers + intermediate FASTQ/BAM.")
+        warnings.append("Large cohort in containers: ensure disk for BioContainers layers + intermediates.")
+    if sense.get("pressure") == "high":
+        warnings.append(
+            f"Cluster pressure high (scheduler={sense.get('scheduler')}, queue={sense.get('queue_depth')}); "
+            f"capped request to {threads} CPUs / {avail_mem:.0f} GB to avoid kills."
+        )
 
     engine = (cfg.get("execution") or {}).get("engine", "langgraph")
     resume = {
         "langgraph_step_cache": (cfg.get("cache") or {}).get("enabled", True),
+        "per_sample_assembly_checkpoint": (cfg.get("cache") or {}).get("per_sample_assembly", True),
         "nextflow_resume": engine == "nextflow",
         "snakemake_rerun_incomplete": engine == "snakemake",
         "hint": (
-            "Set execution.engine to nextflow (uses -resume) or snakemake (--rerun-incomplete). "
-            "LangGraph swarm uses cache/steps/ to skip completed nodes."
+            "Assembly checkpoints live under outdir/<sample>/assembly/; "
+            "swarm cache/steps/ skips completed nodes; NF -resume / SMK --rerun-incomplete."
         ),
     }
 
@@ -84,15 +99,30 @@ def estimate_resources(state: dict[str, Any]) -> dict[str, Any]:
         "mode": mode,
         "available_memory_gb": avail_mem,
         "threads": threads,
+        "gpus": int(capped["linux"].get("gpus") or 0),
         "stages": stages,
         "est_total_wall_hours": round(total_h, 3),
         "est_peak_memory_gb": peak_mem,
         "est_disk_gb": round(disk, 2),
         "warnings": warnings,
         "resume": resume,
+        "cluster_sense": sense,
+        "allocation_cap": {
+            "threads": threads,
+            "memory_gb": avail_mem,
+            "gpus": capped["linux"].get("gpus"),
+            "reason": capped.get("reason"),
+        },
+        "containers": {
+            "backend": mode if mode in {"docker", "apptainer"} else (cfg.get("sandbox") or {}).get("backend"),
+            "biocontainers": True,
+            "apptainer_sif_dir": (cfg.get("apptainer") or {}).get("sif_dir"),
+        },
         "user_message": (
             f"预估墙钟时间 ≈ {total_h:.2f} h（{n} 样本，mode={mode}）；"
-            f"峰值内存 ≈ {peak_mem:.0f} GB；磁盘 ≈ {disk:.1f} GB。"
+            f"申请资源 ≈ {threads} CPU / {avail_mem:.0f} GB"
+            f"（集群={sense.get('scheduler')}, pressure={sense.get('pressure')}）；"
+            f"峰值估算 ≈ {peak_mem:.0f} GB；磁盘 ≈ {disk:.1f} GB。"
             + ((" 警告: " + "; ".join(warnings)) if warnings else "")
         ),
     }

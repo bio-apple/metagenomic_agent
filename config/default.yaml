@@ -6,6 +6,7 @@ execution:
   engine: langgraph  # langgraph | snakemake | nextflow
   # Agent writes outdir/workflow/params.yaml; engines consume it (no LLM free-form shell)
   # nf: -resume; smk: --rerun-incomplete
+  skip_swarm_on_engine_ok: true  # NF/SMK 成功则不双跑 LangGraph swarm
 
 # Prefer container isolation for bio tools (MCP-style sandbox). Avoid fragile host binaries.
 sandbox:
@@ -14,14 +15,25 @@ sandbox:
   platform: auto  # auto | linux/amd64 | linux/arm64 （Apple Silicon 建议 linux/amd64）
   allow_mock_fallback: true  # 自愈最后手段：切 mock 保流程
 
+# BioContainers images live in tools/context.DEFAULT_IMAGES; override pins here:
 docker:
   threads: 8
   platform: linux/amd64  # biocontainers 多为 amd64；Apple Silicon 走模拟
   images: {}
+  # agent_image: ghcr.io/bio-apple/metagenomic_agent:latest
+
+# Apptainer/Singularity SIF cache on HPC (also exported in submit scripts)
+apptainer:
+  sif_dir: ""  # e.g. /scratch/$USER/containers
+  pull_cache: true
 
 linux:
   threads: 16
   memory_gb: 64
+  max_threads: 64
+  max_memory_gb: 256
+  gpus: 0
+  scheduler: auto  # auto | slurm | pbs | sge | local
   prefer_shm: true
   shm_db_root: /dev/shm
   host_method: bowtie2  # bowtie2 | kneaddata
@@ -31,6 +43,10 @@ linux:
     metagenomics: metagenomics
   slurm: false
   slurm_queue: normal
+  slurm_account: ""
+  slurm_time: "24:00:00"
+  pbs_queue: workq
+  sge_queue: all.q
   nextflow_executor: local
 
 routing:
@@ -91,6 +107,8 @@ visualization:
 
 cache:
   enabled: true  # LangGraph swarm step cache under outdir/cache/steps
+  include_config_hash: true  # invalidate cache when threads/images/assembler change
+  per_sample_assembly: true  # reuse MEGAHIT/SPAdes contigs under outdir/<sample>/assembly/
 
 pi:
   max_replans: 1

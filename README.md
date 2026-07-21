@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.16.0` · 工具手册/SOP RAG · Planner/Executor/QC-Critic/Reporter 分工。
+**版本** `0.17.0` · BioContainers + Apptainer · SLURM/PBS/SGE 资源感知 · 组装 Checkpoint。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -20,8 +20,8 @@ pytest -q && meta-agent version
 ## 流水线
 
 ```
-Router → Bio Reasoning (SOP+manuals) → Supervisor → Planner
-  → Executor (params / Slurm / K8s) → QC & Critic → Reporter → Report
+Router → Planner → Executor (cluster sense → cap → SLURM/PBS/SGE/K8s)
+  → Docker/Apptainer (BioContainers) + assembly checkpoints → Report
 ```
 
 ## 文档

@@ -22,6 +22,23 @@ _AGENT_MARKERS: dict[str, list[str]] = {
 }
 
 
+def _config_fingerprint(state: dict[str, Any]) -> str:
+    """Stable hash of execution-relevant config (images, threads, assembler prefs)."""
+    cfg = state.get("config") or {}
+    cache_cfg = cfg.get("cache") or {}
+    if not cache_cfg.get("include_config_hash", True):
+        return "nocfg"
+    slim = {
+        "mode": state.get("mode"),
+        "threads": (cfg.get("linux") or {}).get("threads") or (cfg.get("docker") or {}).get("threads"),
+        "memory_gb": (cfg.get("linux") or {}).get("memory_gb"),
+        "images": sorted((cfg.get("docker") or {}).get("images") or {}),
+        "assembler": (cfg.get("pipeline") or {}).get("default_assembler"),
+        "engine": (cfg.get("execution") or {}).get("engine"),
+    }
+    return hashlib.sha256(json.dumps(slim, sort_keys=True).encode()).hexdigest()[:10]
+
+
 def cache_key(node: dict[str, Any], state: dict[str, Any]) -> str:
     payload = {
         "id": node.get("id"),
@@ -32,6 +49,7 @@ def cache_key(node: dict[str, Any], state: dict[str, Any]) -> str:
         "n_samples": len(state.get("samples") or []),
         "sample_ids": [s.get("sample_id") for s in (state.get("samples") or [])],
         "input_path": state.get("input_path"),
+        "config_fp": _config_fingerprint(state),
     }
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(blob.encode()).hexdigest()[:16]

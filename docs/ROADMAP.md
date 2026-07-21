@@ -1,37 +1,34 @@
 # 开发者路线图（对照建议）
 
-对照开发者建议与当前 **v0.16**。状态：`Done` / `Partial` / `Planned`。
+对照开发者建议与当前 **v0.17**。状态：`Done` / `Partial` / `Planned`。
 
-## 目标架构
-
-```
-User → Planner (SOP + manuals) → Executor (params / HPC / K8s)
-     → QC & Critic → Reporter (diversity + pathways) → Report
-```
+## HPC / 云原生
 
 | 建议 | 状态 | 现状 |
 |------|------|------|
-| 工具 Manual / 参数库 RAG | **Done** | `tool_manuals.json`：Kraken2 / GTDB-Tk / Bakta / CheckM2（+ FastQC/Trimmomatic） |
-| 16S vs Shotgun SOP | **Done** | `sop_best_practices.json` → `assay_16s_vs_shotgun` |
-| 土壤/肠道/海洋预处理 SOP | **Done** | `env_soil_prep` / `env_gut_host_filter` / `env_ocean_prep` |
-| Planner Agent | **Done** | `planner_agent` 聚合实验设计与 Pipeline |
-| Executor / Bioinfo Agent | **Done** | `executor_agent`：params + Slurm/K8s 提交规格 + swarm |
-| QC & Critic Agent | **Done** | Q20/Q30、宿主污染、CheckM 完整度/污染门控 |
-| Reporter Agent | **Done** | Alpha/Beta + KEGG/COG/GO 叙述 → `reporter/` |
-| 配置驱动 nf/smk | **Done** | v0.15 `params.yaml` |
-| 工具 Pydantic Schema | **Done** | 含 gtdbtk / bakta |
-| Bakta 原生执行封装 | Partial | Schema + KB + 路由；runner Planned |
-| 16S DADA2/QIIME2 执行链 | Partial | SOP/推理已备；执行仍 Planned |
-| 向量 Memory | Planned | ContextMemory 文件 |
+| Docker / Apptainer + BioContainers | **Done** | `DEFAULT_IMAGES` pin；`run_docker` 在 apptainer 模式走 sandbox |
+| SLURM / PBS / SGE 提交 | **Done** | `executor/submit.{slurm,pbs,sge}` + 资源封顶 |
+| 集群负载感知 | **Done** | `execution/cluster.py`（squeue/qstat/本地 mem） |
+| GPU 申请字段 | **Done** | `linux.gpus` + SBATCH `--gres` |
+| 中间 Checkpoint（MEGAHIT/SPAdes） | **Done** | `cache.per_sample_assembly` + `checkpoint.json` |
+| 步骤缓存 config 失效 | **Done** | `cache.include_config_hash` |
+| NF/SMK 与 swarm 互斥 | **Done** | `execution.skip_swarm_on_engine_ok` |
+| 实时 GPU 负载 / fairshare | Partial | 字段已备；深度调度 Planned |
+| SIF 自动 pull 预热 | Partial | `apptainer.sif_dir` 写入脚本；自动 pull Planned |
 
-## 生产提示
+## 领域 / 编排（既有）
+
+| 建议 | 状态 |
+|------|------|
+| Planner / Executor / QC-Critic / Reporter | Done (v0.16) |
+| 工具手册 + SOP RAG | Done |
+| 配置驱动 nf/smk + Schema | Done (v0.15) |
 
 ```bash
-# Planner / Executor 产物
-open results/planner/planner_plan.md
+# HPC
 cat results/executor/SUBMIT.md
-sbatch results/executor/submit.slurm   # HPC
-# kubectl apply -f results/executor/job.k8s.yaml  # 需挂载数据卷
-```
+sbatch results/executor/submit.slurm   # 或 qsub …pbs / …sge
 
-最终目标：**Autonomous Multi-Agent System for End-to-End Metagenomic Discovery**。
+# 容器
+meta-agent run … --mode apptainer   # 或 docker；镜像见 BioContainers pins
+```

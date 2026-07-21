@@ -1,31 +1,27 @@
 # 架构说明
 
-面向 **v0.16**。详见 [USAGE.md](USAGE.md)、[ROADMAP.md](ROADMAP.md)。
+面向 **v0.17**。详见 [USAGE.md](USAGE.md)、[ROADMAP.md](ROADMAP.md)。
 
 ## 设计
 
 ```
-User → Router → Bio Reasoning (SOP + tool-manual RAG)
-     → Supervisor → Tool Specialist → Plan Validator
-     → Planner（实验设计 → 整体 Pipeline）
-     → params.yaml → Executor（HPC Slurm / K8s Job + swarm/nf/smk）
-     → QC & Critic（Q20/Q30 · Contamination · CheckM）
-     → Literature → Reporter（Alpha/Beta · KEGG/COG/GO 解读）
-     → Viz → final report
+User → Planner → params.yaml
+     → Executor（集群感知 → 资源封顶 → SLURM/PBS/SGE/K8s）
+     → Docker / Apptainer（BioContainers）
+     → Swarm + step cache + 组装 Checkpoint
+     → QC & Critic → Reporter → Report
 ```
 
-| 角色 | 模块 |
+| 主题 | 路径 |
 |------|------|
-| Planner | `agents/planner_agent.py` |
-| Executor / Bioinfo | `agents/executor_agent.py` |
-| QC & Critic | `agents/critic_agent.py`（+ `qc_agent` 执行层） |
-| Reporter | `agents/reporter_agent.py` |
-| 工具手册 RAG | `knowledge/tool_manuals.json` · `domain_rag.py` |
-| SOP RAG | `knowledge/sop_best_practices.json` |
+| BioContainers 镜像 | `tools/context.py` `DEFAULT_IMAGES` |
+| Docker↔Apptainer 贯通 | `ToolContext.run_docker` → sandbox |
+| 集群感知 / 封顶 | `execution/cluster.py` |
+| 提交脚本 | `deployment/slurm.py` → `executor/submit.{slurm,pbs,sge}` |
+| 组装 Checkpoint | `execution/checkpoint.py` · `outdir/<sample>/assembly/` |
+| 步骤缓存 | `execution/step_cache.py`（含 config hash） |
 
 ```
-parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
-  → planner → export_dag → workflow_agent → HITL
-  → executor(swarm) → validate → quality → HITL → qc_critic → …
-  → literature → visualization → reporter → xai → report
+… → planner → export_dag(+resource_estimate+cluster_sense)
+  → executor(sense→cap→submit specs→swarm|nf/smk) → …
 ```

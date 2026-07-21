@@ -1,6 +1,6 @@
 # 使用指南
 
-面向 **v0.16**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
+面向 **v0.17**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
 
 ## CLI
 
@@ -43,8 +43,11 @@ meta-agent version
 | 段 | 作用 |
 |------|------|
 | `execution.engine` | `langgraph`（默认）\| `nextflow` \| `snakemake`；后两者读 Agent 写出的 params |
-| `sandbox.*` | 容器后端、`prefer_container`、`platform`、mock 回退 |
-| `docker.*` / `linux.*` | 镜像平台、线程、内存 |
+| `execution.skip_swarm_on_engine_ok` | NF/SMK 成功时跳过双跑 swarm |
+| `sandbox.*` / `apptainer.sif_dir` | 容器后端；HPC SIF 缓存目录 |
+| `docker.*` / `linux.*` | BioContainers 覆盖、线程/内存/GPU、`scheduler` |
+| `cache.per_sample_assembly` | 复用 `outdir/<sample>/assembly/` 拼接产物 |
+| `cache.include_config_hash` | 配置变更时使步骤缓存失效 |
 | `routing.*` | gLM / 双路 / ε-greedy |
 | `paths.*` | 数据库、宿主 index、gLM 权重/命令 |
 | `pipeline.*` | 组装、分类工具列表 |
@@ -91,7 +94,9 @@ S2	Control
 | `evidence/evidence_table.md` | 文献证据表 |
 | `context/pipeline_summary.json` | LLM 用统计摘要 |
 | `planner/planner_plan.md` | Planner：实验设计与整体 Pipeline |
-| `executor/submit.slurm` · `job.k8s.yaml` | Executor：HPC / K8s 提交规格 |
+| `executor/submit.{slurm,pbs,sge}` · `job.k8s.yaml` | Executor：多调度器提交规格 |
+| `executor/cluster_sense.json` · `resource_allocation.json` | 队列压力与封顶后的 CPU/内存/GPU |
+| `outdir/<sample>/assembly/checkpoint.json` | MEGAHIT/SPAdes 中间 Checkpoint |
 | `critic/qc_critic.md` | QC & Critic：Q20/Q30、污染、CheckM |
 | `reporter/biological_report.md` | Reporter：多样性与通路解读 |
 | `workflow/params.yaml` · `params.json` | 校验后的引擎参数（Schema + 任务图） |

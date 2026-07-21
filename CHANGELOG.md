@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.0
+
+- BioContainers pins + `run_docker` routes to Apptainer/Docker sandbox
+- Cluster load sense (SLURM/PBS/SGE/local) with CPU/GPU/memory capping before submit
+- Scheduler scripts `submit.{slurm,pbs,sge}`; assembly checkpoints + config-hashed step cache
+- Skip LangGraph swarm when external Nextflow/Snakemake succeeds
+
 ## 0.16.0
 
 - Domain RAG: tool manuals (Kraken2/GTDB-Tk/Bakta/CheckM2) + SOP (16S vs Shotgun; gut/soil/ocean prep)

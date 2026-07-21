@@ -57,13 +57,18 @@ def execute_swarm(state: AgentState) -> dict:
 
     engine = detect_engine(state.get("config", {}))
     artifacts["execution_engine"] = engine
+    skip_swarm = False
     if engine in {"snakemake", "nextflow"}:
         ext = launch_external(engine, state, repo_root=Path(__file__).resolve().parents[3])
         artifacts["external_engine_result"] = ext
         monitor.log("engine", f"external_{engine}", status=ext.get("status"))
         messages.append(f"External engine {engine}: {ext.get('status')}")
-        # If external succeeded, still continue light agent path for report layers
-        if ext.get("status") == "failed":
+        if ext.get("status") == "success":
+            # Mutex: do not double-run heavy swarm when NF/SMK already completed compute
+            skip_swarm = bool((state.get("config") or {}).get("execution", {}).get("skip_swarm_on_engine_ok", True))
+            if skip_swarm:
+                messages.append(f"Skipping LangGraph swarm (external {engine} succeeded)")
+        elif ext.get("status") == "failed":
             artifacts.setdefault("errors", []).append(
                 {"node": f"engine:{engine}", "error": ext.get("stderr") or "external failed", "classified": "logic"}
             )
@@ -71,6 +76,17 @@ def execute_swarm(state: AgentState) -> dict:
     cache_cfg = (state.get("config") or {}).get("cache") or {}
     cache = StepCache(state["outdir"], enabled=bool(cache_cfg.get("enabled", True)))
     cache_hits = 0
+
+    if skip_swarm:
+        monitor.log("engine", "swarm_skipped", reason="external_ok")
+        return {
+            "dag": dag,
+            "artifacts": artifacts,
+            "messages": messages,
+            "agent_messages": agent_messages,
+            "statistics": stats_state,
+            "run_id": run_id,
+        }
 
     for node in _topo_sort(dag):
         if node.get("status") == "skipped":
