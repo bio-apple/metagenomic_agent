@@ -17,4 +17,7 @@ results_mags/
 workdir/
 *.fastq
 *.fastq.gz
+# Bundled reviewer / CI demo reads (tiny; must be public in-repo)
+!tests/fixtures/fastq/*.fastq
+!examples/demo_data/fastq/*.fastq
 .DS_Store
