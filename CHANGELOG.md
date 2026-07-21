@@ -1,23 +1,24 @@
 # Changelog
 
+## 0.13.0
+
+- Biological Reasoning Layer before workflow planning (`bio_reasoning_agent`)
+- Supervisor consumes bio plan; taxonomy/functional interpretation notes
+- HITL multi-option A/B/C (study design, missing groups, host contamination)
+- Runtime HITL after quality scores; docs/ROADMAP.md maps developer recommendations
+
 ## 0.12.0
 
-- Interactive Plotly dashboard (composition, alpha/beta, PCoA, heatmap, volcano) with FDR *q* filter
-- Docs consolidated: single USAGE/ARCHITECTURE/METHODS set; removed redundant index
+- Interactive Plotly dashboard with FDR *q* filter; docs consolidation
 
 ## 0.11.0
 
-- Summary-driven LLM context (Q30/reads/N50/CheckM); no raw sequences in window
-- Post-run `reproducible.nf`/`.smk`, `seeds.json`, `config_snapshot.yaml`
+- Summary-driven LLM context; post-run reproducible `.nf`/`.smk` + seeds
 
 ## 0.10.0
 
-- Authority-bound RAG (GTDB/NCBI/KEGG/UniProt/CARD) + evidence chains
+- Authority-bound RAG + evidence chains
 
-## 0.9.0
+## 0.9.0 – 0.1.x
 
-- Container sandbox tool calls + self-healing (Docker/Apptainer, amd64 pin)
-
-## 0.8.0 – 0.1.x
-
-- Multi-agent Router/Specialist/Validator, XAI, bio-RAG, LangGraph MVP, Linux production path
+- Container sandbox, multi-agent Router/Specialist/Validator, XAI, LangGraph MVP
