@@ -1,5 +1,3 @@
-> 中文版: [README.zh-CN.md](README.zh-CN.md)
-
 # Reference Databases: Directory Contract and Build Guide
 
 The repository `database/` directory holds **full reference databases** (or symlinks).  

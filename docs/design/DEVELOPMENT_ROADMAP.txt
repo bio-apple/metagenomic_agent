@@ -1,247 +1,0 @@
-Metagenomic Agent 高级开发路线文档
-项目目标
-将 metagenomic_agent 从一个基于 LLM 的宏基因组分析工具升级为：
-一个具备自主规划、工具调用、分析推理、自我纠错和生物学解释能力的宏基因组科学智能体（Scientific Agent）。
-目标达到：
-	•	Bioinformatics
-	•	Briefings in Bioinformatics
-级别的方法学论文要求。
-核心定位：
-LLM + Bioinformatics Tools         ↓ Scientific Reasoning Agent         ↓ Autonomous Metagenomic Discovery System
-
-一、总体架构升级
-当前模式
-User   ↓  LLM   ↓  Bioinformatics tools   ↓  Result report
-问题：
-	•	缺少分析规划
-	•	缺少科学判断
-	•	缺少错误检测
-	•	缺少生物解释
-
-目标架构
-                  User Question                         |                Scientific Planner Agent                         |   ------------------------------------------------   |          |          |          |             |  QC       Taxonomy   MAG      Functional    Statistics Agent    Agent      Agent    Agent         Agent                          |                Critic Agent                         |          Self-correction / Workflow Optimization                          |            Literature Evidence Agent                          |            Biological Interpretation                          |            Publication Report Generator
-
-Priority 1
-Planner Agent + Critic Agent + Self-correction Framework
-目标
-让 Agent 从：
-执行命令
-升级为：
-设计分析方案 → 执行 → 评价结果 → 重新规划
-
-1. Planner Agent
-功能
-负责理解用户科学问题，并自动生成分析计划。
-输入：
-Analyze gut microbiome differences between disease and control
-输出：
-research_goal:   identify microbial signatures   required_analysis:    - quality_control   - taxonomic profiling   - diversity analysis   - differential abundance   - pathway analysis   recommended_tools:    taxonomy:     - MetaPhlAn4    statistics:     - ANCOM-BC2     - MaAsLin3
-
-Planner Agent 核心能力
-样本类型识别
-支持：
-	•	human microbiome
-	•	soil microbiome
-	•	marine microbiome
-	•	wastewater microbiome
-测序类型识别
-支持：
-	•	16S rRNA
-	•	shotgun metagenomics
-	•	metatranscriptomics
-	•	long-read sequencing
-自动流程选择
-例如：
-Input:  Long-read metagenomics   Decision:  Use:  Flye + MetaBAT2 + GTDB-Tk
-
-2. Critic Agent
-目标
-模拟专家审稿人，对分析结果进行质量检查。
-检查内容：
-数据质量
-例如：
-Host contamination > 80%  Recommendation:  Run host depletion
-
-统计合理性
-例如：
-发现：
-Taxonomic abundance data
-错误：
-t-test
-建议：
-ANCOM-BC2 ALDEx2 MaAsLin3
-
-生物学解释检查
-例如：
-结果：
-Species A increased
-检查：
-	•	是否有文献支持
-	•	是否存在相反研究
-	•	是否过度解释
-输出：
-warning:    - small sample size  recommendation:    - validate using independent cohort  confidence:    medium
-
-3. Self-correction Loop
-目标
-实现自动重新分析。
-架构：
-Analysis   ↓  Critic Agent   ↓  Problem detected?   ↓  YES   ↓  Modify workflow   ↓  Re-run analysis
-案例：
-第一次：
-PCA dominated by batch effect
-自动调整：
-Remove batch effect  Apply normalization  Repeat PCA
-
-Priority 2
-MAG Discovery Agent
-目标
-增加宏基因组组装和 MAG 自动发现能力。
-这是提升论文创新性的关键模块。
-
-MAG Workflow
-Raw reads   ↓  Quality control   ↓  Assembly   ↓  Binning   ↓  Bin refinement   ↓  MAG quality evaluation   ↓  Taxonomic classification   ↓  Functional annotation
-
-支持工具
-Assembly
-支持：
-	•	MEGAHIT
-	•	metaSPAdes
-	•	Flye
-自动选择：
-Short reads  → MEGAHIT   Long reads  → Flye
-
-Binning
-支持：
-	•	MetaBAT2
-	•	MaxBin2
-	•	CONCOCT
-	•	VAMB
-
-MAG Refinement
-支持：
-	•	DAS Tool
-
-MAG Quality
-支持：
-	•	CheckM2
-	•	BUSCO
-
-MAG Taxonomy
-支持：
-	•	GTDB-Tk
-
-MAG Agent 智能能力
-自动判断
-例如：
-输入：
-500 metagenomic samples
-Agent:
-Large cohort detected  Recommendation:  Perform MAG recovery
-
-自动质量控制
-输出：
-MAG_summary:  total_MAG:    542   high_quality_MAG:    138   medium_quality_MAG:    241
-
-Priority 3
-Statistical Reasoning Agent
-目标
-解决宏基因组统计分析中的核心问题。
-传统流程：
-Abundance table  ↓  Fixed statistics  ↓  Result
-升级：
-Data characteristics  ↓  Statistical reasoning  ↓  Method selection  ↓  Validation
-
-自动判断数据特点
-检测：
-	•	compositionality
-	•	zero inflation
-	•	batch effect
-	•	repeated measures
-
-方法选择
-Differential abundance
-根据数据：
-选择：
-ANCOM-BC2  ALDEx2  MaAsLin3  DESeq2
-
-Diversity analysis
-自动选择：
-Alpha diversity:  Shannon Simpson   Beta diversity:  Bray-Curtis UniFrac   Statistics:  PERMANOVA
-
-Association analysis
-支持：
-microbe  +  clinical metadata  +  environmental factors
-方法：
-Linear model  Mixed model  Machine learning
-
-Priority 5
-Literature Evidence Agent
-目标
-让 Agent 不仅分析数据，还能解释生物意义。
-
-功能
-自动文献检索
-输入：
-Faecalibacterium abundance decreased
-检索：
-Disease association  Mechanism  Previous evidence
-
-Knowledge Integration
-建立：
-Microbe   |  Disease   |  Function   |  Gene   |  Pathway   |  Drug resistance
-
-输出示例
-microbe:  Faecalibacterium prausnitzii   evidence:  association:    Crohn disease   mechanism:    anti-inflammatory metabolites   confidence:    high  references:    PMID:
-
-推荐代码结构
-metagenomic_agent/   agents/   ├── planner_agent.py   ├── critic_agent.py   ├── qc_agent.py   ├── taxonomy_agent.py   ├── mag_agent.py   ├── functional_agent.py   ├── statistics_agent.py   ├── literature_agent.py   core/   ├── workflow_engine.py   ├── memory.py   ├── reasoning.py   tools/   ├── kraken2.py   ├── metaphlan.py   ├── megahit.py   ├── metabat.py   ├── humann.py   knowledge/   ├── microbiome_graph/   ├── literature_database/
-
-开发优先级
-Phase 1
-完成：
-	•	Planner Agent
-	•	Workflow Engine
-	•	Critic Agent
-目标：
-实现自动分析规划和结果审核。
-
-Phase 2
-完成：
-	•	MAG Agent
-	•	Assembly workflow
-	•	GTDB integration
-目标：
-支持宏基因组发现型研究。
-
-Phase 3
-完成：
-	•	Statistical Reasoning Agent
-	•	Adaptive method selection
-目标：
-提升分析可靠性。
-
-Phase 4
-完成：
-	•	Literature Agent
-	•	Knowledge Graph
-目标：
-实现自动生物学解释。
-
-最终系统目标
-从：
-Metagenomic pipeline executor
-升级为：
-Autonomous Metagenomic Scientific Agent   Can:  ✓ understand research questions  ✓ design workflows  ✓ execute bioinformatics analysis  ✓ detect errors  ✓ redesign pipelines  ✓ interpret biological meaning  ✓ generate publication-ready reports
-
-论文创新定位
-建议命名：
-MetaAgent: An autonomous reasoning framework for reproducible and explainable metagenomic discovery
-核心创新：
-	•	Multi-agent scientific reasoning
-	•	Self-correcting workflow optimization
-	•	Autonomous MAG discovery
-	•	Statistical decision intelligence
-	•	Literature-grounded biological interpretation
-目标：
-Bioinformatics / Briefings in Bioinformatics 方法学论文级系统。

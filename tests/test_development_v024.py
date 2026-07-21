@@ -1,4 +1,4 @@
-"""Development.docx Priority 1–3 coverage (v0.24): replan, MAG Flye/VAMB, stats reasoning."""
+"""Feature coverage tests (v0.24): scientific replan, MAG Flye/VAMB, statistical reasoning."""
 
 from pathlib import Path
 

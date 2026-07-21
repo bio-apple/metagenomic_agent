@@ -12,7 +12,7 @@ from metagenomic_agent.report.interpreter import interpret
 
 HTML_TEMPLATE = Template(
     """<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <title>Metagenomic Agent Report</title>

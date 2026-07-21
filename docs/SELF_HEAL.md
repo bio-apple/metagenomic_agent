@@ -1,5 +1,3 @@
-> 中文版: [SELF_HEAL.zh-CN.md](SELF_HEAL.zh-CN.md)
-
 # Self-Heal Reliability: False Positives and Human Oversight
 
 For manuscript / technical readers: when automated “self-correction” can **mis-correct**, and how HITL blocks high-risk bad fixes.

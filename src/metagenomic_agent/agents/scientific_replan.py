@@ -1,6 +1,6 @@
 """Scientific replan — Critic/PI findings drive DAG redesign (not just resource self-heal).
 
-Closes the Development.docx loop: plan → execute → evaluate → replan.
+Closes the plan → execute → evaluate → replan loop.
 """
 
 from __future__ import annotations

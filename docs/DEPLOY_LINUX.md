@@ -1,5 +1,3 @@
-> 中文版: [DEPLOY_LINUX.zh-CN.md](DEPLOY_LINUX.zh-CN.md)
-
 # Linux Large-Memory Server Deployment Guide (RAM ≥ 256 GB)
 
 For single-node or HPC login/compute nodes with **≥256 GB** RAM running Metagenomic Research Agent (v0.20+) in production. The default `linux.max_memory_gb: 256` caps resources; large-memory machines **must** raise this ceiling via the overlay config below.

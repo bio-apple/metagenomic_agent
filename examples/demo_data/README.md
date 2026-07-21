@@ -1,6 +1,4 @@
-> 中文版: [README.zh-CN.md](README.zh-CN.md)
-
-# Demo data (review / local one-click reproduction)
+# Demo data (reviewer reproduction)
 
 Bundled minimal paired FASTQ (≈520 B per sample). **No reference databases required**; with `--mode mock` the full pipeline exercises end-to-end.
 

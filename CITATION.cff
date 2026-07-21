@@ -1,17 +1,22 @@
 cff-version: 1.2.0
-title: "Metagenomic Research Agent"
+title: "Metagenomic Agent"
 message: "If you use this software, please cite it using these metadata."
 type: software
 authors:
   - name: "bio-apple contributors"
 repository-code: "https://github.com/bio-apple/metagenomic_agent"
+url: "https://github.com/bio-apple/metagenomic_agent"
 license: MIT
-version: "0.23.1"
+version: "0.25.1"
+date-released: "2026-07-21"
 abstract: >-
-  Container-sandboxed multi-agent platform for shotgun metagenomics:
-  planning, execution, evidence grounding, peer review, and reproducible reports.
+  Open-source multi-agent platform for shotgun metagenomics: research-question
+  planning, container-sandboxed tool execution, human-in-the-loop safety gates,
+  evidence-grounded interpretation, and reproducible audited reports.
 keywords:
   - metagenomics
-  - multi-agent
+  - multi-agent systems
   - bioinformatics
+  - reproducibility
+  - human-in-the-loop
   - langgraph

@@ -17,7 +17,7 @@ def shlex_quote(s: str) -> str:
 
 HTML_TEMPLATE = Template(
     """<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <title>Metagenomic Research Agent — Final Report</title>

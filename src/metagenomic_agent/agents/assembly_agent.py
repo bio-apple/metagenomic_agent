@@ -132,7 +132,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     }
     if errors:
         result["errors"] = errors
-    # Write MAG summary (Development.docx: HQ/MQ counts)
+    # Write MAG summary (HQ / MQ / LQ counts)
     mag_dir = outdir / "mags"
     mag_dir.mkdir(parents=True, exist_ok=True)
     rows = [

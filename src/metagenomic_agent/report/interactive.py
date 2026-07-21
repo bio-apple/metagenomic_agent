@@ -415,7 +415,7 @@ def build_interactive_figures(state: dict[str, Any], *, default_q: float = 0.1) 
 
 
 DASHBOARD_HTML = """<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -695,7 +695,7 @@ def write_interactive_dashboard(state: dict[str, Any], *, default_q: float = 0.1
 
 
 DASHBOARD_LITE_HTML = """<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>

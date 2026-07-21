@@ -1,97 +1,32 @@
 # Changelog
 
+## 0.25.1
+
+- Public documentation curated for journal submission (English-only; removed internal design drafts and redundant mirrors)
+- README, ARCHITECTURE, and Application Note rewritten for Availability / Methods clarity
+- Report HTML `lang` set to English; `CITATION.cff` → 0.25.1
+
 ## 0.25.0
 
-- MAG refinement & quality: DAS Tool wrapper, BUSCO alongside CheckM2; `mag_agent` facade; richer MAG summary
-- Statistical Reasoning complete: UniFrac-lite, batch PC1/Bray ratio detection + residualization, linear/mixed/ML associations; R `run_lmer.R`
-- Critic: compositional method checks, batch/PCA flags, literature over-claim; scientific replan forces batch correction + stats re-run
-- Literature/KG: disease-aware PubMed queries, confidence + contradiction fields, CARD resistance edges, taxon subgraphs
-- Roadmap `docs/design/` marked complete for Development.docx Priority 2–5 (production DAS/BUSCO/UniFrac still Methods-disclosed lite paths)
+- MAG: DAS Tool, BUSCO, `mag_agent`; UniFrac, batch correction, associations; literature/KG deepening
 
 ## 0.24.0
 
-- Scientific replan loop: Critic/PI findings → DAG redesign (`scientific_replan`) → re-execute swarm (beyond resource self-heal)
-- MAG stack: Flye (long-read), VAMB binning stubs, HQ/MQ/LQ `mag_summary.json`; large-cohort auto-MAG; long-read prefers Flye over CoT defaults
-- Statistical Reasoning: abundance diagnostics (compositionality / zero-inflation / method hints), Simpson alpha, PERMANOVA-lite; R export MaAsLin3 / ANCOM-BC2 / ALDEx2
-- Sample types: wastewater SOP + environment routing; metatranscriptomics / long-read assay cues
-- Design source ingested under `docs/design/`
+- Scientific replan; Flye/VAMB; abundance diagnostics; wastewater / long-read / metatranscriptomics routing
 
-## 0.23.1
+## 0.23.x
 
-- Self-Heal reliability: node-scoped heuristics, high-risk HITL gate (`confirm_self_heal`), FPR scenario suite (`evaluation/self_heal_fpr`) + [docs/SELF_HEAL.md](docs/SELF_HEAL.md)
-- README: journal-style polish + graphical abstract [`docs/figures/overview.svg`](docs/figures/overview.svg)
-- Application Note manuscript draft: [`docs/manuscript/application_note.md`](docs/manuscript/application_note.md)
-- Project language: documentation, HITL/UI/reports, and user-facing strings standardized to **English** (Chinese query-keyword aliases retained for routing only)
-- Chinese documentation mirrors (same directories): `*.zh-CN.md` + root [`README.zh-CN.md`](README.zh-CN.md)
+- Self-heal HITL + FPR suite; graphical abstract; Application Note; English project language
+- Resistance / Evidence / Reviewer / Reflection / Code agents; microbiome KG; MetaAgentScore
 
-## 0.23.0
+## 0.20.x – 0.22.x
 
-- Design-doc agents: Resistance/Virulence, Evidence Integration, Scientific Reviewer, Reflection, Code
-- Microbiome Knowledge Graph; Centrifuge + QC MultiQC score; MetaAgentScore + planning/error/reasoning benchmarks
-- Graph: literature → evidence → reviewer → reflection → code → report
-- Docs: keep USAGE / ARCHITECTURE / DEPLOY_LINUX / database README / CHANGELOG only (no multi-omics roadmap)
+- Async HITL; Docker Compose API/UI; journal R exports; CAMI toy; hybrid RAG
 
-## 0.22.0
+## 0.15.x – 0.19.x
 
-- CAMI-style toy taxonomy P/R/F1 benchmark (`evaluation/cami_toy`)
-- Project Memory TF-IDF retrieve (`ContextMemory.retrieve`) wired into `/chat`
-- Copilot Web UI at `GET /` and `/ui`
-- Journal R export: DESeq2 / MaAsLin2 / ANCOM-BC scripts under `biomarkers/r_export/`
+- Skill contracts; BioContainers; HPC schedulers; bio QC gates; evidence-chain grounding
 
-## 0.21.0
+## Earlier
 
-- Unified `reasoning/` decision audit (`chain.jsonl` / `chain.md`)
-- Structured `literature_report.md`; hybrid RAG (`rag.mode=hybrid`); knowledge dir contract under `database/`
-- Dockerfile + docker-compose for orchestration API; `POST /chat` grounded Copilot
-- Figure legends; CONCOCT + CARD/RGI + DeepARG + VirSorter2/CheckV (mock + BioContainers pins)
-
-## 0.20.0
-
-- Async HITL for Web/API: `hitl.mode=async`, session under `hitl/async/`, `resume_pipeline`
-- API: `hitl_mode` on `POST /analyze`; `GET/POST /runs/{run_id}/hitl`
-- Gates: `confirm_databases` (missing `paths.*`), `confirm_report_publish` (shareable / draft / hold)
-
-## 0.19.0
-
-- Critical HITL gates: confirm before Assembly compute; choose OTU/ASV prevalence cutoffs
-- Mid-swarm re-checks; audit under `hitl/`; statistics apply confirmed filters
-
-## 0.18.0
-
-- Automated bio QC chain: CheckM2 high-quality (≥90% / ≤5%) + Kraken2/MetaPhlAn unclassified gates
-- Hallucination guardrails: species / p / q / effect sizes must come from biomarkers/LEfSe tables
-- `grounded_interp` for Reporter/Interpreter; `require_evidence_chain` enforced in evidence claims
-
-## 0.17.0
-
-- BioContainers pins + `run_docker` routes to Apptainer/Docker sandbox
-- Cluster load sense (SLURM/PBS/SGE/local) with CPU/GPU/memory capping before submit
-- Scheduler scripts `submit.{slurm,pbs,sge}`; assembly checkpoints + config-hashed step cache
-- Skip LangGraph swarm when external Nextflow/Snakemake succeeds
-
-## 0.16.0
-
-- Domain RAG: tool manuals (Kraken2/GTDB-Tk/Bakta/CheckM2) + SOP (16S vs Shotgun; gut/soil/ocean prep)
-- Explicit roles: Planner, Executor (Slurm/K8s specs), QC & Critic (Q20/Q30/CheckM), Reporter (diversity/pathways)
-- GTDB-Tk / Bakta schemas + tool_domain_kb entries; bio_reasoning cites SOP/manuals
-
-## 0.15.0
-
-- Agent emits validated `workflow/params.yaml|json` for Nextflow/Snakemake (no free-form LLM shell)
-- Pydantic schemas for FastQC / Trimmomatic / MEGAHIT / MetaBAT2 / HUMAnN3 / Kraken2 (+ fastp, CheckM2, MetaPhlAn)
-- Self-heal loop: error digest → increase memory / fix paths / switch tools → rewrite params → retry
-
-## 0.14.0
-
-- Skill-contract-aware Tool Specialist; LangGraph step cache (`cache/steps`) for resume
-- Bio Reasoning CoT library + mandatory nf-core/BioStars citations + audit JSON
-- Lite interactive dashboard (on-demand Plotly JSON; summary-first)
-- Pre-run resource estimate; Snakemake `--rerun-incomplete` alongside Nextflow `-resume`
-
-## 0.13.0
-
-- Biological Reasoning Layer; taxonomy/functional interpretation; HITL A/B/C
-
-## 0.12.0 – 0.1.x
-
-- Interactive Plotly, summary context, evidence chains, container sandbox, multi-agent MVP
+- Multi-agent MVP, sandbox execution, interactive reporting

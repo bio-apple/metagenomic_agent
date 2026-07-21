@@ -134,7 +134,7 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
     enable_assembly = goal == "mag_recovery" or any(
         k in query.lower() for k in ("mag", "assembly", "组装", "binning", "genome recovery")
     )
-    # Development.docx: large cohorts → recommend MAG recovery
+    # Large cohorts → recommend MAG recovery
     auto_mag_n = int(((router.get("config") or {}).get("pipeline") or {}).get("auto_mag_min_samples") or 20)
     # allow override from ambient config via samples length heuristic when n is large
     if n >= 20 and goal in {"disease_association_differential", "community_profiling", "mag_recovery"}:

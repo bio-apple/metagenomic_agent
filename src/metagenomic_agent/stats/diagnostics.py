@@ -1,4 +1,4 @@
-"""Abundance-table diagnostics for Statistical Reasoning (Development.docx Priority 3)."""
+"""Abundance-table diagnostics for Statistical Reasoning."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def diagnose_abundance(
         if max(sizes) >= 3 * min(sizes):
             batch_effect_suspect = True
 
-    # Method selection (Development.docx)
+    # Method selection for compositional / zero-inflated tables
     if compositional and zero_inflation:
         diff = ["ancom_bc2", "aldex2", "maaslin3"]
     elif compositional:

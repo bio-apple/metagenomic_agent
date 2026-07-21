@@ -1,4 +1,4 @@
-"""Development.docx remaining Priority 2–5 coverage (v0.25)."""
+"""Statistical Reasoning tests (v0.25): MAG refinement, UniFrac, associations, literature/KG."""
 
 from pathlib import Path
 

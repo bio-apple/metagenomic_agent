@@ -1,93 +1,76 @@
-> 中文版: [ARCHITECTURE.zh-CN.md](ARCHITECTURE.zh-CN.md)
+# Architecture
 
-# Architecture and Design (v0.25)
+Metagenomic Agent is a **scientific control plane** for shotgun metagenomics: it plans analyses from a research question, executes community tools in sandboxes, gates biology-altering decisions, grounds claims in tables, and emits reproducible reports.
 
-Positioning: **Autonomous AI Scientist for Microbiome Discovery** (a metagenomics research agent, not a thin pipeline wrapper).
+Companion: [USAGE.md](USAGE.md) · [DEPLOY_LINUX.md](DEPLOY_LINUX.md) · [database/README.md](../database/README.md) · [SELF_HEAL.md](SELF_HEAL.md) · graphical abstract [`figures/overview.svg`](figures/overview.svg).
 
-Companion docs: [USAGE.md](USAGE.md) (usage) · [DEPLOY_LINUX.md](DEPLOY_LINUX.md) (≥256 GB deployment) · [database/README.md](../database/README.md) (reference databases) · [SELF_HEAL.md](SELF_HEAL.md) (self-heal FPR / HITL).
+## Scope
 
-## Goals
+Metagenomics only (shotgun; related 16S / long-read / MAG workflows). No multi-omics expansion. User-facing strings, reports, and documentation are English; non-English query tokens may still match routing aliases.
 
-Understand the research question → plan analysis → invoke bioinformatics tools → interpret results → ground in literature/KG → self-evaluate and correct → produce a reproducible report.
-
-**Scope**: metagenomics (shotgun / 16S-related workflows). No multi-omics expansion.
-
-**Project language**: documentation, CLI/Web UI, HITL prompts, and reports are **English**. Optional Chinese tokens remain only as query-matching aliases in routers/knowledge triggers so non-English research questions still route correctly.
-
-## Orchestration backbone
-
-Graphical abstract (repository README): [`docs/figures/overview.svg`](figures/overview.svg).
+## Runtime graph
 
 ```
 parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
-  → planner → export_dag(+HITL) → workflow → contract → HITL
-  → executor swarm (QC · Taxonomy · Function · Resistance · Stats · Assembly…)
-  → validate → [self_heal ↻ swarm] → critic → [scientific_replan ↻ swarm] → literature → evidence → reviewer → reflection
-  → pi_review → [scientific_replan ↻ swarm] → viz → code_agent → reporter → xai → report(+MetaAgentScore)
+  → planner → export_dag (+HITL) → workflow → contract → HITL
+  → execute swarm (QC · Taxonomy · Function · Resistance · Stats · Assembly/MAG)
+  → validate → [self_heal ↻] → critic → [scientific_replan ↻] → literature → evidence
+  → reviewer → reflection → pi_review → visualization → code → reporter → xai → report
 ```
 
-`self_heal`: classify error → propose actions → **high-risk requires HITL** → update params/DAG → re-run swarm (`max_retries`, default 2). Details: [SELF_HEAL.md](SELF_HEAL.md).
+| Loop | Role |
+|------|------|
+| **self_heal** | Resource/platform retries; **high-risk** patches require HITL ([SELF_HEAL.md](SELF_HEAL.md)) |
+| **scientific_replan** | Critic/PI findings that imply tool or pipeline redesign → patch DAG → re-execute (capped) |
 
-`scientific_replan`: when Critic/PI findings imply tool or pipeline redesign (taxonomy/MAG/stats), patch DAG + config and re-enter `execute_swarm` (capped by `max_scientific_replan`, default 1). Distinct from resource-only self-heal.
+Async HITL resumes at `execute_swarm`.
 
-Async HITL: `resume_pipeline` continues from `execute_swarm`.
+## Agents
 
-## Agent overview
+| Agent | Responsibility |
+|-------|----------------|
+| Planner | Research question → analysis plan / DAG |
+| QC | fastp / MultiQC-style scoring; host depletion |
+| Taxonomy | Kraken2 / Bracken / MetaPhlAn / Centrifuge |
+| Assembly / MAG | MEGAHIT · metaSPAdes · Flye → MetaBAT2 · MaxBin2 · CONCOCT · VAMB → DAS Tool → CheckM2 · BUSCO → GTDB-Tk |
+| Function | DIAMOND / HUMAnN / pathway summaries |
+| Resistance | CARD/RGI · DeepARG · ResFinder · VFDB |
+| Statistics | Diversity · differential · UniFrac · PERMANOVA · associations · batch diagnostics · R export |
+| Literature / Evidence | PubMed + RAG + microbiome KG; table-bound claims |
+| Reviewer / Reflection | Peer-review style checks; observe→correct |
+| Reporter | HTML report, Methods, manuscript helpers |
 
-| Agent | Responsibility | Path |
-|-------|----------------|------|
-| Planner | Research question → analysis plan | `agents/planner_agent.py` |
-| QC | fastp / MultiQC-style scoring | `agents/qc_agent.py` |
-| Taxonomy | Kraken2 / Bracken / MetaPhlAn / Centrifuge | `agents/taxonomy_agent.py` |
-| Assembly / MAG | MEGAHIT/metaSPAdes/Flye → MetaBAT2/MaxBin2/CONCOCT/VAMB → DAS Tool → CheckM2+BUSCO → GTDB-Tk | `agents/assembly_agent.py`, `agents/mag_agent.py` |
-| Function | DIAMOND / KEGG / HUMAnN | `agents/function_agent.py` |
-| Resistance | CARD/RGI / DeepARG / ResFinder / VFDB | `agents/resistance_agent.py` |
-| Statistics | Shannon/Simpson · Bray–Curtis/UniFrac · PERMANOVA · associations · batch correction · R export | `agents/statistics_agent.py` |
-| Literature | PubMed + RAG | `agents/literature_agent.py` |
-| Evidence | Statistics + literature + KG | `agents/evidence_agent.py` |
-| Reviewer | Peer-review-style confidence/concerns | `agents/reviewer_agent.py` |
-| Reflection | ReAct Observe→Correct | `agents/reflection_agent.py` |
-| Code | Sandboxed Python table analysis | `agents/code_agent.py` |
-| Reporter / Report | Interpretation and HTML/manuscript | `agents/reporter_agent.py`, `report/` |
-| Executor | HPC / containers / swarm | `agents/executor_agent.py` |
+## Evidence and anti-hallucination
 
-## Knowledge and anti-hallucination
+- Hybrid RAG + curated microbiome knowledge graph  
+- `require_evidence_chain`: species / *p* / *q* / effect from program tables  
+- Reasoning audit under `outdir/reasoning/`  
+- LLMs receive metadata and retrieved text — not raw reads  
 
-- Hybrid RAG (`rag.mode=hybrid`) + Microbiome KG (`knowledge/microbiome_kg.py`)
-- Full reference DB build: see [database/README.md](../database/README.md) (Kraken2 / MetaPhlAn / GTDB / CARD…)
-- Table binding: `require_evidence_chain` (species/p/q/effect from program tables)
-- Reasoning audit: `outdir/reasoning/chain.md`
-- Project Memory: `ContextMemory.retrieve` (TF-IDF)
+## Human-in-the-loop
 
-## Human-in-the-Loop
-
-| Gate | Options |
-|------|---------|
-| Assembly compute | Submit · MEGAHIT · Skip |
-| Rare OTU/ASV | Balanced / Strict / Lenient / None |
-| Reference DB paths | Ready · Partial · Abort |
-| **Self-Heal high-risk** | Approve all · **Safe only (default)** · Reject heal |
+| Gate | Typical choices |
+|------|-----------------|
+| Assembly compute | Submit · lighter assembler · Skip |
+| Rare features | Prevalence presets |
+| Reference databases | Ready · Partial · Abort |
+| High-risk self-heal | Approve all · **Safe only (default)** · Reject |
 | Report release | Shareable · Draft · Hold |
 
-`hitl.mode`: `sync` (CLI) \| `async` (API `/runs/{id}/hitl`).
+## Deployment
 
-## Workflow and deployment
-
-- Engines: LangGraph (default) · Nextflow · Snakemake; params in `workflow/params.yaml`
-- Containers: Docker / Apptainer (BioContainers); orchestration via `Dockerfile` / `docker-compose.yml`
-- HPC: SLURM / PBS / SGE; large-memory config in [DEPLOY_LINUX.md](DEPLOY_LINUX.md)
-- UI: `GET /ui` · Chat: `POST /chat`
+- Engines: LangGraph (default); optional Nextflow / Snakemake export via `workflow/params.yaml`  
+- Containers: Docker / Apptainer (BioContainers pins in `tools/context.py`)  
+- HPC: SLURM / PBS / SGE ([DEPLOY_LINUX.md](DEPLOY_LINUX.md))  
+- API / UI: FastAPI `meta-agent serve` → `/ui`  
 
 ## Evaluation
 
-| Item | Description |
-|------|-------------|
-| MetaAgentScore | Planning / Tool / Execution / Reasoning / Error / Repro |
-| CAMI toy | Genus-level P/R/F1 (CI regression; not full OPAMI) |
-| Functional closure | All agents in the table above are implemented |
+| Item | Use |
+|------|-----|
+| `pytest` | Unit / integration regression |
+| Self-heal FPR suite | Curated mis-correction scenarios ([SELF_HEAL.md](SELF_HEAL.md)) |
+| MetaAgentScore | Planning / execution / reasoning diagnostics |
+| CAMI-style toy | Genus P/R/F1 smoke (not a full OPAMI claim) |
 
-## Methods highlights
-
-- Cite community sources before planning (nf-core / BioStars / tool manuals)
-- Skill contracts + Pydantic Schema; no free-form shell
-- Checkpoint / step cache; `mock` is for CI only
+`--mode mock` is for CI and software demos only and must not be reported as biological results.
