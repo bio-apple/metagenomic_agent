@@ -8,13 +8,17 @@ from langgraph.graph import END, StateGraph
 
 from metagenomic_agent.agents import bio_reasoning_agent
 from metagenomic_agent.agents import (
+    code_agent,
     critic_agent,
+    evidence_agent,
     executor_agent,
     literature_agent,
     pi_agent,
     plan_validator,
     planner_agent,
+    reflection_agent,
     reporter_agent,
+    reviewer_agent,
     router_agent,
     supervisor,
     tool_specialist,
@@ -273,8 +277,12 @@ def build_graph():
     g.add_node("self_heal", _self_heal)
     g.add_node("critic", critic_agent.run)  # QC & Critic
     g.add_node("literature", literature_agent.run)
+    g.add_node("evidence", evidence_agent.run)
+    g.add_node("reviewer", reviewer_agent.run)
+    g.add_node("reflection", reflection_agent.run)
     g.add_node("pi_review", pi_agent.run)
     g.add_node("visualization", visualization_agent.run)
+    g.add_node("code_agent", code_agent.run)
     g.add_node("reporter", reporter_agent.run)
     g.add_node("xai", _xai)
     g.add_node("report", report_agent.run)
@@ -304,11 +312,15 @@ def build_graph():
     )
     g.add_edge("self_heal", "execute_swarm")
     g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
-    g.add_edge("literature", "pi_review")
+    g.add_edge("literature", "evidence")
+    g.add_edge("evidence", "reviewer")
+    g.add_edge("reviewer", "reflection")
+    g.add_edge("reflection", "pi_review")
     g.add_conditional_edges(
         "pi_review", _route_after_pi, {"self_heal": "self_heal", "visualization": "visualization"}
     )
-    g.add_edge("visualization", "reporter")
+    g.add_edge("visualization", "code_agent")
+    g.add_edge("code_agent", "reporter")
     g.add_edge("reporter", "xai")
     g.add_edge("xai", "report")
     g.add_edge("report", END)
@@ -325,8 +337,12 @@ def build_resume_graph():
     g.add_node("self_heal", _self_heal)
     g.add_node("critic", critic_agent.run)
     g.add_node("literature", literature_agent.run)
+    g.add_node("evidence", evidence_agent.run)
+    g.add_node("reviewer", reviewer_agent.run)
+    g.add_node("reflection", reflection_agent.run)
     g.add_node("pi_review", pi_agent.run)
     g.add_node("visualization", visualization_agent.run)
+    g.add_node("code_agent", code_agent.run)
     g.add_node("reporter", reporter_agent.run)
     g.add_node("xai", _xai)
     g.add_node("report", report_agent.run)
@@ -339,11 +355,15 @@ def build_resume_graph():
     )
     g.add_edge("self_heal", "execute_swarm")
     g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
-    g.add_edge("literature", "pi_review")
+    g.add_edge("literature", "evidence")
+    g.add_edge("evidence", "reviewer")
+    g.add_edge("reviewer", "reflection")
+    g.add_edge("reflection", "pi_review")
     g.add_conditional_edges(
         "pi_review", _route_after_pi, {"self_heal": "self_heal", "visualization": "visualization"}
     )
-    g.add_edge("visualization", "reporter")
+    g.add_edge("visualization", "code_agent")
+    g.add_edge("code_agent", "reporter")
     g.add_edge("reporter", "xai")
     g.add_edge("xai", "report")
     g.add_edge("report", END)

@@ -42,9 +42,55 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "<html><body><h1>Quality Report</h1><pre>" + "\n".join(qc_summary_rows) + "</pre></body></html>",
         encoding="utf-8",
     )
+    # MultiQC-style aggregate + structured QC score (design doc Data QC Agent)
+    issues: list[str] = []
+    recs: list[str] = []
+    scores: list[float] = []
+    for sid, v in per_sample.items():
+        ret = float(v.get("read_retention") or 1.0)
+        host = float(v.get("host_fraction") or 0.0)
+        q30 = float(v.get("Q30") or 0)
+        s = 1.0
+        if ret < 0.5:
+            issues.append(f"{sid}: Low sequencing depth / retention ({ret:.2f})")
+            recs.append("Increase sequencing depth")
+            s -= 0.25
+        if host > 0.5:
+            issues.append(f"{sid}: Possible host contamination ({host:.2f})")
+            recs.append("Strengthen host filter / verify index")
+            s -= 0.2
+        if q30 and q30 < 80:
+            issues.append(f"{sid}: Low Q30 ({q30})")
+            recs.append("Inspect FastQC/MultiQC and re-trim")
+            s -= 0.15
+        scores.append(max(0.0, s))
+    qc_score = {
+        "quality_score": round(sum(scores) / max(len(scores), 1), 2),
+        "issues": issues,
+        "recommendation": "; ".join(dict.fromkeys(recs)) or "QC acceptable",
+        "tools": ["fastp", "fastqc", "multiqc", "bbtools"],
+    }
+    (outdir / "qc_agent_score.json").write_text(json.dumps(qc_score, indent=2), encoding="utf-8")
+    multiqc = outdir / "multiqc_report.html"
+    multiqc.write_text(
+        "<html><body><h1>MultiQC (aggregate)</h1><pre>"
+        + json.dumps(qc_score, indent=2)
+        + "</pre></body></html>",
+        encoding="utf-8",
+    )
     status_payload = {
         sid: {"Q30": v.get("Q30"), "adapter_removed": v.get("adapter_removed"), "status": v.get("status")}
         for sid, v in per_sample.items()
     }
     (outdir / "quality_status.json").write_text(json.dumps(status_payload, indent=2), encoding="utf-8")
-    return {"qc_host": per_sample, "quality_report_html": str(quality_html)}
+    return {
+        "qc_host": per_sample,
+        "quality_report_html": str(quality_html),
+        "artifacts": {
+            **(state.get("artifacts") or {}),
+            "qc_score": qc_score,
+            "multiqc_report": str(multiqc),
+        },
+        "messages": state.get("messages", [])
+        + [f"QC Agent: quality_score={qc_score['quality_score']}; issues={len(issues)}"],
+    }

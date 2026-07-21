@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.0
+
+- Design-doc agents: Resistance/Virulence, Evidence Integration, Scientific Reviewer, Reflection, Code
+- Microbiome Knowledge Graph; Centrifuge + QC MultiQC score; MetaAgentScore + planning/error/reasoning benchmarks
+- Graph: literature → evidence → reviewer → reflection → code → report; DESIGN.md + docx archived
+
 ## 0.22.0
 
 - CAMI-style toy taxonomy P/R/F1 benchmark (`evaluation/cami_toy`)

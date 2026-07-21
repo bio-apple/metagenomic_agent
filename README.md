@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.22.0` · Metagenomic Research Copilot · Web UI · CAMI toy · Memory 检索 · R 差异分析导出。
+**版本** `0.23.0` · Autonomous Metagenomic AI Scientist · Reviewer/KG/Reflection/Code · MetaAgentScore。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -36,7 +36,8 @@ Router → Planner → HITL → Executor (cluster → BioContainers + checkpoint
 | [docs/USAGE.md](docs/USAGE.md) | CLI / API / 配置 / 产物 |
 | [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md) | Linux 大内存机（≥256 GB）部署 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构与 Methods 要点 |
-| [docs/OPTIMIZATION.md](docs/OPTIMIZATION.md) | Copilot 短板闭环 |
+| [docs/DESIGN.md](docs/DESIGN.md) | 开发者设计文档（全文） |
+| [docs/OPTIMIZATION.md](docs/OPTIMIZATION.md) | 设计功能闭环对照 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本历史 |
 | [database/README.md](database/README.md) | 知识库 / 参考库路径 |
 

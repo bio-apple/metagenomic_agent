@@ -33,6 +33,10 @@ AGENT_ALIASES = {
     "statistics agent": "statistics",
     "statistics": "statistics",
     "stats": "statistics",
+    "resistance agent": "resistance",
+    "resistance": "resistance",
+    "virulence agent": "resistance",
+    "resistance_virulence": "resistance",
     "critic agent": "critic",
     "critic": "critic",
     "literature agent": "literature",
@@ -65,8 +69,11 @@ def _default_plan(
     bio = bio or {}
     wants_biomarker = any(k in q for k in ("biomarker", "标志", "差异", "ibd", "disease", "对照", "control"))
     wants_assembly = any(k in q for k in ("mag", "assembly", "组装", "分箱", "bin"))
-    wants_function = any(k in q for k in ("function", "pathway", "功能", "kegg", "resistance", "耐药"))
     pipe = config.get("pipeline", {})
+    wants_function = any(k in q for k in ("function", "pathway", "功能", "kegg", "resistance", "耐药"))
+    wants_resistance = any(
+        k in q for k in ("resistance", "arg", "amr", "virulence", "耐药", "毒力", "card", "vfdb")
+    ) or bool(pipe.get("enable_arg") or pipe.get("enable_resistance"))
 
     # Biological Reasoning Layer overrides / strengthens heuristics
     if bio.get("enable_statistics"):
@@ -78,6 +85,7 @@ def _default_plan(
     if bio.get("study_goal") == "taxonomy_only":
         wants_function = False
         wants_biomarker = False
+        wants_resistance = False
 
     tax_tools = list(pipe.get("taxonomy_tools") or []) or decide_taxonomy_tools(
         {
@@ -122,8 +130,18 @@ def _default_plan(
             {
                 "name": "functional_annotation",
                 "agent": "Function Agent",
-                "tools": ["diamond", "eggnog"],
+                "tools": ["diamond", "eggnog", "humann"],
                 "params": {"disease_context": bio.get("disease_context")},
+                "depends_on": ["quality_control"],
+            }
+        )
+    if wants_resistance or pipe.get("enable_arg", True):
+        tasks.append(
+            {
+                "name": "resistance_virulence",
+                "agent": "Resistance Agent",
+                "tools": ["rgi", "deeparg", "resfinder", "amrfinderplus", "vfdb"],
+                "params": {},
                 "depends_on": ["quality_control"],
             }
         )
@@ -141,7 +159,9 @@ def _default_plan(
         [
             {"name": "quality_critique", "agent": "Critic Agent", "tools": [], "params": {}, "depends_on": [t["name"] for t in tasks]},
             {"name": "literature_reasoning", "agent": "Literature Agent", "tools": ["pubmed", "rag"], "params": {}, "depends_on": ["quality_critique"]},
-            {"name": "report_generation", "agent": "Report Agent", "tools": [], "params": {}, "depends_on": ["literature_reasoning"]},
+            {"name": "evidence_integration", "agent": "Evidence Agent", "tools": ["kg"], "params": {}, "depends_on": ["literature_reasoning"]},
+            {"name": "scientific_review", "agent": "Reviewer Agent", "tools": [], "params": {}, "depends_on": ["evidence_integration"]},
+            {"name": "report_generation", "agent": "Report Agent", "tools": [], "params": {}, "depends_on": ["scientific_review"]},
         ]
     )
     return tasks
@@ -149,9 +169,21 @@ def _default_plan(
 
 def _tasks_to_dag(tasks: list[TaskSpec]) -> list[DagNode]:
     nodes: list[DagNode] = []
+    # Graph-level agents (not swarm): critic/literature/evidence/reviewer/report
+    skip_swarm = {
+        "critic",
+        "literature",
+        "report",
+        "evidence",
+        "evidence_integration",
+        "reviewer",
+        "scientific_review",
+        "reflection",
+        "code",
+    }
     for t in tasks:
         agent = _normalize_agent(t["agent"])
-        if agent in {"critic", "literature", "report"}:
+        if agent in skip_swarm or t["name"] in skip_swarm:
             continue
         nodes.append(
             DagNode(

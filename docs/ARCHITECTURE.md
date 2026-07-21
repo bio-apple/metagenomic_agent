@@ -1,29 +1,31 @@
-# 架构说明（v0.22）
+# 架构说明（v0.23）
 
-CLI / 配置 / 产物见 [USAGE.md](USAGE.md)；Linux ≥256 GB 部署见 [DEPLOY_LINUX.md](DEPLOY_LINUX.md)；短板闭环见 [OPTIMIZATION.md](OPTIMIZATION.md)。
+CLI / 配置见 [USAGE.md](USAGE.md)；设计全文见 [DESIGN.md](DESIGN.md)；闭环对照见 [OPTIMIZATION.md](OPTIMIZATION.md)。
 
 ## 编排主链
 
 ```
 parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
-  → planner → export_dag(+critical HITL gates) → workflow_agent → contract
-  → HITL (sync Prompt | async 落盘暂停)
-  → executor (swarm / nf|smk + HPC) → validate → quality → HITL(runtime)
-  → self-heal* → critic(bio_qc) → literature → pi_review → viz
-  → reporter → xai → report
+  → planner → export_dag(+HITL) → workflow → contract → HITL
+  → executor swarm (QC · Taxonomy · Function · Resistance · Stats · Assembly…)
+  → validate → critic → literature → evidence → reviewer → reflection
+  → pi_review → viz → code_agent → reporter → xai → report(+MetaAgentScore)
 ```
-
-异步审批后续跑：`resume_pipeline` 从 `execute_swarm` 起。
 
 ## 角色与模块
 
 | 角色 | 职责 | 主要路径 |
 |------|------|----------|
-| Planner | 实验设计、assay/环境、整体 DAG | `agents/planner_agent.py` |
-| Executor | 资源感知、调度规格、swarm/引擎执行 | `agents/executor_agent.py`、`execution/` |
-| QC & Critic | Q20/Q30、CheckM2 HQ、unclassified | `validators/bio_qc.py`、`agents/critic_agent.py` |
-| Reporter | 多样性/通路叙述 + 表绑定解读 | `agents/reporter_agent.py`、`knowledge/grounded_interp.py` |
-| HITL | 关键门控、CLI/API 审批 | `agents/hitl*.py`、`api/server.py` |
+| Planner | 科研问题 → 分析计划 | `agents/planner_agent.py` |
+| QC | fastp/MultiQC 风格评分 | `agents/qc_agent.py` |
+| Taxonomy | Kraken2/Bracken/MetaPhlAn/Centrifuge | `agents/taxonomy_agent.py` |
+| Function | HUMAnN/DIAMOND/KEGG | `agents/function_agent.py` |
+| Resistance | CARD/RGI/DeepARG/ResFinder/VFDB | `agents/resistance_agent.py` |
+| Evidence | 统计+文献+KG 整合 | `agents/evidence_agent.py` |
+| Reviewer | 审稿式 confidence/concerns | `agents/reviewer_agent.py` |
+| Reflection | ReAct Observe→Correct | `agents/reflection_agent.py` |
+| Code | 沙箱 Python 表分析 | `agents/code_agent.py` |
+| KG | Microbe–Pathway–Disease–PMID | `knowledge/microbiome_kg.py` |
 
 ## Human-in-the-Loop
 

@@ -1,6 +1,6 @@
-# 使用指南（v0.22）
+# 使用指南（v0.23）
 
-架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。Linux 大内存服务器（≥256 GB）部署见 [DEPLOY_LINUX.md](DEPLOY_LINUX.md)。
+架构见 [ARCHITECTURE.md](ARCHITECTURE.md)；设计文档见 [DESIGN.md](DESIGN.md)；Linux ≥256 GB 见 [DEPLOY_LINUX.md](DEPLOY_LINUX.md)。
 
 ## CLI
 

@@ -8,7 +8,7 @@ from typing import Any
 from metagenomic_agent.skills.bandit import EpsilonGreedyBandit
 from metagenomic_agent.skills.checker import check_skill_post
 from metagenomic_agent.skills.router import route_taxonomy_tools
-from metagenomic_agent.tools import glm, kraken, metaphlan
+from metagenomic_agent.tools import centrifuge, glm, kraken, metaphlan
 from metagenomic_agent.tools.context import ToolContext
 
 
@@ -60,6 +60,13 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             _append_abundance(merged_rows, sid, m.get("metaphlan_abundance"), "metaphlan")
             post_violations.extend(check_skill_post("metaphlan", m))
             bandit.update("metaphlan", success=True, quality=float(m.get("classification_rate") or 0.5), match=0.7)
+
+        if "centrifuge" in tools:
+            c = centrifuge.run(sample, upstream, tax_dir, ctx=ctx)
+            art.update(c)
+            tool_results.append(c)
+            _append_abundance(merged_rows, sid, c.get("centrifuge_abundance") or c.get("kraken2_abundance"), "centrifuge")
+            bandit.update("centrifuge", success=True, quality=float(c.get("classification_rate") or 0.5), match=0.65)
 
         if "microcafe" in tools:
             g = glm.run_microcafe(sample, upstream, tax_dir, ctx=ctx)

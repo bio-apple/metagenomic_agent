@@ -1,19 +1,24 @@
-# 优化差距闭环（v0.22）
+# 设计文档功能闭环（v0.23）
 
-对照 Copilot 建议书的短板补齐状态。
+对照 `docs/DESIGN.md` / `Metagenomic_AI_Scientist_Agent_设计文档.docx`。
 
-| 项 | 状态 | 产物 / 入口 |
-|----|------|-------------|
-| 统一推理链 | **Done** | `reasoning/chain.jsonl` · `chain.md` |
-| literature_report | **Done** | `literature_report.md` |
-| Hybrid RAG | **Done** | `rag.mode: hybrid` + `database/` 目录契约 |
-| Dockerfile / compose | **Done** | 根目录 `Dockerfile` · `docker-compose.yml` |
-| Figure legends | **Done** | `visualization/figure_legends.md` |
-| CONCOCT / RGI / DeepARG / VirSorter2 / CheckV | **Done** | mock + 容器镜像 pin |
-| Chat Copilot | **Done** | `POST /chat` |
-| CAMI toy 基准 | **Done** | `evaluation/cami_toy.*` · `run_benchmark_suite` |
-| 项目 Memory 向量检索 | **Done** | `ContextMemory.retrieve`（TF-IDF） |
-| Web UI | **Done** | `GET /` · `GET /ui` 单页 Copilot |
-| DESeq2 / MaAsLin2 / ANCOM-BC | **Done** | `biomarkers/r_export/` + 可选 `try_run_r` |
+| 设计章节 | 状态 | 实现 |
+|----------|------|------|
+| Planner / QC / Taxonomy / Function / Literature / Report | **Done** | 既有多智能体 + 增强 |
+| Resistance / Virulence Agent | **Done** | `resistance_agent` · CARD/RGI/DeepARG/ResFinder/AMRFinder/VFDB |
+| Evidence Integration Agent | **Done** | `evidence_agent` + Microbiome KG |
+| Scientific Reviewer Agent | **Done** | `reviewer_agent`（confidence/concerns） |
+| ReAct + Reflection | **Done** | `reflection_agent` |
+| Knowledge Graph | **Done** | `knowledge/microbiome_kg.py` |
+| Code Agent | **Done** | `code_agent`（sandbox Python） |
+| Workflow Engine | **Done** | Nextflow/Snakemake/Docker/Apptainer |
+| MetaAgentScore + Benchmarks | **Done** | Planning / Error / Reasoning + `evaluation/meta_agent_score` |
+| HITL | **Done** | sync/async 门控 |
+| Multi-omics 扩展 | Partial | 路线图占位（转录组/代谢组未全量） |
 
-说明：CAMI 为 toy gold（非全量 OPAMI/AMBER）；Memory 为本地 TF-IDF（非外部向量库）；R 原生工具需本机安装对应包，否则保留脚本 + Python *‑like 回退。
+主链：
+
+```text
+Planner → Swarm(QC/Tax/Func/Resistance/Stats) → Critic → Literature
+  → Evidence → Reviewer → Reflection → Viz → Code → Report
+```

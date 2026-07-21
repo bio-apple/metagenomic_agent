@@ -392,17 +392,19 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
     paths = generate(state)
     bundle = write_reproducibility_bundle(state)
+    from metagenomic_agent.evaluation.meta_agent_score import compute_meta_agent_score
     from metagenomic_agent.knowledge.reasoning_log import finalize_reasoning, log_decision
 
     shareable = bool(arts0.get("report_shareable")) or bool(
         ((state.get("config") or {}).get("report") or {}).get("shareable")
     )
     state = {**state, "artifacts": {**arts0, **(state.get("artifacts") or {})}}
+    meta_score = compute_meta_agent_score(state)
     reason_patch = log_decision(
         state,
         "report",
         "Finalize HTML report + reproducibility bundle",
-        f"shareable={shareable}; html={paths.get('html')}",
+        f"shareable={shareable}; html={paths.get('html')}; MetaAgentScore={meta_score.get('MetaAgentScore')}",
     )
     finalized = finalize_reasoning({**state, **reason_patch, "artifacts": {**(state.get("artifacts") or {}), **(reason_patch.get("artifacts") or {})}})
     arts = {
@@ -412,6 +414,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "report": paths,
         "reproducibility": bundle,
         "report_shareable": shareable,
+        "meta_agent_score": meta_score,
     }
     share_msg = "shareable" if shareable else "internal draft (not marked for external share)"
     return {
@@ -423,5 +426,6 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             f"Reproducibility bundle: {bundle.get('manifest')}",
             f"Workflows: {bundle.get('reproducible_nf')} / {bundle.get('reproducible_smk')} seed={bundle.get('run_seed')}",
             f"Reasoning chain: {arts.get('reasoning_md')}",
+            f"MetaAgentScore: {meta_score.get('MetaAgentScore')} → {meta_score.get('path')}",
         ],
     }
