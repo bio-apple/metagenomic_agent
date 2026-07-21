@@ -1,4 +1,4 @@
-"""Agent registry matching developer documentation layout."""
+"""Agent registry — multi-agent specialists + swarm workers."""
 
 from metagenomic_agent.agents import (
     assembly_agent,
@@ -6,15 +6,18 @@ from metagenomic_agent.agents import (
     function_agent,
     literature_agent,
     pi_agent,
+    plan_validator,
     qc_agent,
+    router_agent,
     statistics_agent,
     supervisor,
     taxonomy_agent,
+    tool_specialist,
     visualization_agent,
+    workflow_agent,
 )
 from metagenomic_agent.report import generator as report_agent
 
-# Swarm agents executed by the DAG executor
 AGENT_REGISTRY = {
     "qc": qc_agent.run,
     "qc_host": qc_agent.run,
@@ -30,6 +33,10 @@ AGENT_REGISTRY = {
 __all__ = [
     "AGENT_REGISTRY",
     "supervisor",
+    "router_agent",
+    "tool_specialist",
+    "plan_validator",
+    "workflow_agent",
     "qc_agent",
     "taxonomy_agent",
     "assembly_agent",

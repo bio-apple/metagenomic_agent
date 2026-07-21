@@ -200,6 +200,9 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         "workflow_dag": str(outdir / "workflow" / "dag.json"),
         "manuscript": str(outdir / "report" / "manuscript"),
         "figures": str(outdir / "report" / "figures"),
+        "xai": str(outdir / "xai"),
+        "router": str(outdir / "router_decision.json"),
+        "tool_specialist": str(outdir / "tool_specialist"),
         "final_report.html": str(outdir / "final_report.html"),
     }
 

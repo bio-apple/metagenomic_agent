@@ -1,4 +1,4 @@
-"""LangGraph orchestration with PI review loop."""
+"""LangGraph multi-agent orchestration: Router → Specialists → Validator → Swarm → PI → XAI."""
 
 from __future__ import annotations
 
@@ -6,9 +6,20 @@ from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
-from metagenomic_agent.agents import critic_agent, literature_agent, pi_agent, supervisor, visualization_agent
+from metagenomic_agent.agents import (
+    critic_agent,
+    literature_agent,
+    pi_agent,
+    plan_validator,
+    router_agent,
+    supervisor,
+    tool_specialist,
+    visualization_agent,
+    workflow_agent,
+)
 from metagenomic_agent.agents.hitl import hitl_checkpoint
 from metagenomic_agent.evaluation.quality_score import write_quality_report
+from metagenomic_agent.evaluation.xai import write_xai_report
 from metagenomic_agent.execution.dag_export import export_workflow_dag
 from metagenomic_agent.execution.executor import execute_swarm
 from metagenomic_agent.execution.self_heal import apply_self_heal, classify_from_errors, deep_merge_config
@@ -115,11 +126,25 @@ def _quality_scores(state: AgentState) -> dict:
     }
 
 
+def _xai(state: AgentState) -> dict:
+    report = write_xai_report(state)
+    arts = dict(state.get("artifacts") or {})
+    arts["xai"] = report
+    return {
+        "artifacts": arts,
+        "messages": state.get("messages", []) + [f"XAI: {report.get('summary')}"],
+    }
+
+
 def build_graph():
     g = StateGraph(AgentState)
     g.add_node("parse_input", parse_input)
+    g.add_node("router", router_agent.run)
     g.add_node("supervisor", supervisor.plan)
+    g.add_node("tool_specialist", tool_specialist.run)
+    g.add_node("plan_validator", plan_validator.run)
     g.add_node("export_dag", _export_dag)
+    g.add_node("workflow_agent", workflow_agent.run)
     g.add_node("contract_check", contract_check)
     g.add_node("hitl", hitl_checkpoint)
     g.add_node("execute_swarm", execute_swarm)
@@ -130,12 +155,17 @@ def build_graph():
     g.add_node("literature", literature_agent.run)
     g.add_node("pi_review", pi_agent.run)
     g.add_node("visualization", visualization_agent.run)
+    g.add_node("xai", _xai)
     g.add_node("report", report_agent.run)
 
     g.set_entry_point("parse_input")
-    g.add_edge("parse_input", "supervisor")
-    g.add_edge("supervisor", "export_dag")
-    g.add_edge("export_dag", "contract_check")
+    g.add_edge("parse_input", "router")
+    g.add_edge("router", "supervisor")
+    g.add_edge("supervisor", "tool_specialist")
+    g.add_edge("tool_specialist", "plan_validator")
+    g.add_edge("plan_validator", "export_dag")
+    g.add_edge("export_dag", "workflow_agent")
+    g.add_edge("workflow_agent", "contract_check")
     g.add_edge("contract_check", "hitl")
     g.add_conditional_edges("hitl", _route_after_hitl, {"execute_swarm": "execute_swarm", "report": "report"})
     g.add_edge("execute_swarm", "validate")
@@ -149,7 +179,8 @@ def build_graph():
     g.add_conditional_edges(
         "pi_review", _route_after_pi, {"self_heal": "self_heal", "visualization": "visualization"}
     )
-    g.add_edge("visualization", "report")
+    g.add_edge("visualization", "xai")
+    g.add_edge("xai", "report")
     g.add_edge("report", END)
     return g.compile()
 

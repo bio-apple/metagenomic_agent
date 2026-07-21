@@ -67,6 +67,7 @@ def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
 
     tax_tools = list(pipe.get("taxonomy_tools") or []) or decide_taxonomy_tools(
         {
+            "query": query,
             "memory_gb": (config.get("linux") or {}).get("memory_gb", 32),
             "n_samples": int(config.get("_n_samples") or 1),
             "read_length": float(config.get("_read_length") or 150),

@@ -80,7 +80,11 @@ def test_graph_dryrun_mock(tmp_path: Path):
     assert (out / "report" / "manuscript" / "manuscript_draft.md").exists()
     assert (out / "report" / "figures" / "manifest.json").exists()
     assert (out / "report" / "figures" / "pcoa.json").exists()
-    assert (out / "biomarkers" / "lefse_like.tsv").exists() or True  # optional if no groups
+    assert (out / "router_decision.json").exists()
+    assert (out / "plan_validation.json").exists()
+    assert (out / "tool_specialist" / "tool_commands.json").exists()
+    assert (out / "workflow" / "generated.nf").exists()
+    assert (out / "xai" / "feature_importance.md").exists()
     assert final.get("critic") is not None
     assert final.get("literature") is not None
     assert final.get("agent_messages") is not None

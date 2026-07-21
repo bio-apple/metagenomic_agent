@@ -1,0 +1,149 @@
+{
+  "version": "0.8.0",
+  "domains": {
+    "prokaryote_taxonomy": {
+      "preferred": ["kraken2", "metaphlan", "camitax", "tama"],
+      "notes": "For prokaryotic community profiling prefer marker/k-mer tools; CAMITAX/TAMA for CAMI-style accuracy studies."
+    },
+    "virus": {
+      "preferred": ["viwrap", "phabox", "kraken2"],
+      "notes": "Viral metagenomes: ViWrap/PhaBOX for phage/virus discovery; Kraken2 with viral DB as screen."
+    },
+    "fungi": {
+      "preferred": ["metaphlan", "kraken2"],
+      "notes": "Eukaryotic microbes: prefer marker-gene tools when available."
+    },
+    "amr_virulence": {
+      "preferred": ["diamond", "card", "vfdb"],
+      "notes": "Resistance/virulence: CARD/VFDB via DIAMOND or specialized profilers."
+    },
+    "mag_recovery": {
+      "preferred": ["megahit", "metaspades", "metabat2", "checkm2"],
+      "notes": "Assembly-binning-QC pipeline for MAGs."
+    }
+  },
+  "tools": {
+    "kraken2": {
+      "specialty": ["prokaryote_taxonomy", "virus_screen", "large_cohort"],
+      "strengths": ["speed", "low_memory_relative", "scalability"],
+      "weaknesses": ["database_dependent", "less_sensitive_than_markers"],
+      "required_params": ["db"],
+      "optional_params": ["confidence", "threads"],
+      "defaults": {"confidence": 0.05, "threads": 8},
+      "command_template": "kraken2 --db {db} --threads {threads} --confidence {confidence} --report {report} --output {output} {r1} {r2}"
+    },
+    "metaphlan": {
+      "specialty": ["prokaryote_taxonomy", "high_accuracy"],
+      "strengths": ["marker_specificity", "species_resolution"],
+      "weaknesses": ["slower", "database_size"],
+      "required_params": ["db"],
+      "optional_params": ["nproc"],
+      "defaults": {"nproc": 8},
+      "command_template": "metaphlan {r1},{r2} --bowtie2out {bowtie} --nproc {nproc} --input_type fastq -o {output}"
+    },
+    "camitax": {
+      "specialty": ["prokaryote_taxonomy", "benchmark"],
+      "strengths": ["cami_compatible", "taxonomy_assignment"],
+      "weaknesses": ["less_common_in_prod"],
+      "required_params": ["input"],
+      "optional_params": [],
+      "defaults": {},
+      "command_template": "camitax -i {input} -o {output}",
+      "status": "registered_for_routing"
+    },
+    "tama": {
+      "specialty": ["prokaryote_taxonomy", "assembly_aware"],
+      "strengths": ["taxonomy_on_assemblies"],
+      "weaknesses": ["needs_contigs"],
+      "required_params": ["contigs"],
+      "optional_params": [],
+      "defaults": {},
+      "command_template": "tama -c {contigs} -o {output}",
+      "status": "registered_for_routing"
+    },
+    "viwrap": {
+      "specialty": ["virus", "phage"],
+      "strengths": ["virus_discovery", "binning_aware"],
+      "weaknesses": ["compute_heavy"],
+      "required_params": ["reads_or_contigs"],
+      "optional_params": ["threads"],
+      "defaults": {"threads": 8},
+      "command_template": "ViWrap -i {input} -o {output} --threads {threads}",
+      "status": "registered_for_routing"
+    },
+    "phabox": {
+      "specialty": ["virus", "phage"],
+      "strengths": ["phage_classification"],
+      "weaknesses": ["virus_specific"],
+      "required_params": ["contigs"],
+      "optional_params": [],
+      "defaults": {},
+      "command_template": "phabox -i {contigs} -o {output}",
+      "status": "registered_for_routing"
+    },
+    "megahit": {
+      "specialty": ["mag_recovery", "assembly"],
+      "strengths": ["memory_efficient", "fast"],
+      "weaknesses": ["less_accurate_than_spades_sometimes"],
+      "required_params": ["r1"],
+      "optional_params": ["r2", "memory", "threads"],
+      "defaults": {"memory": 0.9, "threads": 8},
+      "command_template": "megahit -1 {r1} -2 {r2} -o {output} -t {threads} -m {memory}"
+    },
+    "metaspades": {
+      "specialty": ["mag_recovery", "assembly"],
+      "strengths": ["accuracy"],
+      "weaknesses": ["high_memory"],
+      "required_params": ["r1", "r2"],
+      "optional_params": ["threads", "memory"],
+      "defaults": {"threads": 16},
+      "command_template": "spades.py --meta -1 {r1} -2 {r2} -o {output} -t {threads}"
+    },
+    "checkm2": {
+      "specialty": ["mag_recovery", "qc"],
+      "strengths": ["completeness_contamination"],
+      "weaknesses": ["needs_bins"],
+      "required_params": ["bins"],
+      "optional_params": ["threads"],
+      "defaults": {"threads": 8},
+      "command_template": "checkm2 predict --input {bins} --output-directory {output} -t {threads}"
+    },
+    "diamond": {
+      "specialty": ["amr_virulence", "function"],
+      "strengths": ["blastx_speed"],
+      "weaknesses": ["needs_db"],
+      "required_params": ["db", "query"],
+      "optional_params": ["threads", "evalue"],
+      "defaults": {"threads": 8, "evalue": "1e-5"},
+      "command_template": "diamond blastx -d {db} -q {query} -o {output} -p {threads} -e {evalue}"
+    },
+    "microcafe": {
+      "specialty": ["long_read_taxonomy", "glm"],
+      "strengths": ["long_reads", "speed"],
+      "weaknesses": ["weights_required"],
+      "required_params": ["r1"],
+      "optional_params": ["weights"],
+      "defaults": {},
+      "command_template": "microcafe --weights {weights} --input {r1} --output {output}"
+    },
+    "fastp": {
+      "specialty": ["qc"],
+      "strengths": ["fast_qc_trim"],
+      "weaknesses": [],
+      "required_params": ["r1"],
+      "optional_params": ["r2", "qualified_quality_phred", "length_required"],
+      "defaults": {"qualified_quality_phred": 20, "length_required": 36},
+      "command_template": "fastp -i {r1} -I {r2} -o {clean_r1} -O {clean_r2} -q {qualified_quality_phred} -l {length_required}"
+    }
+  },
+  "constraints": {
+    "require_host_genome_version_for_host_filter": true,
+    "require_coordinate_system_for_interval_tools": true,
+    "ask_when_missing": [
+      "host_genome_version",
+      "coordinate_system",
+      "sample_groups_for_differential",
+      "target_domain"
+    ]
+  }
+}

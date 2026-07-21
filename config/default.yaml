@@ -86,6 +86,7 @@ validation:
   max_mag_contamination: 10
   require_gut_markers: true
   contract_hard_fail: false  # true → abort swarm on contract ERROR
+  plan_validator_hard_fail: false  # true → block when domain constraints missing
   gut_marker_genera:
     - Bacteroides
     - Faecalibacterium

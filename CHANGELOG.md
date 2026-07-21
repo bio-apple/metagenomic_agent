@@ -1,23 +1,20 @@
 # Changelog
 
+## 0.8.0
+
+- Multi-agent specialization: Router, Tool Specialist, Plan Validator
+- Domain tool KB (virus/prokaryote/MAG/AMR) with ask-don’t-guess constraints
+- Workflow RAG (nf-core/Snakemake snippets) + error reflection
+- XAI feature-importance explanations for biomarkers
+
 ## 0.7.0
 
-- 补齐建议书剩余项：真实 PCoA/共现、LEfSe-like/ANCOM-like、TF-IDF RAG、全 DB wrapper
-- 契约硬失败、gLM 外部推理钩子、PI Agent、benchmarks
-- 文档收敛为 README / USAGE / ARCHITECTURE / METHODS
+- PCoA/Spearman/LEfSe-like/ANCOM-like, TF-IDF RAG, PI, contract hard-fail, gLM hook
 
 ## 0.6.0
 
-- 生物库 RAG、Evidence Table、DAG 导出、质量评分、手稿/可视化骨架
+- Bio-RAG, Evidence Table, DAG export, quality scores, manuscript/viz skeletons
 
-## 0.5.0
+## 0.5.0 – 0.1.x
 
-- Skill/Contract、gLM 路由、生物学验证、CWL
-
-## 0.4.0
-
-- HITL、CheckM 门控、MWU+FDR、CI
-
-## 0.3.x – 0.1.x
-
-- Linux 生产路径、ToolContext、LangGraph MVP
+- Contracts, gLM routing, biology validation, Linux production, LangGraph MVP

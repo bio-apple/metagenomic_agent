@@ -1,0 +1,40 @@
+{
+  "version": "0.8.0",
+  "snippets": [
+    {
+      "id": "nfcore_mag",
+      "engine": "nextflow",
+      "tags": ["mag", "assembly", "binning", "nf-core"],
+      "title": "nf-core/mag style MAG recovery",
+      "body": "workflow {\n  Channel.fromFilePairs(params.reads) | QC | ASSEMBLE | BIN | CHECKM\n}\n// Cite: https://nf-co.re/mag\n"
+    },
+    {
+      "id": "nfcore_taxprofiler",
+      "engine": "nextflow",
+      "tags": ["taxonomy", "kraken2", "metaphlan", "nf-core"],
+      "title": "nf-core/taxprofiler style multi-tool taxonomy",
+      "body": "workflow {\n  READS | QC | TAXONOMY_PARALLEL(kraken2, metaphlan) | MERGE_PROFILES\n}\n// Cite: https://nf-co.re/taxprofiler\n"
+    },
+    {
+      "id": "snake_qc_tax",
+      "engine": "snakemake",
+      "tags": ["qc", "taxonomy", "snakemake"],
+      "title": "Snakemake QC → taxonomy skeleton",
+      "body": "rule all:\n    input: \"results/taxonomy_profile.tsv\"\nrule fastp:\n    input: r1=\"{sample}_R1.fastq.gz\", r2=\"{sample}_R2.fastq.gz\"\n    output: \"qc/{sample}.clean.R1.fastq.gz\"\n    shell: \"fastp -i {input.r1} -I {input.r2} -o {output} ...\"\nrule kraken2:\n    input: rules.fastp.output\n    output: \"tax/{sample}.kreport\"\n    shell: \"kraken2 --db {params.db} ...\"\n"
+    },
+    {
+      "id": "virus_viwrap",
+      "engine": "nextflow",
+      "tags": ["virus", "phage", "viwrap"],
+      "title": "Viral discovery handoff",
+      "body": "process VIWRAP {\n  input: path reads\n  output: path 'virus_bins'\n  script: \"ViWrap -i $reads -o virus_bins\"\n}\n"
+    },
+    {
+      "id": "agent_handoff",
+      "engine": "nextflow",
+      "tags": ["agent", "handoff"],
+      "title": "Delegate to metagenomic-agent CLI",
+      "body": "process AGENT {\n  script: \"meta-agent run --input ${params.input} --outdir . --mode ${params.mode} --yes\"\n}\n"
+    }
+  ]
+}

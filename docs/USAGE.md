@@ -46,6 +46,7 @@ meta-agent serve --host 127.0.0.1 --port 8000
 | `routing.*` | gLM / 双路 / ε-greedy |
 | `paths.*` | 数据库、`glm_weights`、`glm_inference_cmd` |
 | `pipeline.*` | 是否组装、分类工具列表 |
+| `validation.plan_validator_hard_fail` | 领域约束缺失时是否硬阻断 |
 | `validation.contract_hard_fail` | 契约 ERROR 时是否中止 swarm |
 | `literature.*` | PubMed / Europe PMC / OpenAlex / Semantic Scholar |
 | `statistics.lefse_like` / `ancom_like` | 近似差异方法开关 |
