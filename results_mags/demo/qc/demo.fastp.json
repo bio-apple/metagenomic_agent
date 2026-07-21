@@ -1,0 +1,18 @@
+{
+  "summary": {
+    "before_filtering": {
+      "total_reads": 1000000,
+      "total_bases": 150000000,
+      "q20_rate": 0.95,
+      "q30_rate": 0.88,
+      "gc_content": 0.45
+    },
+    "after_filtering": {
+      "total_reads": 920000,
+      "total_bases": 138000000,
+      "q20_rate": 0.98,
+      "q30_rate": 0.95,
+      "gc_content": 0.45
+    }
+  }
+}

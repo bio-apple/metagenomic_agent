@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metagenomic-agent"
-version = "0.2.0"
-description = "Autonomous AI agent system for end-to-end metagenomic analysis and biological discovery"
+version = "0.3.0"
+description = "Metagenomics AI Agent with MAGs, self-heal, and Linux production deployment"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -28,6 +28,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-cov>=5.0"]
+async = ["celery>=5.3", "redis>=5.0"]
 
 [project.scripts]
 meta-agent = "metagenomic_agent.cli:app"

@@ -1,0 +1,2 @@
+sample	assembler	n_bins	completeness	contamination	gtdb
+demo	megahit	1	92.5	1.8	/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/demo/binning/demo.gtdbtk.summary.tsv

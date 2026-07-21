@@ -1,11 +1,27 @@
-mode: mock  # mock | local | docker
+mode: mock  # mock | local | conda | docker
 workdir: ./workdir
 max_retries: 2
 
+execution:
+  engine: langgraph  # langgraph | snakemake | nextflow
+
 docker:
   threads: 8
-  # Optional per-tool public biocontainer overrides (defaults baked into ToolContext)
   images: {}
+
+linux:
+  threads: 16
+  memory_gb: 64
+  prefer_shm: true
+  shm_db_root: /dev/shm
+  host_method: bowtie2  # bowtie2 | kneaddata
+  conda_envs:
+    kraken2: kraken2_env
+    gtdbtk: gtdbtk
+    metagenomics: metagenomics
+  slurm: false
+  slurm_queue: normal
+  nextflow_executor: local
 
 paths:
   host_index: ""
@@ -22,14 +38,18 @@ pipeline:
   enable_assembly: false
   enable_statistics: true
   enable_humann: false
+  default_assembler: megahit  # megahit | metaspades
+  binners: ["metabat2", "maxbin2"]
 
 llm:
-  provider: openai_compatible
+  provider: openai_compatible  # openai_compatible | ollama | vllm
   model: deepseek-chat
   temperature: 0.2
+  # For Linux GPU nodes: set OPENAI_BASE_URL to vLLM/Ollama OpenAI-compatible endpoint
 
 literature:
   pubmed: true
+  rag: true
 
 validation:
   min_read_retention: 0.3
@@ -41,6 +61,7 @@ validation:
     - Prevotella
     - Bifidobacterium
     - Roseburia
+    - Akkermansia
 
 hitl:
   auto_confirm: true

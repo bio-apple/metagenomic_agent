@@ -34,6 +34,9 @@ MECHANISM_KB = {
 }
 
 
+from metagenomic_agent.knowledge import rag as micro_rag
+
+
 def _biomarker_genera(state: dict[str, Any]) -> list[str]:
     stats = state.get("artifacts", {}).get("statistics") or state.get("statistics") or {}
     genera = [b["genus"] for b in stats.get("biomarker_list", []) if b.get("genus")]
@@ -42,6 +45,9 @@ def _biomarker_genera(state: dict[str, Any]) -> list[str]:
     tops: list[str] = []
     for art in state.get("artifacts", {}).get("taxonomy", {}).values():
         tops.extend(art.get("top_genera") or [])
+    # Prefer RAG search hits for the user query
+    for hit in micro_rag.search_kb(state.get("user_query") or "", top_k=3):
+        tops.append(hit["taxon"])
     return list(dict.fromkeys(tops))[:5]
 
 
@@ -122,13 +128,27 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
     for genus in genera:
         direction = directions.get(genus, "")
-        mechanism = MECHANISM_KB.get(genus, f"{genus} has been reported in human microbiome studies.")
+        rag_hits = micro_rag.retrieve(genus)
+        if rag_hits:
+            mechanism = rag_hits[0].get("mechanism") or MECHANISM_KB.get(genus, "")
+            refs = rag_hits[0].get("references") or []
+        else:
+            mechanism = MECHANISM_KB.get(genus, f"{genus} has been reported in human microbiome studies.")
+            refs = []
         llm_extra = _llm_explain(genus, direction, state.get("user_query", ""))
         papers: list[dict[str, str]] = []
         if enable_pubmed and mode != "mock":
             papers = _pubmed_search(f"{genus} microbiome IBD OR gut")
         if not papers:
             papers = [
+                {
+                    "pmid": r.get("id", "kb"),
+                    "title": r.get("title", f"KB note on {genus}"),
+                    "source": "gut_microbe_kb",
+                    "url": "",
+                }
+                for r in refs
+            ] or [
                 {
                     "pmid": "mock",
                     "title": f"Curated note on {genus} in gut inflammation contexts",
@@ -143,6 +163,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             "interpretation": mechanism,
             "llm_interpretation": llm_extra,
             "papers": papers,
+            "rag": rag_hits[:2],
         }
         entries.append(entry)
         md_lines.append(f"## {genus}")

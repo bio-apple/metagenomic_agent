@@ -1,63 +1,51 @@
 # Metagenomic Research Agent
 
-面向科学问题的自主宏基因组分析 Agent（LangGraph 多 Agent 协作），不依赖任何既有私有流水线仓库。
+面向科学问题的自主宏基因组分析 Agent。架构与 Linux 生产优化见：
 
-设计文档：[`docs/Metagenomic_Research_Agent_Developer_Documentation.md`](docs/Metagenomic_Research_Agent_Developer_Documentation.md)
+- [`docs/Metagenomic_Research_Agent_Developer_Documentation.md`](docs/Metagenomic_Research_Agent_Developer_Documentation.md)
+- [`docs/Metagenomics_Agent_Architecture_and_Optimization.md`](docs/Metagenomics_Agent_Architecture_and_Optimization.md)
 
-## 思路
+## 架构要点（已实现）
 
-- **Supervisor** 把自然语言问题拆成任务图
-- **专用 Agent**（QC / Taxonomy / Assembly / Function / Statistics）调用工具
-- **Critic** 做可靠性审查并可触发重试
-- **Literature** 连接机制解释与文献
-- **Report** 产出可复现报告
+```
+Coordinator (Supervisor + Memory + Env)
+        │
+ Execution Engine (LangGraph / Snakemake / Nextflow config)
+        │
+ QC+Host → Taxonomy → Assembly&MAGs → Stats
+        │
+ Validator + Self-Heal (OOM→降线程 / metaSPAdes→MEGAHIT)
+        │
+ Critic → Literature(RAG) → Report
+```
 
-工具执行三态（`ToolContext`）：
+### 执行模式
 
-| mode | 行为 |
+| mode | 说明 |
 |------|------|
-| `mock` | 无外部依赖，生成可演示产物（默认） |
-| `local` | 调用本机 PATH 上的 fastp/kraken2/... |
-| `docker` | 使用公开 biocontainers 镜像（可在 config 覆盖） |
+| `mock` | 无外部依赖演示（默认） |
+| `local` | 本机 PATH 工具 |
+| `conda` | `conda run -n <env>` 隔离（Linux 生产推荐） |
+| `docker` | 公开 biocontainers |
+
+### Linux 生产能力
+
+- `LinuxBioToolRunner`：Bioconda 隔离 + Exit 137/OOM 分类
+- `/dev/shm` 数据库预载：`deployment/scripts/preload_shm_db.sh`
+- Nextflow 配置自动生成：`results/nextflow/agent.nf.config`
+- Slurm sbatch 生成：`deployment.slurm.write_analysis_sbatch`
+- Celery 异步任务：`deployment/celery_app.py`（可选依赖）
+- Gut Microbe KB RAG：`knowledge/gut_microbe_kb.json`
 
 ## 快速开始
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env   # 可选：配置 LLM
-
-meta-agent run \
-  --input tests/fixtures/fastq \
-  --outdir ./results \
-  --mode mock \
-  --query "Analyze shotgun metagenomic samples from IBD patients and healthy controls. Identify microbial biomarkers." \
-  --yes
+meta-agent run -i tests/fixtures/fastq -o ./results --mode mock --yes \
+  -q "分析肠道宏基因组，做 MAG 与 IBD biomarker"
 ```
 
-产物：
-
-```
-results/
-├── quality_report.html
-├── taxonomy_profile.tsv
-├── functional_profile.tsv
-├── diversity_analysis/
-├── biomarkers/
-├── literature_summary/
-└── final_report.html
-```
-
-## API / Snakemake
-
-```bash
-meta-agent serve --host 127.0.0.1 --port 8000
-snakemake -j 2 --snakefile workflow/Snakefile
-```
-
-## 配置
-
-见 [`config/default.yaml`](config/default.yaml)：数据库路径、`docker.images`、流水线开关。
+启用分箱（mock 仍可跑）：在 query 含「组装/MAG/分箱」或设置 `pipeline.enable_assembly: true`。
 
 ## 测试
 

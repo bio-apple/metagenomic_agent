@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "description": "Curated gut microbiome knowledge base for RAG explanations",
+  "taxa": {
+    "Faecalibacterium": {
+      "mechanism": "Produces butyrate that fuels colonocytes and supports epithelial barrier integrity.",
+      "phenotype": "Often depleted in IBD and metabolic inflammation.",
+      "references": [
+        {"title": "Faecalibacterium prausnitzii and human health", "id": "kb:faecali-1"}
+      ]
+    },
+    "Faecalibacterium prausnitzii": {
+      "mechanism": "Anti-inflammatory commensal; butyrate and microbial anti-inflammatory molecule (MAM).",
+      "phenotype": "Reduced abundance associated with Crohn's disease activity.",
+      "references": [
+        {"title": "F. prausnitzii in IBD", "id": "kb:faecali-2"}
+      ]
+    },
+    "Akkermansia muciniphila": {
+      "mechanism": "Mucin-degrading specialist that can reinforce mucus layer dynamics and metabolic signaling.",
+      "phenotype": "Associated with metabolic health; context-dependent in inflammation.",
+      "references": [
+        {"title": "Akkermansia and host metabolism", "id": "kb:akker-1"}
+      ]
+    },
+    "Escherichia": {
+      "mechanism": "Includes adherent-invasive lineages that can exploit inflamed mucosa.",
+      "phenotype": "Often enriched in IBD dysbiosis.",
+      "references": [
+        {"title": "AIEC in Crohn's disease", "id": "kb:esch-1"}
+      ]
+    },
+    "Bacteroides": {
+      "mechanism": "Polysaccharide utilization and immunomodulatory metabolite production.",
+      "phenotype": "Core genus of healthy adult gut microbiota.",
+      "references": [
+        {"title": "Bacteroides ecology", "id": "kb:bact-1"}
+      ]
+    },
+    "Bifidobacterium": {
+      "mechanism": "SCFA production and early-life colonization benefits.",
+      "phenotype": "Common probiotic-associated genus.",
+      "references": [
+        {"title": "Bifidobacterium and gut health", "id": "kb:bifi-1"}
+      ]
+    },
+    "Prevotella": {
+      "mechanism": "Fiber-associated community member influencing mucosal immune tone.",
+      "phenotype": "Diet-linked abundance patterns.",
+      "references": [
+        {"title": "Prevotella and diet", "id": "kb:prev-1"}
+      ]
+    },
+    "Roseburia": {
+      "mechanism": "Butyrate-producing Firmicute supporting gut barrier function.",
+      "phenotype": "Frequently reduced in inflammatory gut conditions.",
+      "references": [
+        {"title": "Roseburia butyrate producers", "id": "kb:rose-1"}
+      ]
+    }
+  }
+}

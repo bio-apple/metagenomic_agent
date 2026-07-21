@@ -1,0 +1,14 @@
+{
+  "alpha_diversity": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/diversity_analysis/alpha_diversity.tsv",
+  "beta_diversity": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/diversity_analysis/beta_diversity.tsv",
+  "biomarkers": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/biomarkers/biomarkers.tsv",
+  "n_biomarkers": 0,
+  "groups": {
+    "demo": "IBD"
+  },
+  "methods": [
+    "shannon",
+    "bray_curtis",
+    "fold_change_proxy_ANCOM-BC/LEfSe"
+  ]
+}

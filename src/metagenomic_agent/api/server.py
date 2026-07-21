@@ -26,7 +26,7 @@ class AnalyzeRequest(BaseModel):
         "Analyze shotgun metagenomic samples from IBD patients and healthy controls. "
         "Identify microbial biomarkers."
     )
-    mode: Literal["mock", "local", "docker"] = "mock"
+    mode: Literal["mock", "local", "conda", "docker"] = "mock"
     metadata_path: Optional[str] = None
     config_path: Optional[str] = None
 

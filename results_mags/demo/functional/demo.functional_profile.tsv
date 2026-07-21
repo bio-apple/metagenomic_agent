@@ -1,0 +1,6 @@
+feature	abundance	database
+K00001	120	KEGG
+COG1234	80	eggNOG
+GH13	45	CAZy
+ARO:3000010	3	CARD
+VFG0376	2	VFDB

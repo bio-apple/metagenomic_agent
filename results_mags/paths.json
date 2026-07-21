@@ -1,0 +1,9 @@
+{
+  "quality_report.html": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/quality_report.html",
+  "taxonomy_profile.tsv": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/taxonomy_profile.tsv",
+  "functional_profile.tsv": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/functional_profile.tsv",
+  "diversity_analysis": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/diversity_analysis",
+  "biomarkers": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/biomarkers",
+  "literature_summary": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/literature_summary",
+  "final_report.html": "/Users/yfan/Desktop/bio-apple/metagenomic_agent/results_mags/final_report.html"
+}

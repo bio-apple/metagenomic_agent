@@ -1,4 +1,4 @@
-"""DAG executor for specialized bioagents."""
+"""DAG executor with structured error capture for self-healing."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ from typing import Any
 
 from metagenomic_agent.agents import AGENT_REGISTRY
 from metagenomic_agent.coordinator.memory import ContextMemory
+from metagenomic_agent.execution.engine import detect_engine, write_nextflow_config
+from metagenomic_agent.tools.linux_runner import classify_error
 from metagenomic_agent.state import AgentState
 
 
@@ -36,6 +38,17 @@ def execute_swarm(state: AgentState) -> dict:
     memory = ContextMemory(f"{state['outdir']}/context")
     stats_state = state.get("statistics")
 
+    # Planner/executor decoupling: always emit Nextflow config for Linux handoff
+    try:
+        nf_cfg = write_nextflow_config(__import__("pathlib").Path(state["outdir"]) / "nextflow", state)
+        artifacts["nextflow_config"] = str(nf_cfg)
+        messages.append(f"Wrote Nextflow config: {nf_cfg}")
+    except Exception as exc:  # noqa: BLE001
+        messages.append(f"Nextflow config skipped: {exc}")
+
+    engine = detect_engine(state.get("config", {}))
+    artifacts["execution_engine"] = engine
+
     for node in _topo_sort(dag):
         if node.get("status") == "skipped":
             continue
@@ -50,15 +63,15 @@ def execute_swarm(state: AgentState) -> dict:
         memory.append_history(f"start:{node['id']}")
         try:
             produced = fn(state={**state, "artifacts": artifacts}, node=node)
-            # statistics agent may return _statistics_state
             if "_statistics_state" in produced:
                 stats_state = produced.pop("_statistics_state")
+            # Merge structured tool errors from agents (e.g. assembly OOM)
+            if "errors" in produced and isinstance(produced["errors"], list):
+                artifacts.setdefault("errors", []).extend(produced.pop("errors"))
             for k, v in produced.items():
                 if k == "artifacts" and isinstance(v, dict):
                     artifacts.update(v)
-                elif isinstance(v, dict) and isinstance(artifacts.get(k), dict) and k not in {
-                    "statistics",
-                }:
+                elif isinstance(v, dict) and isinstance(artifacts.get(k), dict) and k not in {"statistics"}:
                     artifacts[k].update(v)
                 else:
                     artifacts[k] = v
@@ -72,7 +85,13 @@ def execute_swarm(state: AgentState) -> dict:
             node["status"] = "failed"
             messages.append(f"FAILED {node['id']}: {exc}")
             memory.append_history(f"fail:{node['id']}:{exc}")
-            artifacts.setdefault("errors", []).append({"node": node["id"], "error": str(exc)})
+            artifacts.setdefault("errors", []).append(
+                {
+                    "node": node["id"],
+                    "error": str(exc),
+                    "classified": classify_error(None, str(exc)),
+                }
+            )
 
     memory.update(artifacts=artifacts, dag=dag)
     result = {"artifacts": artifacts, "dag": dag, "messages": messages}

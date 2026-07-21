@@ -64,8 +64,11 @@ def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
             {
                 "name": "assembly_binning",
                 "agent": "Assembly Agent",
-                "tools": ["megahit", "metabat2", "gtdbtk"],
-                "params": {},
+                "tools": ["megahit", "metaspades", "metabat2", "maxbin2", "checkm2", "gtdbtk"],
+                "params": {
+                    "assembler": pipe.get("default_assembler", "megahit"),
+                    "binners": pipe.get("binners", ["metabat2", "maxbin2"]),
+                },
                 "depends_on": ["quality_control"],
             }
         )

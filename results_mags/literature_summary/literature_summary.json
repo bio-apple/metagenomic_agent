@@ -1,0 +1,154 @@
+[
+  {
+    "genus": "Bacteroides",
+    "direction": "",
+    "interpretation": "Polysaccharide utilization and immunomodulatory metabolite production.",
+    "llm_interpretation": null,
+    "papers": [
+      {
+        "pmid": "kb:bact-1",
+        "title": "Bacteroides ecology",
+        "source": "gut_microbe_kb",
+        "url": ""
+      }
+    ],
+    "rag": [
+      {
+        "taxon": "Bacteroides",
+        "mechanism": "Polysaccharide utilization and immunomodulatory metabolite production.",
+        "phenotype": "Core genus of healthy adult gut microbiota.",
+        "references": [
+          {
+            "title": "Bacteroides ecology",
+            "id": "kb:bact-1"
+          }
+        ],
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "genus": "Faecalibacterium",
+    "direction": "",
+    "interpretation": "Produces butyrate that fuels colonocytes and supports epithelial barrier integrity.",
+    "llm_interpretation": null,
+    "papers": [
+      {
+        "pmid": "kb:faecali-1",
+        "title": "Faecalibacterium prausnitzii and human health",
+        "source": "gut_microbe_kb",
+        "url": ""
+      }
+    ],
+    "rag": [
+      {
+        "taxon": "Faecalibacterium",
+        "mechanism": "Produces butyrate that fuels colonocytes and supports epithelial barrier integrity.",
+        "phenotype": "Often depleted in IBD and metabolic inflammation.",
+        "references": [
+          {
+            "title": "Faecalibacterium prausnitzii and human health",
+            "id": "kb:faecali-1"
+          }
+        ],
+        "score": 1.0
+      },
+      {
+        "taxon": "Faecalibacterium prausnitzii",
+        "mechanism": "Anti-inflammatory commensal; butyrate and microbial anti-inflammatory molecule (MAM).",
+        "phenotype": "Reduced abundance associated with Crohn's disease activity.",
+        "references": [
+          {
+            "title": "F. prausnitzii in IBD",
+            "id": "kb:faecali-2"
+          }
+        ],
+        "score": 0.7
+      }
+    ]
+  },
+  {
+    "genus": "Prevotella",
+    "direction": "",
+    "interpretation": "Fiber-associated community member influencing mucosal immune tone.",
+    "llm_interpretation": null,
+    "papers": [
+      {
+        "pmid": "kb:prev-1",
+        "title": "Prevotella and diet",
+        "source": "gut_microbe_kb",
+        "url": ""
+      }
+    ],
+    "rag": [
+      {
+        "taxon": "Prevotella",
+        "mechanism": "Fiber-associated community member influencing mucosal immune tone.",
+        "phenotype": "Diet-linked abundance patterns.",
+        "references": [
+          {
+            "title": "Prevotella and diet",
+            "id": "kb:prev-1"
+          }
+        ],
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "genus": "Bifidobacterium",
+    "direction": "",
+    "interpretation": "SCFA production and early-life colonization benefits.",
+    "llm_interpretation": null,
+    "papers": [
+      {
+        "pmid": "kb:bifi-1",
+        "title": "Bifidobacterium and gut health",
+        "source": "gut_microbe_kb",
+        "url": ""
+      }
+    ],
+    "rag": [
+      {
+        "taxon": "Bifidobacterium",
+        "mechanism": "SCFA production and early-life colonization benefits.",
+        "phenotype": "Common probiotic-associated genus.",
+        "references": [
+          {
+            "title": "Bifidobacterium and gut health",
+            "id": "kb:bifi-1"
+          }
+        ],
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "genus": "Roseburia",
+    "direction": "",
+    "interpretation": "Butyrate-producing Firmicute supporting gut barrier function.",
+    "llm_interpretation": null,
+    "papers": [
+      {
+        "pmid": "kb:rose-1",
+        "title": "Roseburia butyrate producers",
+        "source": "gut_microbe_kb",
+        "url": ""
+      }
+    ],
+    "rag": [
+      {
+        "taxon": "Roseburia",
+        "mechanism": "Butyrate-producing Firmicute supporting gut barrier function.",
+        "phenotype": "Frequently reduced in inflammatory gut conditions.",
+        "references": [
+          {
+            "title": "Roseburia butyrate producers",
+            "id": "kb:rose-1"
+          }
+        ],
+        "score": 1.0
+      }
+    ]
+  }
+]

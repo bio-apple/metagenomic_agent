@@ -37,8 +37,10 @@ def apply_recovery(dag: list[dict[str, Any]], actions: list[str]) -> list[dict[s
                     tools.append("metaphlan")
                 node["tools"] = tools
                 node.setdefault("params", {})["tools"] = tools
-        if node["agent"] == "qc_host" and "loosen_qc" in actions:
+        if node["agent"] in {"qc_host", "qc"} and "loosen_qc" in actions:
             node.setdefault("params", {})["qualified_quality_phred"] = 15
+        if node["agent"] == "assembly" and "downgrade_assembler" in actions:
+            node.setdefault("params", {})["assembler"] = "megahit"
         if "retry_failed_nodes" in actions and node.get("status") == "failed":
             node["status"] = "pending"
     return new_dag
