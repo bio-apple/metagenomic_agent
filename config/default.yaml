@@ -1,0 +1,38 @@
+mode: mock  # mock | docker
+workdir: ./workdir
+max_retries: 2
+
+docker:
+  image: meta:latest
+  threads: 8
+
+paths:
+  host_index: ""          # Bowtie2 HG38 index dir
+  kraken2_db: ""          # Kraken2 database dir
+  metaphlan_db: ""
+
+pipeline:
+  enable_host_filter: true
+  taxonomy_tools: ["kraken2", "metaphlan"]
+  enable_functional: true
+  enable_assembly: false
+  enable_humann: false
+
+llm:
+  provider: openai_compatible
+  model: deepseek-chat
+  temperature: 0.2
+
+validation:
+  min_read_retention: 0.3
+  max_host_fraction: 0.95
+  require_gut_markers: true
+  gut_marker_genera:
+    - Bacteroides
+    - Faecalibacterium
+    - Prevotella
+    - Bifidobacterium
+    - Roseburia
+
+hitl:
+  auto_confirm: true

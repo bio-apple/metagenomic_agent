@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metagenomic-agent"
+version = "0.1.0"
+description = "LangGraph-based metagenomic bioinformatics agent (MVP)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "bio-apple" }]
+dependencies = [
+  "langgraph>=0.2.0",
+  "langchain-core>=0.3.0",
+  "langchain-openai>=0.2.0",
+  "pydantic>=2.0",
+  "pyyaml>=6.0",
+  "typer>=0.12.0",
+  "rich>=13.0",
+  "plotly>=5.0",
+  "jinja2>=3.1",
+  "python-dotenv>=1.0",
+  "typing_extensions>=4.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov>=5.0"]
+
+[project.scripts]
+meta-agent = "metagenomic_agent.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+metagenomic_agent = ["knowledge/*.md", "report/templates/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,8 @@
+# Example run config for gut shotgun metagenomics
+mode: mock
+query: "分析我的肠道宏基因组 FASTQ 数据"
+pipeline:
+  enable_host_filter: true
+  taxonomy_tools: ["kraken2", "metaphlan"]
+  enable_functional: true
+  enable_assembly: false
