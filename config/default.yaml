@@ -1,12 +1,20 @@
-mode: mock  # mock | local | conda | docker
+mode: mock  # mock | local | conda | docker | apptainer
 workdir: ./workdir
 max_retries: 2
 
 execution:
   engine: langgraph  # langgraph | snakemake | nextflow
 
+# Prefer container isolation for bio tools (MCP-style sandbox). Avoid fragile host binaries.
+sandbox:
+  backend: ""  # empty → follow mode; or mock|local|conda|docker|apptainer
+  prefer_container: true
+  platform: auto  # auto | linux/amd64 | linux/arm64 （Apple Silicon 建议 linux/amd64）
+  allow_mock_fallback: true  # 自愈最后手段：切 mock 保流程
+
 docker:
   threads: 8
+  platform: linux/amd64  # biocontainers 多为 amd64；Apple Silicon 走模拟
   images: {}
 
 linux:

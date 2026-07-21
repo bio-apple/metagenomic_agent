@@ -1,4 +1,4 @@
-# 架构说明（v0.8 · 多智能体）
+# 架构说明（v0.9 · 多智能体 + 容器沙盒）
 
 源码：`src/metagenomic_agent/`。
 
@@ -41,7 +41,17 @@ parse → router → supervisor → tool_specialist → plan_validator
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 领域知识与约束
+## 工具沙盒与自愈（v0.9）
+
+| 组件 | 路径 | 作用 |
+|------|------|------|
+| MCP 风格工具调用 | `tools/sandbox.py` | `ToolCallRequest` / `ToolCallResponse` 强类型入参 |
+| Docker / Apptainer | `tools/docker_runner.py` | `--platform`、`--memory`、`--cpus`；HPC 用 Apptainer |
+| ToolContext | `tools/context.py` | `run_tool` 统一走沙盒 |
+| 错误分类 | `tools/linux_runner.classify_error` | oom / arch / lib / missing_binary… |
+| 自愈 | `execution/self_heal.py` | 降参、换容器、钉 amd64、可读摘要 |
+
+原则：**不要让 Agent 在宿主机随意 shell**；优先 biocontainers；报错捕获后自动重试，不把 stderr 原样抛给用户。
 
 - 工具擅长领域：`knowledge/tool_domain_kb.json`
 - 约束逻辑：`knowledge/domain_kb.py`（缺宿主版本 / 坐标系统 / 分组则追问）

@@ -39,17 +39,37 @@ class CommandResult:
 
 
 def classify_error(returncode: int | None, stderr: str = "") -> str:
-    """Map tool failures to recovery categories."""
-    if returncode == 137 or "killed" in stderr.lower() or "cannot allocate memory" in stderr.lower():
+    """Map tool failures to recovery categories for self-healing."""
+    text = (stderr or "").lower()
+    if returncode == 137 or "killed" in text or "cannot allocate memory" in text or "out of memory" in text:
         return "oom"
-    if returncode in {126, 127}:
+    if returncode in {126, 127} or "command not found" in text or (
+        "no such file or directory" in text and ("bin/" in text or "executable" in text)
+    ):
         return "missing_binary"
-    if returncode is None:
+    if (
+        "exec format error" in text
+        or "wrong architecture" in text
+        or "mach-o" in text
+        or "rosetta" in text
+        or "platform" in text and "linux/amd64" in text
+    ):
+        return "arch_mismatch"
+    if (
+        "libstdc++" in text
+        or "glibc" in text
+        or "libc.so" in text
+        or "error while loading shared libraries" in text
+        or "dyld" in text
+    ):
+        return "missing_library"
+    if returncode is None or "timed out" in text:
         return "timeout"
     if returncode != 0:
-        text = stderr.lower()
         if "permission" in text or "disk" in text or "no space" in text:
             return "resource"
+        if "conda" in text and ("not found" in text or "environment" in text):
+            return "missing_binary"
         return "logic"
     return "unknown"
 

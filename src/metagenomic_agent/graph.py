@@ -22,7 +22,12 @@ from metagenomic_agent.evaluation.quality_score import write_quality_report
 from metagenomic_agent.evaluation.xai import write_xai_report
 from metagenomic_agent.execution.dag_export import export_workflow_dag
 from metagenomic_agent.execution.executor import execute_swarm
-from metagenomic_agent.execution.self_heal import apply_self_heal, classify_from_errors, deep_merge_config
+from metagenomic_agent.execution.self_heal import (
+    apply_self_heal,
+    classify_from_errors,
+    deep_merge_config,
+    summarize_heal_for_user,
+)
 from metagenomic_agent.input.parser import parse_input
 from metagenomic_agent.report import generator as report_agent
 from metagenomic_agent.skills.checker import contract_check
@@ -94,6 +99,8 @@ def _self_heal(state: AgentState) -> dict:
     artifacts = dict(state.get("artifacts") or {})
     artifacts["errors"] = []
     artifacts["self_heal_actions"] = actions
+    summary = summarize_heal_for_user(actions, errors)
+    artifacts["self_heal_summary"] = summary
     return {
         "dag": new_dag,
         "config": new_config,
@@ -101,7 +108,7 @@ def _self_heal(state: AgentState) -> dict:
         "pi_replan": False,
         "retry_count": int(state.get("retry_count", 0)) + 1,
         "messages": state.get("messages", [])
-        + [f"Self-heal actions: {actions or ['retry']}; retry={int(state.get('retry_count', 0)) + 1}"],
+        + [summary, f"Self-heal retry={int(state.get('retry_count', 0)) + 1}"],
     }
 
 

@@ -1,4 +1,4 @@
-# 使用指南（v0.8）
+# 使用指南（v0.9）
 
 ## CLI
 
@@ -10,7 +10,7 @@
 |------|------|------|
 | `-i / --input` | 必填 | FASTQ 文件或目录 |
 | `-o / --outdir` | `./results` | 输出目录 |
-| `-m / --mode` | `mock` | `mock` \| `local` \| `conda` \| `docker` |
+| `-m / --mode` | `mock` | `mock` \| `local` \| `conda` \| `docker` \| `apptainer` |
 | `-q / --query` | 通用分析句 | 驱动 Router 意图与领域路由 |
 | `--metadata` | 无 | `sample_id,group` 的 TSV/CSV（差异分析推荐） |
 | `-c / --config` | `config/default.yaml` | YAML 覆盖 |
@@ -38,6 +38,8 @@ meta-agent version
 
 | 段 | 作用 |
 |------|------|
+| `sandbox.*` | 容器后端、`prefer_container`、`platform`、mock 回退 |
+| `docker.platform` | 默认 `linux/amd64`（biocontainers / Apple Silicon） |
 | `routing.*` | gLM / 双路 / ε-greedy |
 | `paths.*` | 数据库、`glm_weights`、`glm_inference_cmd`、`host_index` |
 | `pipeline.*` | 组装开关、分类工具列表 |
@@ -78,6 +80,8 @@ S2	Control
 | 缺分组无法做差异 | 提供 `--metadata`，或 `statistics.demo_mode: true` |
 | HITL 卡住 | `--yes` 或 `hitl.auto_confirm: true` |
 | 病毒工具未安装 | Specialist 仍会写出命令；安装 ViWrap/PhaBOX 或保持 mock |
-| gLM 未生效 | 配置 `glm_weights` 与可选 `glm_inference_cmd` |
+| 宿主机缺库 / ARM 架构报错 | 改用 `--mode docker`；自愈会尝试 `switch_to_container` / `pin_platform_amd64` |
+| OOM / exit 137 | 自愈降低 threads/memory，组装降级 MEGAHIT |
+| 看到原始 stderr 刷屏 | 正常路径只展示 `user_message`；完整日志在 `artifacts.errors` |
 
 架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。

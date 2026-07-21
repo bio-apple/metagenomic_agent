@@ -1,4 +1,4 @@
-# Methods note for manuscripts（v0.8）
+# Methods note for manuscripts（v0.9）
 
 用法见 [USAGE.md](USAGE.md)，架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
@@ -19,7 +19,9 @@ Pipeline graph:
 
 `parse → router → supervisor → tool_specialist → plan_validator → export_dag → workflow_agent → contract → HITL → swarm → validate → quality → self-heal* → critic → literature → pi_review* → visualization → xai → report`
 
-## Bioinformatics methods
+## Tooling & environment
+
+Tools are invoked through a typed sandbox (`ToolCallRequest`) preferring **Docker/Apptainer** biocontainers with CPU/memory limits and optional `linux/amd64` platform (important on Apple Silicon). Failures are classified from stderr (OOM, missing binary, architecture mismatch, shared-library errors); the self-heal loop adjusts resources/tools/container settings and reports a **user-facing summary** instead of raw logs. Snakemake/Nextflow remain available as optional external engines.
 
 | Module | Methods |
 |--------|---------|

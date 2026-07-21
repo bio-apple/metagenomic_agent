@@ -21,7 +21,7 @@ app = typer.Typer(add_completion=False, no_args_is_help=True, help="Metagenomic 
 def run(
     input: Path = typer.Option(..., "--input", "-i", help="FASTQ file or directory"),
     outdir: Path = typer.Option(Path("./results"), "--outdir", "-o", help="Output directory"),
-    mode: str = typer.Option("mock", "--mode", "-m", help="mock | local | conda | docker"),
+    mode: str = typer.Option("mock", "--mode", "-m", help="mock | local | conda | docker | apptainer"),
     query: str = typer.Option(
         "Analyze shotgun metagenomic samples and identify microbial biomarkers.",
         "--query",
@@ -35,8 +35,10 @@ def run(
 ) -> None:
     """Run the autonomous metagenomic research agent."""
     load_dotenv()
-    if mode not in {"mock", "local", "conda", "docker"}:
-        raise typer.BadParameter("mode must be mock, local, conda, or docker")
+    if mode not in {"mock", "local", "conda", "docker", "apptainer", "singularity"}:
+        raise typer.BadParameter("mode must be mock, local, conda, docker, or apptainer")
+    if mode == "singularity":
+        mode = "apptainer"
 
     outdir.mkdir(parents=True, exist_ok=True)
     cfg = load_config(config, overrides={"mode": mode})

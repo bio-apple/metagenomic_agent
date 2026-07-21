@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.8.0` · 专业化多智能体宏基因组科研平台：Router · Tool Specialist · Plan Validator · Workflow RAG · XAI。
+**版本** `0.9.0` · 容器沙盒工具调用（Docker/Apptainer）+ 报错自愈 · 专业化多智能体科研平台。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -37,9 +37,16 @@ meta-agent version
 | Mode | 说明 |
 |------|------|
 | `mock` | 无数据库/二进制，结构完整演示（CI 默认） |
-| `local` / `conda` / `docker` | 调用本机、conda 或容器工具 |
+| `docker` / `apptainer` | **推荐**：biocontainers 隔离执行（规避 ARM/x86 与依赖地狱） |
+| `conda` / `local` | 本机环境；缺库/架构错误时自愈可切回容器 |
 
-## 关键产物
+生产建议：`mode=docker` 且 `sandbox.prefer_container=true`。Apple Silicon 默认 `sandbox.platform=linux/amd64`。
+
+## 工具沙盒与自愈（v0.9）
+
+- 工具经 `ToolCallRequest` 强类型入参调用，默认进 Docker/Apptainer，而非宿主机裸跑。
+- 失败时分类 stderr（OOM / 缺二进制 / 架构不兼容 / 动态库缺失），自动降参、换组装器、切容器或 amd64，并向用户输出**可读摘要**而非原始堆栈。
+- 配置见 `config/default.yaml` → `sandbox:`。
 
 | 路径 | 含义 |
 |------|------|

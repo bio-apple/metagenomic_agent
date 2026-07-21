@@ -66,7 +66,7 @@ class AgentState(TypedDict):
     user_query: str
     input_path: str
     outdir: str
-    mode: Literal["mock", "local", "conda", "docker"]
+    mode: Literal["mock", "local", "conda", "docker", "apptainer"]
     config: dict[str, Any]
     samples: list[SampleMeta]
     metadata_path: NotRequired[str | None]

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metagenomic-agent"
-version = "0.8.0"
-description = "Multi-agent metagenomics platform: Router, Tool Specialist, Plan Validator, workflow RAG, XAI"
+version = "0.9.0"
+description = "Container-sandboxed multi-agent metagenomics platform with self-healing execution"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
