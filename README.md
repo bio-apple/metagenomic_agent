@@ -10,11 +10,9 @@ Public repository: [github.com/bio-apple/metagenomic_agent](https://github.com/b
 
 ## Graphical abstract
 
-<p align="center">
-  <img src="docs/figures/overview.svg" alt="Graphical abstract: Input → Plan+HITL → Execute Swarm with Self-Heal → Interpret → Report" width="100%"/>
-</p>
+![Graphical abstract: Input → Plan+HITL → Execute Swarm with Self-Heal → Interpret → Report](docs/figures/overview.png)
 
-<p align="center"><em>Figure 1.</em> End-to-end workflow from FASTQ / research query to audited report. High-risk self-heal actions and compute-heavy steps are gated by human-in-the-loop (HITL).</p>
+<p align="center"><em>Figure 1.</em> End-to-end workflow from FASTQ / research query to audited report. High-risk self-heal actions and compute-heavy steps are gated by human-in-the-loop (HITL). Vector source: <a href="docs/figures/overview.svg"><code>overview.svg</code></a>.</p>
 
 <details>
 <summary>Text overview (accessibility)</summary>
