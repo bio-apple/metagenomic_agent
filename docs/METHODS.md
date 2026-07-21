@@ -1,17 +1,15 @@
-# Methods note（v0.13）
+# Methods note（v0.14）
 
-English note for manuscript Methods. See [USAGE.md](USAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [ROADMAP.md](ROADMAP.md).
+See [USAGE.md](USAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [ROADMAP.md](ROADMAP.md).
 
 ## Orchestration
 
-Analyses use a **Biological Reasoning Layer** before workflow planning: the agent infers study goal (e.g. disease association), recommended assay (typically shotgun metagenomics), pipeline steps (host removal → taxonomy → function → differential tests → interpretation), assembler preference by complexity, and suggested follow-up experiments. A Supervisor (project-manager) agent then decomposes tasks for specialized QC, taxonomy, assembly, function, and statistics agents under LangGraph.
+A Biological Reasoning Layer matches scenario CoT examples and **must cite** external community sources (nf-core, BioStars, workflow RAG) before workflow planning. Tool Specialist attaches registered skill I/O contracts; execution is not free-form LLM shell. LangGraph swarm persists step caches for resume; optional Nextflow `-resume` / Snakemake `--rerun-incomplete` when `execution.engine` is set.
 
-Missing metadata is escalated via structured human-in-the-loop choices (continue / re-QC / skip / abort) rather than invented.
+## Production analytics
 
-## Compute, analytics, provenance
-
-Sandbox tool calls (Docker/Apptainer), self-heal on classified failures, authority-bound RAG evidence chains, metadata-only LLM context, interactive Plotly dashboards, and seeded Nextflow/Snakemake exports are as in prior versions.
+Pre-run resource estimates report wall-clock, peak memory, and disk. Interactive dashboards default to **lite** mode (summary + on-demand Plotly JSON) to avoid browser collapse on large cohorts.
 
 ## Limitations
 
-See ROADMAP (FastQC/MultiQC, CAMI suites, vector project memory still partial). Mock mode is for software testing only.
+Mock mode is for CI. Full CAMI benchmarks and vector project memory remain partial (ROADMAP).

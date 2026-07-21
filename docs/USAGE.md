@@ -51,7 +51,9 @@ meta-agent version
 | `interpretation.*` | 抗幻觉：`require_grounding`、`require_evidence_chain` |
 | `summary.*` | 摘要驱动上下文：`enabled`、`max_llm_chars` |
 | `reproducibility.*` | `auto_export`、`seed` |
-| `visualization.*` | `default_q`、`top_n_taxa` |
+| `visualization.*` | `default_q`、`lite`（按需加载）、`max_inline_biomarkers` |
+| `cache.enabled` | LangGraph 步骤缓存 |
+| `execution.engine` | `langgraph` \| `snakemake` \| `nextflow` |
 | `rag.*` | `keyword` \| `semantic`；`authority_dbs` |
 | `literature.*` | PubMed / Europe PMC / OpenAlex 等 |
 | `statistics.*` | `demo_mode`、`lefse_like`、`ancom_like` |
@@ -75,7 +77,9 @@ S2	Control
 | 路径 | 说明 |
 |------|------|
 | `final_report.html` | 总报告（内嵌 Plotly 多图） |
-| `bio_reasoning.md` · `.json` | 规划前生物学推理 |
+| `bio_reasoning.md` · `.json` · `_audit.json` | 规划前生物学推理 + CoT 引用审计 |
+| `resource_estimate.json` | 预估耗时/内存/磁盘与 resume 提示 |
+| `cache/steps/` | Swarm 中间结果缓存（断点续跑） |
 | `taxonomy_interpretation.md` | 分类结果污染/富集假设 |
 | `functional_interpretation.md` | 功能通路机制笔记 |
 | `interactive_dashboard.html` | 交互仪表盘（q 滑块筛选显著菌） |

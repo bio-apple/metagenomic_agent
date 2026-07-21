@@ -1,24 +1,16 @@
 # Changelog
 
+## 0.14.0
+
+- Skill-contract-aware Tool Specialist; LangGraph step cache (`cache/steps`) for resume
+- Bio Reasoning CoT library + mandatory nf-core/BioStars citations + audit JSON
+- Lite interactive dashboard (on-demand Plotly JSON; summary-first)
+- Pre-run resource estimate; Snakemake `--rerun-incomplete` alongside Nextflow `-resume`
+
 ## 0.13.0
 
-- Biological Reasoning Layer before workflow planning (`bio_reasoning_agent`)
-- Supervisor consumes bio plan; taxonomy/functional interpretation notes
-- HITL multi-option A/B/C (study design, missing groups, host contamination)
-- Runtime HITL after quality scores; docs/ROADMAP.md maps developer recommendations
+- Biological Reasoning Layer; taxonomy/functional interpretation; HITL A/B/C
 
-## 0.12.0
+## 0.12.0 – 0.1.x
 
-- Interactive Plotly dashboard with FDR *q* filter; docs consolidation
-
-## 0.11.0
-
-- Summary-driven LLM context; post-run reproducible `.nf`/`.smk` + seeds
-
-## 0.10.0
-
-- Authority-bound RAG + evidence chains
-
-## 0.9.0 – 0.1.x
-
-- Container sandbox, multi-agent Router/Specialist/Validator, XAI, LangGraph MVP
+- Interactive Plotly, summary context, evidence chains, container sandbox, multi-agent MVP

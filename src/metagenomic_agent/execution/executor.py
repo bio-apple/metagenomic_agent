@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
+import json
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ from metagenomic_agent.coordinator.memory import ContextMemory
 from metagenomic_agent.execution.engine import detect_engine, launch_external, write_nextflow_config
 from metagenomic_agent.execution.monitor import Monitor
 from metagenomic_agent.messaging import append_msg, emit
+from metagenomic_agent.execution.step_cache import StepCache, merge_cached_into_artifacts
 from metagenomic_agent.tools.linux_runner import classify_error
 from metagenomic_agent.state import AgentState
 
@@ -66,6 +68,10 @@ def execute_swarm(state: AgentState) -> dict:
                 {"node": f"engine:{engine}", "error": ext.get("stderr") or "external failed", "classified": "logic"}
             )
 
+    cache_cfg = (state.get("config") or {}).get("cache") or {}
+    cache = StepCache(state["outdir"], enabled=bool(cache_cfg.get("enabled", True)))
+    cache_hits = 0
+
     for node in _topo_sort(dag):
         if node.get("status") == "skipped":
             continue
@@ -75,6 +81,28 @@ def execute_swarm(state: AgentState) -> dict:
             messages.append(f"Unknown agent '{agent_name}', skipping")
             node["status"] = "skipped"
             continue
+
+        hit = cache.lookup(node, state, artifacts)
+        if hit and hit.get("artifacts_slice") and cache_cfg.get("enabled", True):
+            artifacts = merge_cached_into_artifacts(artifacts, hit["artifacts_slice"])
+            # Prefer full slice file if present
+            key = hit.get("key")
+            if key and key != "heuristic":
+                entry = cache._index.get(key) or {}
+                slice_file = entry.get("slice_file")
+                if slice_file and Path(slice_file).exists():
+                    try:
+                        full = json.loads(Path(slice_file).read_text(encoding="utf-8"))
+                        artifacts = merge_cached_into_artifacts(artifacts, full)
+                    except (json.JSONDecodeError, OSError):
+                        pass
+            node["status"] = "cached"
+            cache_hits += 1
+            messages.append(f"CACHE HIT node={node['id']} source={hit.get('source')}")
+            monitor.log("swarm", "cache_hit", node=node["id"], source=hit.get("source"))
+            memory.append_history(f"cache:{node['id']}")
+            continue
+
         t0 = time.time()
         messages.append(f"Running agent={agent_name} node={node['id']}")
         monitor.log("swarm", "start", node=node["id"], agent=agent_name)
@@ -103,6 +131,10 @@ def execute_swarm(state: AgentState) -> dict:
                 emit(agent_name, "coordinator", "result", {"node": node["id"], "latency_s": elapsed}),
             )
             memory.append_history(f"done:{node['id']}:{elapsed:.2f}s")
+            try:
+                cache.store(node, state, produced, Path(state["outdir"]))
+            except Exception:  # noqa: BLE001
+                pass
         except Exception as exc:  # noqa: BLE001
             node["status"] = "failed"
             messages.append(f"FAILED {node['id']}: {exc}")
@@ -113,6 +145,7 @@ def execute_swarm(state: AgentState) -> dict:
             )
 
     artifacts["monitor"] = monitor.snapshot()
+    artifacts["step_cache"] = {"hits": cache_hits, "index": str(cache.index_path)}
 
     # Summary-driven context: statistical metadata only (never raw sequences)
     from metagenomic_agent.coordinator.summary import write_pipeline_summary
@@ -132,6 +165,7 @@ def execute_swarm(state: AgentState) -> dict:
         "messages": messages
         + [
             f"Pipeline summary written (metadata-only context); seed={run_seed}",
+            f"Step cache hits={cache_hits}",
         ],
         "agent_messages": agent_messages,
         "run_id": run_id,

@@ -95,6 +95,20 @@ SKILLS: dict[str, Skill] = {
         output_contract=OutputContract(required_outputs=["functional_profile"]),
         tags=["function"],
     ),
+    "eggnog": Skill(
+        name="eggnog",
+        description="eggNOG ortholog / pathway annotation",
+        input_contract=InputContract(required_artifacts=["r1"]),
+        output_contract=OutputContract(required_outputs=["functional_profile"]),
+        tags=["function"],
+    ),
+    "maxbin2": Skill(
+        name="maxbin2",
+        description="Contig binning (MaxBin2)",
+        input_contract=InputContract(required_artifacts=["contigs"]),
+        output_contract=OutputContract(required_outputs=["bins_dir"]),
+        tags=["binning"],
+    ),
 }
 
 

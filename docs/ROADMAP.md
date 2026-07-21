@@ -1,48 +1,37 @@
 # 开发者路线图（对照建议）
 
-对照「宏基因组生物信息 Agent 开发者建议」与当前 **v0.13** 实现。状态：`Done` / `Partial` / `Planned`。
+对照开发者建议与当前 **v0.14**。状态：`Done` / `Partial` / `Planned`。
 
 ## 目标架构
 
 ```
-User → Requirement Understanding → Biological Reasoning
-     → Workflow Planning → Tool Execution → Result Interpretation
-     → Scientific Report
+User → Requirement Understanding → Biological Reasoning (CoT + citations)
+     → Workflow Planning (skill contracts) → Tool Execution (cache / -resume)
+     → Result Interpretation → Lite Dashboard + Report
 ```
 
-| 建议能力 | 状态 | 现状 |
-|----------|------|------|
-| 1. Bio Reasoning（规划前） | **Done** | `agents/bio_reasoning_agent.py`；图：`router → bio_reasoning → supervisor` |
-| 2. Multi-Agent / PM | **Done** | Supervisor 任务分解；QC/Tax/Asm/Function/Stats/Critic/Literature/Viz/Report |
-| 2.2 FastQC/MultiQC | Partial | 主路径 fastp；FastQC/MultiQC 待接 |
-| 2.3 Taxonomy 生物学解释 | **Done** | `taxonomy_interpretation.md`（污染 vs 富集假设） |
-| 2.4 组装复杂度选工具 | **Done** | Bio Reasoning → `assembler_preference`；高复杂 MEGAHIT |
-| 2.5 Functional 机制解读 | **Done** | `functional_interpretation.md` + KEGG/CARD/UniProt RAG |
-| 2.6 Publication Agent | Partial | `report/manuscript.py` 分节草稿（非独立图节点） |
-| 3. Memory | Partial | `ContextMemory` + project/bio_reasoning 历史；向量库（Chroma/FAISS）Planned |
-| 4. RAG 知识库 | Partial | curated 生物库 + 工具 domain KB + 文献 API；工具全文向量索引 Planned |
-| 5. Benchmark（CAMI/HMP） | Partial | `evaluation/benchmarks.py` smoke；标准 CAMI 套件 Planned |
-| 6. HITL 多方案 | **Done** | A/B/C 结构化选项（研究设计 / 缺分组 / 宿主污染） |
-| 7. Conversation Agent | Partial | CLI/API 入口；多轮对话会话 Planned |
-| 8.1 自主流程优化 | Partial | self-heal + bandit 路由；完整 observe→optimize 环 Planned |
-| 8.2 Biological Reasoning（机制/下一步实验） | **Done** | 规划前推理 + 证据链 + next_experiments |
-| 8.3 Reproducible Science Agent | **Done** | Docker/沙盒、`.nf`/`.smk`、seed、Methods、manifest |
+| 建议 | 状态 | 现状 |
+|------|------|------|
+| 技能契约（非自由 CLI） | **Done** | `skills/registry` + Tool Specialist 绑定 I/O 契约 |
+| 中间结果缓存 / 断点续跑 | **Done** | `execution/step_cache.py` → `outdir/cache/steps`；节点 `cached` |
+| Bio CoT + 外部知识引用 | **Done** | `knowledge/bio_cot_examples.json`；强制 citations；`bio_reasoning_audit.json` |
+| 轻量 Dashboard | **Done** | `visualization.lite=true`：摘要 + 按需 fetch JSON |
+| 资源预估 | **Done** | `resource_estimate.json`（墙钟/内存/磁盘 + 警告） |
+| Nextflow/Snakemake resume | **Done** | nf `-resume`；smk `--rerun-incomplete` |
+| FastQC/MultiQC / HUMAnN3 | Partial | 主路径 fastp/DIAMOND；原生封装 Planned |
+| 向量 Memory（Chroma/FAISS） | Planned | 现为 ContextMemory 文件 |
+| CAMI/HMP Benchmark | Partial | smoke benchmarks |
+| Conversation Agent | Partial | CLI/API |
 
-## 图节点（v0.13）
+## 生产提示
 
-```
-parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
-  → export_dag → workflow_agent → contract → HITL
-  → swarm → validate → quality → HITL(runtime) → self-heal*
-  → critic → literature → PI* → visualization → XAI → report
+```bash
+# 轻量仪表盘需静态服务（file:// 下 fetch 受限）
+cd results && python -m http.server 8765
+# 打开 http://127.0.0.1:8765/interactive_dashboard.html
+
+# 外部引擎续跑
+# config: execution.engine: nextflow | snakemake
 ```
 
-## 近期优先（Planned）
-
-1. FastQC/MultiQC 与 HUMAnN3 原生封装  
-2. 项目级向量 Memory（FAISS/Chroma）跨 run 检索  
-3. CAMI II / HMP 基准脚本与 CI 指标看板  
-4. 独立 Conversation Agent（多轮澄清需求）  
-5. Publication Agent 升为图节点（Methods/Results/Figures 一键打包）
-
-最终目标保持不变：**Autonomous Multi-Agent System for End-to-End Metagenomic Discovery**。
+最终目标：**Autonomous Multi-Agent System for End-to-End Metagenomic Discovery**。

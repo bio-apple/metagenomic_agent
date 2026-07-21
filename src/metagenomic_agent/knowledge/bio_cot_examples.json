@@ -1,0 +1,112 @@
+[
+  {
+    "id": "cot_obesity_gut",
+    "triggers": ["obes", "肥胖", "bmi"],
+    "scenario": "肥胖患者肠道菌群变化",
+    "chain": [
+      "识别研究目标为疾病关联（case/control 或表型相关），而非单纯群落描述。",
+      "肠道宿主样本需宿主去除，再做分类学与功能轮廓。",
+      "优先 shotgun metagenomics：可同时覆盖物种与通路/AMR。",
+      "高复杂肠道群落组装优先 MEGAHIT；差异分析需要分组元数据。",
+      "解释须锚定 GTDB/NCBI 与文献，避免虚假菌种与夸大因果。"
+    ],
+    "citations": [
+      {
+        "source": "nf-core/mag",
+        "url": "https://nf-co.re/mag",
+        "note": "Community best-practice MAG / metagenome workflow patterns"
+      },
+      {
+        "source": "nf-core/taxprofiler",
+        "url": "https://nf-co.re/taxprofiler",
+        "note": "Taxonomic profiling best practices"
+      },
+      {
+        "source": "BioStars wiki — metagenomics",
+        "url": "https://www.biostars.org/t/Metagenomics/",
+        "note": "Community Q&A on tool choice and contamination"
+      }
+    ],
+    "recommended_tools": ["fastp", "filter_host", "kraken2", "metaphlan", "diamond"],
+    "assembler": "megahit"
+  },
+  {
+    "id": "cot_ibd_biomarker",
+    "triggers": ["ibd", "crohn", "colitis", "溃疡", "克罗恩"],
+    "scenario": "IBD 生物标志物发现",
+    "chain": [
+      "目标：差异丰度 + 机制假说，需 statistics + literature/evidence。",
+      "关注 Faecalibacterium 下调与 Escherichia 上调等可检验假设。",
+      "功能层（KEGG/eggNOG）用于 SCFA/炎症相关通路，不作临床诊断。",
+      "所有菌种陈述必须 GTDB/NCBI 锚定并附 p/q 与 PMID。"
+    ],
+    "citations": [
+      {
+        "source": "nf-core/ampliseq (design contrast)",
+        "url": "https://nf-co.re/ampliseq",
+        "note": "When amplicon is chosen instead of shotgun"
+      },
+      {
+        "source": "nf-core/mag",
+        "url": "https://nf-co.re/mag",
+        "note": "Assembly/binning when MAGs requested"
+      },
+      {
+        "source": "BioStars — differential abundance",
+        "url": "https://www.biostars.org/",
+        "note": "Community discussion on DA tool caveats"
+      }
+    ],
+    "recommended_tools": ["fastp", "kraken2", "metaphlan", "diamond"],
+    "assembler": "megahit"
+  },
+  {
+    "id": "cot_soil_low_virus",
+    "triggers": ["soil", "土壤", "virus", "病毒", "phage", "virome", "低丰度"],
+    "scenario": "土壤宏基因组低丰度病毒",
+    "chain": [
+      "土壤高复杂、宿主多样；病毒信号常低丰度，需专用病毒工具或富集策略。",
+      "分类学可辅以 ViWrap/PhaBOX；勿仅用细菌导向数据库断言病毒多样性。",
+      "组装可选 MEGAHIT；病毒 contig 需额外质控，避免把细菌片段当作病毒。",
+      "推理必须引用病毒宏基因组最佳实践，禁止捏造病毒种名。"
+    ],
+    "citations": [
+      {
+        "source": "nf-core (viral / metagenome ecosystem)",
+        "url": "https://nf-co.re/",
+        "note": "Prefer community pipelines for complex environmental data"
+      },
+      {
+        "source": "BioStars — viral metagenomics",
+        "url": "https://www.biostars.org/t/Virus/",
+        "note": "Tool selection for virome / low-abundance viruses"
+      }
+    ],
+    "recommended_tools": ["fastp", "megahit", "viwrap", "phabox"],
+    "assembler": "megahit"
+  },
+  {
+    "id": "cot_mag_recovery",
+    "triggers": ["mag", "bin", "组装", "assembly", "genome"],
+    "scenario": "MAG 回收",
+    "chain": [
+      "明确目标为基因组回收：QC → 组装 → 分箱 → CheckM2 → GTDB-Tk。",
+      "高复杂用 MEGAHIT；低复杂/小群落可试 metaSPAdes。",
+      "资源峰值高，生产环境应 Nextflow/Snakemake -resume。"
+    ],
+    "citations": [
+      {
+        "source": "nf-core/mag",
+        "url": "https://nf-co.re/mag",
+        "note": "Reference MAG workflow"
+      },
+      {
+        "source": "CheckM2 documentation",
+        "url": "https://github.com/chklovski/CheckM2",
+        "note": "Completeness/contamination contracts"
+      }
+    ],
+    "recommended_tools": ["fastp", "megahit", "metabat2", "checkm2"],
+    "assembler": "megahit"
+  }
+]

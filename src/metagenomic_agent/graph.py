@@ -22,6 +22,7 @@ from metagenomic_agent.agents.hitl import hitl_checkpoint
 from metagenomic_agent.evaluation.quality_score import write_quality_report
 from metagenomic_agent.evaluation.xai import write_xai_report
 from metagenomic_agent.execution.dag_export import export_workflow_dag
+from metagenomic_agent.execution.resource_estimate import write_resource_estimate
 from metagenomic_agent.execution.executor import execute_swarm
 from metagenomic_agent.execution.self_heal import (
     apply_self_heal,
@@ -115,11 +116,21 @@ def _self_heal(state: AgentState) -> dict:
 
 def _export_dag(state: AgentState) -> dict:
     info = export_workflow_dag(state)
+    estimate = write_resource_estimate(state)
     arts = dict(state.get("artifacts") or {})
     arts["workflow_dag"] = info
+    arts["resource_estimate"] = estimate
+    hitl = list(state.get("hitl_pending") or [])
+    if estimate.get("warnings") and state.get("mode") not in {"mock"}:
+        hitl.append(f"[Resources] {estimate.get('user_message')}")
     return {
         "artifacts": arts,
-        "messages": state.get("messages", []) + [f"Exported workflow DAG ({info.get('n_nodes')} nodes)"],
+        "hitl_pending": hitl,
+        "messages": state.get("messages", [])
+        + [
+            f"Exported workflow DAG ({info.get('n_nodes')} nodes)",
+            estimate.get("user_message") or "resource estimate written",
+        ],
     }
 
 

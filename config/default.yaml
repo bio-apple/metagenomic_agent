@@ -3,7 +3,7 @@ workdir: ./workdir
 max_retries: 2
 
 execution:
-  engine: langgraph  # langgraph | snakemake | nextflow
+  engine: langgraph  # langgraph | snakemake | nextflow  (nf: -resume; smk: --rerun-incomplete)
 
 # Prefer container isolation for bio tools (MCP-style sandbox). Avoid fragile host binaries.
 sandbox:
@@ -84,6 +84,11 @@ report:
 visualization:
   default_q: 0.1  # FDR q cutoff for interactive heatmap / volcano highlighting
   top_n_taxa: 25
+  lite: true  # on-demand JSON fetch; set false to embed all Plotly specs (small cohorts only)
+  max_inline_biomarkers: 50
+
+cache:
+  enabled: true  # LangGraph swarm step cache under outdir/cache/steps
 
 pi:
   max_replans: 1

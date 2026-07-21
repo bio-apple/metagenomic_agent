@@ -591,8 +591,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
 
 def write_interactive_dashboard(state: dict[str, Any], *, default_q: float = 0.1) -> dict[str, str]:
-    """Write Plotly JSON figures + interactive_dashboard.html under report/figures/."""
+    """Write Plotly JSON on disk + lightweight dashboard that loads figures on demand."""
     from jinja2 import Template
+
+    viz_cfg = ((state.get("config") or {}).get("visualization") or {})
+    lite = bool(viz_cfg.get("lite", True))
+    max_biomarkers = int(viz_cfg.get("max_inline_biomarkers", 50))
 
     payload = build_interactive_figures(state, default_q=default_q)
     outdir = Path(state["outdir"])
@@ -604,6 +608,27 @@ def write_interactive_dashboard(state: dict[str, Any], *, default_q: float = 0.1
         (fig_dir / f"{name}.plotly.json").write_text(
             json.dumps(fig, indent=2, ensure_ascii=False), encoding="utf-8"
         )
+    (fig_dir / "heatmap_by_q.json").write_text(
+        json.dumps(payload["heatmap_by_q"], ensure_ascii=False), encoding="utf-8"
+    )
+    bios = payload["biomarkers"][:max_biomarkers]
+    (fig_dir / "biomarkers_lite.json").write_text(json.dumps(bios, ensure_ascii=False), encoding="utf-8")
+
+    # Summary-only sidecar for huge cohorts
+    summary = {
+        "n_samples": len(payload.get("groups") or {}),
+        "n_biomarkers_total": len(payload["biomarkers"]),
+        "n_biomarkers_shown": len(bios),
+        "default_q": default_q,
+        "tables": {
+            "genus_matrix": "diversity_analysis/genus_matrix.tsv",
+            "biomarkers": "biomarkers/biomarkers.tsv",
+            "alpha": "diversity_analysis/alpha_diversity.tsv",
+        },
+        "plotly": {k: f"report/figures/{k}.plotly.json" for k in figures},
+        "policy": "lite_metadata_plus_ondemand_json",
+    }
+    (fig_dir / "dashboard_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
     q_cuts = [0.01, 0.05, 0.1, 0.2, 1.0]
     try:
@@ -611,26 +636,52 @@ def write_interactive_dashboard(state: dict[str, Any], *, default_q: float = 0.1
     except ValueError:
         q_index = 2
 
-    html = Template(DASHBOARD_HTML).render(
-        query=state.get("user_query") or "",
-        run_id=state.get("run_id") or "",
-        default_q=default_q,
-        q_index=q_index,
-        figures_json=json.dumps(figures, ensure_ascii=False),
-        heatmap_by_q_json=json.dumps(payload["heatmap_by_q"], ensure_ascii=False),
-        q_cuts_json=json.dumps(q_cuts),
-        biomarkers_json=json.dumps(payload["biomarkers"], ensure_ascii=False),
-    )
+    if lite:
+        html = Template(DASHBOARD_LITE_HTML).render(
+            query=state.get("user_query") or "",
+            run_id=state.get("run_id") or "",
+            default_q=default_q,
+            q_index=q_index,
+            q_cuts_json=json.dumps(q_cuts),
+            summary_json=json.dumps(summary, ensure_ascii=False),
+            figures_base="report/figures",
+        )
+    else:
+        html = Template(DASHBOARD_HTML).render(
+            query=state.get("user_query") or "",
+            run_id=state.get("run_id") or "",
+            default_q=default_q,
+            q_index=q_index,
+            figures_json=json.dumps(figures, ensure_ascii=False),
+            heatmap_by_q_json=json.dumps(payload["heatmap_by_q"], ensure_ascii=False),
+            q_cuts_json=json.dumps(q_cuts),
+            biomarkers_json=json.dumps(bios, ensure_ascii=False),
+        )
+
     dash_path = fig_dir / "interactive_dashboard.html"
     dash_path.write_text(html, encoding="utf-8")
-    # Also publish at results root for easy open
     root_dash = outdir / "interactive_dashboard.html"
-    root_dash.write_text(html, encoding="utf-8")
+    # Root copy must use relative paths into report/figures — rewrite base for root
+    if lite:
+        root_html = Template(DASHBOARD_LITE_HTML).render(
+            query=state.get("user_query") or "",
+            run_id=state.get("run_id") or "",
+            default_q=default_q,
+            q_index=q_index,
+            q_cuts_json=json.dumps(q_cuts),
+            summary_json=json.dumps(summary, ensure_ascii=False),
+            figures_base="report/figures",
+        )
+        root_dash.write_text(root_html, encoding="utf-8")
+    else:
+        root_dash.write_text(html, encoding="utf-8")
 
     index = {
         "dashboard": str(dash_path.relative_to(outdir)),
         "dashboard_root": "interactive_dashboard.html",
+        "mode": "lite" if lite else "embedded",
         "plotly_json": [f"report/figures/{k}.plotly.json" for k in figures],
+        "summary": "report/figures/dashboard_summary.json",
         "default_q": default_q,
         "n_biomarkers": len(payload["biomarkers"]),
     }
@@ -639,4 +690,134 @@ def write_interactive_dashboard(state: dict[str, Any], *, default_q: float = 0.1
         "dashboard": str(dash_path),
         "dashboard_root": str(root_dash),
         "index": str(fig_dir / "interactive_index.json"),
+        "mode": "lite" if lite else "embedded",
     }
+
+
+DASHBOARD_LITE_HTML = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Interactive Metagenomic Analytics (lite)</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    body { margin:0; font-family:"IBM Plex Sans","Noto Sans SC",sans-serif; background:#eef3f0; color:#14241e; }
+    header { padding:1.2rem 1.4rem; background:rgba(255,255,255,.85); border-bottom:1px solid #d5e0da; position:sticky; top:0; }
+    h1 { margin:0; font-size:1.35rem; }
+    .sub { color:#4a6358; margin:.35rem 0 0; font-size:.9rem; }
+    .controls { display:flex; flex-wrap:wrap; gap:.6rem 1rem; padding:.8rem 1.4rem; align-items:center; }
+    .tab { border:1px solid #d5e0da; background:#fff; padding:.35rem .75rem; border-radius:999px; cursor:pointer; }
+    .tab.active { background:#1b9e77; color:#fff; border-color:#1b9e77; }
+    main { padding:0 1.2rem 2rem; }
+    .panel { display:none; background:#fff; border-radius:12px; padding:.6rem; min-height:420px; }
+    .panel.active { display:block; }
+    .plot { width:100%; height:480px; }
+    .hint { color:#4a6358; font-size:.85rem; }
+    a { color:#0f766e; }
+    #summaryBox { background:#fff; margin:0 1.2rem 1rem; padding:1rem 1.2rem; border-radius:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Interactive Analytics <small style="font-weight:400;color:#4a6358">(lite / on-demand)</small></h1>
+    <p class="sub">{{ query }} · run_id={{ run_id }} · 默认仅摘要；图按需 fetch JSON，完整表走下载链接</p>
+  </header>
+  <div id="summaryBox"><pre id="summaryPre">Loading summary…</pre></div>
+  <div class="controls">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-panel="composition">组成</button>
+      <button class="tab" data-panel="alpha">Alpha</button>
+      <button class="tab" data-panel="beta">Beta</button>
+      <button class="tab" data-panel="pcoa">PCoA</button>
+      <button class="tab" data-panel="heatmap">Heatmap</button>
+      <button class="tab" data-panel="volcano">Volcano</button>
+    </div>
+    <label>FDR q ≤ <span id="qLabel">{{ default_q }}</span>
+      <input id="qSlider" type="range" min="0" max="4" step="1" value="{{ q_index }}"/>
+    </label>
+  </div>
+  <main>
+    <section class="panel active" id="panel-composition"><p class="hint">按需加载 composition.plotly.json</p><div class="plot" id="plot-composition"></div></section>
+    <section class="panel" id="panel-alpha"><div class="plot" id="plot-alpha"></div></section>
+    <section class="panel" id="panel-beta"><div class="plot" id="plot-beta"></div></section>
+    <section class="panel" id="panel-pcoa"><div class="plot" id="plot-pcoa"></div></section>
+    <section class="panel" id="panel-heatmap"><div class="plot" id="plot-heatmap"></div></section>
+    <section class="panel" id="panel-volcano"><div class="plot" id="plot-volcano"></div></section>
+  </main>
+  <script>
+    const BASE = "{{ figures_base }}";
+    const Q_CUTS = {{ q_cuts_json | safe }};
+    const SUMMARY = {{ summary_json | safe }};
+    const cfg = {responsive:true, displaylogo:false};
+    const cache = {};
+    document.getElementById("summaryPre").textContent =
+      `samples=${SUMMARY.n_samples} biomarkers=${SUMMARY.n_biomarkers_total} (inline cap ${SUMMARY.n_biomarkers_shown})\\n` +
+      `tables: ${SUMMARY.tables.genus_matrix} | ${SUMMARY.tables.biomarkers}\\n` +
+      `policy: ${SUMMARY.policy}`;
+
+    async function loadFig(name) {
+      if (cache[name]) return cache[name];
+      const resp = await fetch(`${BASE}/${name}.plotly.json`);
+      const fig = await resp.json();
+      cache[name] = fig;
+      return fig;
+    }
+    async function draw(id, name) {
+      const fig = await loadFig(name);
+      Plotly.newPlot(id, fig.data || [], fig.layout || {}, cfg);
+    }
+    async function drawHeat(q) {
+      const resp = await fetch(`${BASE}/heatmap_by_q.json`);
+      const byq = await resp.json();
+      const payload = byq[String(q)] || byq["0.1"];
+      const layout = Object.assign({}, (await loadFig("heatmap")).layout || {}, {
+        title: `Taxon heatmap (q≤${payload.q_cut}; ${payload.n_sig} sig → ${payload.genera.length})`
+      });
+      Plotly.react("plot-heatmap", [{
+        type:"heatmap", z:payload.z, x:payload.samples, y:payload.genera, colorscale:"Viridis",
+        colorbar:{title:"rel. abund."}
+      }], layout, cfg);
+    }
+    async function drawVolcano(q) {
+      const resp = await fetch(`${BASE}/biomarkers_lite.json`);
+      const BIO = await resp.json();
+      const x=[], y=[], text=[], colors=[];
+      for (const b of BIO) {
+        const p = Math.max(Number(b.p_value||1), 1e-300);
+        const qq = Number(b.q_value != null ? b.q_value : p);
+        x.push(Number(b.log2fc||0)); y.push(-Math.log10(p));
+        text.push(`${b.genus}<br>q=${qq}`);
+        colors.push(qq <= q ? "#d95f02" : "#999999");
+      }
+      Plotly.react("plot-volcano", [{
+        type:"scatter", mode:"markers", x,y,text, marker:{color:colors, size:10}
+      }], {title:`Volcano (orange = q≤${q})`, xaxis:{title:"log2FC"}, yaxis:{title:"-log10p"}}, cfg);
+    }
+
+    // Lazy: load active tab only
+    draw("plot-composition", "composition");
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        const name = btn.dataset.panel;
+        document.getElementById("panel-" + name).classList.add("active");
+        const map = {composition:"composition", alpha:"alpha_box", beta:"beta_box", pcoa:"pcoa", heatmap:"heatmap", volcano:"volcano"};
+        if (name === "heatmap") await drawHeat(Q_CUTS[Number(document.getElementById("qSlider").value)]);
+        else if (name === "volcano") await drawVolcano(Q_CUTS[Number(document.getElementById("qSlider").value)]);
+        else await draw("plot-" + name, map[name]);
+      });
+    });
+    document.getElementById("qSlider").addEventListener("input", async () => {
+      const q = Q_CUTS[Number(document.getElementById("qSlider").value)];
+      document.getElementById("qLabel").textContent = q;
+      const active = document.querySelector(".tab.active").dataset.panel;
+      if (active === "heatmap") await drawHeat(q);
+      if (active === "volcano") await drawVolcano(q);
+    });
+  </script>
+</body>
+</html>
+"""

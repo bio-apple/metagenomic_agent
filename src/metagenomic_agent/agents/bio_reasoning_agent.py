@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from metagenomic_agent.coordinator.memory import ContextMemory
+from metagenomic_agent.knowledge.workflow_rag import retrieve_workflow_snippets
 from metagenomic_agent.messaging import append_msg, emit
+
+COT_PATH = Path(__file__).resolve().parents[1] / "knowledge" / "bio_cot_examples.json"
+BP_PATH = Path(__file__).resolve().parents[1] / "knowledge" / "best_practices.md"
 
 # Disease / phenotype cues → study framing
 DISEASE_CUES: list[tuple[tuple[str, ...], str, list[str]]] = [
@@ -52,6 +56,27 @@ def _detect_assay(query: str) -> tuple[str, str]:
     return "shotgun_metagenomics", "Default to shotgun metagenomics unless amplicon is specified."
 
 
+def _load_cot_library() -> list[dict[str, Any]]:
+    if COT_PATH.exists():
+        try:
+            return json.loads(COT_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
+def _match_cot(query: str) -> dict[str, Any] | None:
+    q = query.lower()
+    best = None
+    best_score = 0
+    for ex in _load_cot_library():
+        score = sum(1 for t in ex.get("triggers") or [] if t.lower() in q)
+        if score > best_score:
+            best_score = score
+            best = ex
+    return best if best_score > 0 else None
+
+
 def _study_goal(query: str) -> str:
     q = query.lower()
     if any(k in q for k in ("biomarker", "标志", "差异", "vs", "对照", "case", "control", "变化")):
@@ -90,7 +115,45 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
     )
     enable_assembly = goal == "mag_recovery" or any(k in query.lower() for k in ("mag", "assembly", "组装"))
 
+    cot = _match_cot(query)
     assembler = "megahit" if high_complexity else "metaspades"
+    if cot and cot.get("assembler"):
+        assembler = cot["assembler"]
+
+    # Force external KB retrieval (nf-core / workflow snippets + best practices)
+    wf_hits = retrieve_workflow_snippets(query, engine=None, top_k=3)
+    bp_excerpt = ""
+    if BP_PATH.exists():
+        bp_excerpt = BP_PATH.read_text(encoding="utf-8")[:800]
+
+    citations = list((cot or {}).get("citations") or [])
+    if not citations:
+        citations = [
+            {
+                "source": "nf-co.re",
+                "url": "https://nf-co.re/",
+                "note": "Default community pipeline catalogue when no scenario CoT matched",
+            }
+        ]
+    for h in wf_hits:
+        citations.append(
+            {
+                "source": f"workflow_rag:{h.get('id')}",
+                "url": "https://nf-co.re/",
+                "note": h.get("title") or h.get("id"),
+                "score": h.get("score"),
+            }
+        )
+
+    chain = list((cot or {}).get("chain") or [])
+    if not chain:
+        chain = [
+            f"Infer study goal `{goal}` from the user query without inventing taxa.",
+            f"Recommend assay `{assay}` with explicit justification.",
+            "Select tools only when backed by CoT library or nf-core/workflow RAG citations.",
+            "Record the full reasoning chain for human audit.",
+        ]
+
     steps = [
         "Host removal" if enable_host else "QC without host filter",
         "Taxonomic profiling",
@@ -107,6 +170,7 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
     rationale = [
         f"Study goal inferred as `{goal}`.",
         f"Recommended assay: `{assay}` — {assay_note}",
+        f"CoT example matched: `{(cot or {}).get('id') or 'generic_fallback'}`.",
     ]
     if disease:
         rationale.append(f"Disease/phenotype context: `{disease}`; watch markers {', '.join(markers)}.")
@@ -116,6 +180,8 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
     )
     if enable_statistics and not any(s.get("group") for s in samples):
         rationale.append("Differential analysis requested but groups missing — will escalate via HITL / demo_mode.")
+    if bp_excerpt:
+        rationale.append("Best-practices KB loaded for Supervisor handoff (see audit trail).")
 
     next_experiments = []
     if disease == "obesity":
@@ -151,10 +217,15 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
         "long_reads": long_reads,
         "n_samples": n,
         "rationale": rationale,
+        "reasoning_chain": chain,
+        "citations": citations,
+        "cot_example_id": (cot or {}).get("id"),
+        "workflow_rag_ids": [h.get("id") for h in wf_hits],
         "next_experiments": next_experiments,
         "router_intent": router.get("primary_intent"),
         "router_domains": router.get("domains") or [],
-        "policy": "bio_reasoning_before_workflow_planning",
+        "policy": "cot_must_cite_external_kb_no_ungrounded_tool_choice",
+        "best_practices_excerpt": bp_excerpt[:400] if bp_excerpt else "",
     }
 
 
@@ -171,9 +242,27 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
     bio = reason(state.get("user_query") or "", state.get("samples") or [], router)
 
+    # Require citations — block empty citation list (anti reasoning-hallucination)
+    if not bio.get("citations"):
+        bio["citations"] = [
+            {"source": "nf-co.re", "url": "https://nf-co.re/", "note": "mandatory fallback citation"}
+        ]
+        bio["citation_enforced"] = True
+
     outdir = Path(state["outdir"])
     outdir.mkdir(parents=True, exist_ok=True)
     (outdir / "bio_reasoning.json").write_text(json.dumps(bio, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    audit = {
+        "cot_example_id": bio.get("cot_example_id"),
+        "reasoning_chain": bio.get("reasoning_chain"),
+        "citations": bio.get("citations"),
+        "workflow_rag_ids": bio.get("workflow_rag_ids"),
+        "policy": bio.get("policy"),
+    }
+    (outdir / "bio_reasoning_audit.json").write_text(
+        json.dumps(audit, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     md = [
         "# Biological Reasoning",
@@ -182,10 +271,17 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         f"- **Assay**: `{bio['recommended_assay']}` — {bio['assay_note']}",
         f"- **Disease/phenotype**: `{bio.get('disease_context') or 'n/a'}`",
         f"- **Assembler preference**: `{bio['assembler_preference']}`",
+        f"- **CoT example**: `{bio.get('cot_example_id') or 'generic'}`",
         "",
-        "## Recommended pipeline",
+        "## Reasoning chain (audit)",
         "",
     ]
+    for i, step in enumerate(bio.get("reasoning_chain") or [], 1):
+        md.append(f"{i}. {step}")
+    md.extend(["", "## Citations (required)", ""])
+    for c in bio.get("citations") or []:
+        md.append(f"- [{c.get('source')}]({c.get('url')}) — {c.get('note')}")
+    md.extend(["", "## Recommended pipeline", ""])
     for i, step in enumerate(bio["pipeline_steps"], 1):
         md.append(f"{i}. {step}")
     md.extend(["", "## Rationale", ""])

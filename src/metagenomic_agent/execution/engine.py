@@ -92,6 +92,7 @@ def launch_external(engine: EngineName, state: dict[str, Any], repo_root: Path |
             str(state.get("config", {}).get("linux", {}).get("threads", 4)),
             "--snakefile",
             str(snakefile),
+            "--rerun-incomplete",
             "--config",
             f"input_dir={state.get('input_path')}",
             f"outdir={state.get('outdir')}",

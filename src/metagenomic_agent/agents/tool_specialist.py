@@ -8,6 +8,8 @@ from typing import Any
 
 from metagenomic_agent.knowledge.domain_kb import load_tool_domain_kb, recommend_tools, tool_command
 from metagenomic_agent.messaging import append_msg, emit
+from metagenomic_agent.skills.contracts import Severity
+from metagenomic_agent.skills.registry import get_skill
 
 
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -24,7 +26,17 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     tool_names = list(dict.fromkeys([r.get("tool") for r in recs if r.get("tool")] + dag_tools))
     kb_tools = load_tool_domain_kb().get("tools") or {}
 
+    # Sample/upstream stub for skill pre-checks (planning-time)
+    sample0 = (state.get("samples") or [{}])[0] if state.get("samples") else {"r1": "<r1>", "r2": "<r2>"}
+    upstream_stub = {
+        "r1": sample0.get("r1") or "<r1>",
+        "clean_r1": "results/clean_R1.fastq",
+        "contigs": "<contigs.fa>",
+        "bins_dir": "<bins_dir>",
+    }
+
     specs: list[dict[str, Any]] = []
+    contract_notes: list[dict[str, Any]] = []
     for name in tool_names:
         meta = kb_tools.get(name) or {}
         params = dict(meta.get("defaults") or {})
@@ -59,15 +71,55 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         missing_req = [p for p in required if not params.get(p) or str(params.get(p)).startswith("<")]
         cmd = tool_command(name, params)
         param_keys = set((meta.get("defaults") or {}).keys()) | set(required) | {"threads", "db"}
+
+        skill = get_skill(name)
+        skill_meta = None
+        if skill:
+            from metagenomic_agent.skills.contracts import check_preconditions
+
+            # Planning-time: only flag hard structural issues; placeholders allowed in mock
+            viol = check_preconditions(skill, sample0, upstream_stub)
+            # Downgrade path-missing on placeholders to info at plan time
+            soft = []
+            for v in viol:
+                if state.get("mode") == "mock" or "<" in str(upstream_stub.get(v.details.get("key", ""), "")):
+                    soft.append(
+                        {
+                            "skill": skill.name,
+                            "check": v.check,
+                            "message": v.message,
+                            "severity": "info",
+                        }
+                    )
+                else:
+                    soft.append(
+                        {
+                            "skill": skill.name,
+                            "check": v.check,
+                            "message": v.message,
+                            "severity": v.severity.value if isinstance(v.severity, Severity) else str(v.severity),
+                        }
+                    )
+            skill_meta = {
+                "name": skill.name,
+                "description": skill.description,
+                "input_required": skill.input_contract.required_artifacts,
+                "output_required": skill.output_contract.required_outputs,
+                "pre_check": soft,
+                "execution_policy": "skill_contract_not_freeform_cli",
+            }
+            contract_notes.extend(soft)
+
         specs.append(
             {
                 "tool": name,
-                "status": meta.get("status", "active"),
+                "status": meta.get("status", "active" if skill else "unregistered_skill"),
                 "specialty": meta.get("specialty"),
                 "params": {k: params[k] for k in param_keys if k in params},
                 "command": cmd,
                 "missing_required": missing_req if state.get("mode") != "mock" else [],
                 "notes": meta.get("strengths"),
+                "skill_contract": skill_meta,
             }
         )
 
@@ -83,13 +135,23 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
                 n["tools"] = tools
                 n.setdefault("params", {})["virus_mode"] = True
 
-    payload = {"specialists": specs, "n_tools": len(specs)}
+    payload = {
+        "specialists": specs,
+        "n_tools": len(specs),
+        "skill_contract_notes": contract_notes,
+        "policy": "commands_are_templates_execution_must_honor_skill_io_contracts",
+    }
     out = Path(state["outdir"]) / "tool_specialist"
     out.mkdir(parents=True, exist_ok=True)
     (out / "tool_commands.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    lines = ["# Tool Specialist Commands", ""]
+    lines = ["# Tool Specialist Commands", "", "> Skills use I/O contracts; CLI templates are not free-form LLM shell.", ""]
     for s in specs:
         lines.append(f"## {s['tool']}")
+        if s.get("skill_contract"):
+            sc = s["skill_contract"]
+            lines.append(
+                f"- Contract in=`{sc.get('input_required')}` out=`{sc.get('output_required')}`"
+            )
         lines.append(f"```bash\n{s.get('command')}\n```")
         if s.get("missing_required"):
             lines.append(f"- Missing required: {s['missing_required']}")
