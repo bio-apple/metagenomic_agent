@@ -19,7 +19,12 @@
 | `-y / --yes` | false | 自动确认 HITL（含 Plan Validator 追问） |
 
 ```bash
-# 演示
+# 演示（推荐：带分组的一键数据；或 bash scripts/reproduce_demo.sh）
+meta-agent run -i examples/demo_data/fastq --metadata examples/demo_data/metadata.tsv \
+  -o ./results/demo --mode mock --yes \
+  -q "IBD vs healthy gut microbiome biomarker discovery"
+
+# 最小单样本 fixture（CI）
 meta-agent run -i tests/fixtures/fastq -o ./results --mode mock --yes \
   -q "IBD gut microbiome biomarker discovery"
 

@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: "Metagenomic Research Agent"
+message: "If you use this software, please cite it using these metadata."
+type: software
+authors:
+  - name: "bio-apple contributors"
+repository-code: "https://github.com/bio-apple/metagenomic_agent"
+license: MIT
+version: "0.23.0"
+abstract: >-
+  Container-sandboxed multi-agent platform for shotgun metagenomics:
+  planning, execution, evidence grounding, peer review, and reproducible reports.
+keywords:
+  - metagenomics
+  - multi-agent
+  - bioinformatics
+  - langgraph
