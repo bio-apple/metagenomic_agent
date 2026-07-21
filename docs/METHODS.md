@@ -1,43 +1,41 @@
 # Methods note for manuscripts (software description)
 
-> 对应实现版本：**v0.5.x**。中文使用说明见 [USAGE.md](USAGE.md)；架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+> 对应实现版本：**v0.6.x**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)；2026 建议落地见 [PROPOSAL_2026_IMPL.md](PROPOSAL_2026_IMPL.md)。
 
 This document describes what **metagenomic-agent** actually implements today, for Methods / Software sections.
 
 ## System
 
 - Orchestration: LangGraph state machine  
-  `parse → supervisor → contract_check → HITL → swarm → validate → self-heal* → critic → literature → report`
+  `parse → supervisor → export_dag → contract_check → HITL → swarm → validate → quality_scores → self-heal* → critic → literature → visualization → report`
 - Interfaces: CLI (`meta-agent`), FastAPI (`/analyze`), optional Celery/Slurm/Nextflow handoff artifacts
-- Decision layer: Skill/Contract registry + playbooks; pre/post condition checks before execution and HITL escalation on hard failures
+- Decision layer: Skill/Contract registry + playbooks; memory/resource-aware taxonomy tool selection
+- Knowledge: curated biological-database RAG (GTDB/NCBI/KEGG/eggNOG/CARD/VFDB/MGnify/BacDive/HMP stubs) + gut microbe KB + Evidence Table (PubMed/Europe PMC when online)
 
 ## Bioinformatics modules
 
 | Module | Tools / methods |
 |--------|-----------------|
 | QC & host | fastp; Bowtie2 or Kneaddata vs HG38 when index configured |
-| Taxonomy | Kraken2+Bracken and/or MetaPhlAn; optional gLM microCafe/MicroRAG with long-read routing and dual-path fusion |
+| Taxonomy | Kraken2+Bracken and/or MetaPhlAn; optional gLM microCafe/MicroRAG with long-read routing |
 | MAGs | MEGAHIT or metaSPAdes; MetaBAT2/MaxBin2; consensus merge; CheckM2; GTDB-Tk |
 | Function | DIAMOND / labeled profile tables (KEGG/eggNOG/CAZy/CARD/VFDB) |
 | Statistics | Shannon; Bray–Curtis; Mann–Whitney U + Benjamini–Hochberg FDR |
-| Interpretation | Gut / IBD biomarker KB + context-aware biological validator; optional PubMed E-utilities |
+| Interpretation | Evidence Table + bio-DB RAG + context-aware biological validator |
+| Visualization | Taxonomy heatmap data, PCoA stub, co-occurrence stub, exported tables |
+| Manuscript | Template sections: Introduction / Methods / Results / Discussion / Limitations / References |
 
 ## Self-healing
 
-Structured exit classification (e.g. 137/OOM) triggers parameter reduction and assembler downgrade (metaSPAdes → MEGAHIT). Contract post-condition failures can feed critic warnings and recovery recommendations.
+Structured exit classification (e.g. 137/OOM) triggers parameter reduction and assembler downgrade. Contract post-condition failures can feed critic warnings.
 
 ## Reproducibility
 
-Each run writes:
-
-- `report/methods.md` (executed DAG + versions)
-- `report/reproduce.sh` (full CLI)
-- `reproducibility/run_manifest.json` + `reproducibility/meta_agent.cwl` (+ Nextflow params when applicable)
-
-Mock mode is for CI/demo only.
+Each run writes `report/methods.md`, `report/reproduce.sh`, `reproducibility/` (CWL + run_manifest), and `workflow/dag.json`.
 
 ## Limitations to disclose
 
-- Default differential abundance is **not** ANCOM-BC/MaAsLin2/LEfSe; export tables and re-analyze for journal-grade stats.
-- gLM adapters ship with mock/local stubs until real model weights and runtimes are configured.
-- External Nextflow/Snakemake engines are optional; by default compute runs in-process via LangGraph agents.
+- Default differential abundance is **not** ANCOM-BC/MaAsLin2/LEfSe.
+- Bio-DB RAG ships a compact curated index until full database dumps are configured.
+- Manuscript drafts require expert editing; visualization includes stubs for ordination/network until full matrices are enabled.
+- Mock mode is for CI/demo only.

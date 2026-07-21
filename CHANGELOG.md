@@ -1,26 +1,32 @@
 # Changelog
 
+## 0.6.0
+
+- Biological database RAG layer (`rag/`) with curated GTDB/KEGG/CARD/VFDB/MGnify/…
+- Literature Evidence Table (PubMed/Europe PMC hooks + curated PMIDs)
+- Explicit workflow DAG export (`workflow/dag.json`, Mermaid)
+- Project memory profile; taxonomy tool decision heuristics
+- Data quality scoring; Visualization Agent; manuscript section drafts
+
 ## 0.5.0
 
-- 引入 Skill / Contract / Playbook 与图节点 `contract_check`
-- Taxonomy：长读长 gLM 路由、双路融合、ε-greedy 工具档案
-- IBD/健康/肿瘤标志物知识库与上下文生物学验证
-- 报告侧强制产出 `reproducibility/`（CWL + run_manifest）
-- Critic 汇总契约与生物学警告；文档体系重组（USAGE / ARCHITECTURE / INDEX）
+- Skill / Contract / Playbook + `contract_check`
+- gLM routing, dual-path fusion, ε-greedy tool profiles
+- IBD context biological validation + CWL reproducibility bundle
 
 ## 0.4.0
 
-- 四角色优化：HITL、events.jsonl、MAG CheckM 门控、MWU+BH-FDR
-- CI、methods/reproduce、evaluation metrics
+- Four-role optimization: HITL, events.jsonl, MAG CheckM gates, MWU+BH-FDR
+- CI, methods/reproduce, evaluation metrics
 
 ## 0.3.x
 
-- Linux 生产架构：MAGs、self-heal、RAG、Nextflow 移交产物
+- Linux production architecture: MAGs, self-heal, RAG, Nextflow handoff
 
 ## 0.2.x
 
-- 自包含 ToolContext + biocontainers，摆脱外部私有镜像约定
+- Self-contained ToolContext + biocontainers
 
 ## 0.1.x
 
-- LangGraph MVP：supervisor + 专用 agents + mock 端到端
+- LangGraph MVP
