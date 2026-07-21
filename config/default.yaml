@@ -177,6 +177,7 @@ statistics:
   demo_mode: false  # if true (or mock without groups), use explicit synthetic case/control matrix
   lefse_like: true
   ancom_like: true
+  try_run_r: false  # if true and Rscript+packages present, execute DESeq2/MaAsLin2/ANCOM-BC scripts
   # Applied after HITL OTU/ASV gate (defaults = balanced preset)
   min_prevalence: 0.1
   min_rel_abundance: 1.0e-5

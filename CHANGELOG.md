@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.22.0
+
+- CAMI-style toy taxonomy P/R/F1 benchmark (`evaluation/cami_toy`)
+- Project Memory TF-IDF retrieve (`ContextMemory.retrieve`) wired into `/chat`
+- Copilot Web UI at `GET /` and `/ui`
+- Journal R export: DESeq2 / MaAsLin2 / ANCOM-BC scripts under `biomarkers/r_export/`
+
 ## 0.21.0
 
 - Unified `reasoning/` decision audit (`chain.jsonl` / `chain.md`)

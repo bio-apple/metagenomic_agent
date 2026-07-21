@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Literal, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from metagenomic_agent import __version__
@@ -20,6 +22,20 @@ app = FastAPI(
     description="Autonomous AI agent system for end-to-end metagenomic analysis",
     version=__version__,
 )
+
+_WEB_STATIC = Path(__file__).resolve().parents[1] / "web" / "static"
+if _WEB_STATIC.is_dir():
+    app.mount("/ui/assets", StaticFiles(directory=str(_WEB_STATIC)), name="ui_assets")
+
+
+@app.get("/")
+@app.get("/ui")
+def web_ui() -> FileResponse:
+    """Minimal Copilot Web UI (analyze + chat)."""
+    index = _WEB_STATIC / "index.html"
+    if not index.exists():
+        raise HTTPException(status_code=404, detail="Web UI not packaged")
+    return FileResponse(index)
 
 
 class AnalyzeRequest(BaseModel):
@@ -260,7 +276,8 @@ class ChatResponse(BaseModel):
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest) -> ChatResponse:
-    """Lightweight ChatCopilot: hybrid RAG + optional run artifacts (no free-form hallucination)."""
+    """Lightweight ChatCopilot: hybrid RAG + project Memory + optional run artifacts."""
+    from metagenomic_agent.coordinator.memory import ContextMemory
     from metagenomic_agent.rag import retrieve_multi
     from metagenomic_agent.rag.authority import authority_context_block, ground_taxon
 
@@ -271,8 +288,11 @@ def chat(req: ChatRequest) -> ChatResponse:
 
     biomarkers: list[dict[str, Any]] = []
     lit_excerpt = None
+    memory_hits: list[dict[str, Any]] = []
     if req.outdir:
         out = Path(req.outdir).expanduser()
+        mem = ContextMemory(out / "context")
+        memory_hits = mem.retrieve(req.question, top_k=3)
         bio = out / "biomarkers" / "biomarkers.tsv"
         if bio.exists():
             import csv
@@ -297,6 +317,11 @@ def chat(req: ChatRequest) -> ChatResponse:
             f"- [{h.get('database')}] {h.get('name') or h.get('id')}: "
             f"{(h.get('notes') or h.get('pathway') or '')[:160]}"
         )
+    if memory_hits:
+        lines.append("")
+        lines.append("Project memory:")
+        for m in memory_hits:
+            lines.append(f"- [{m.get('id')}] score={m.get('score')}: {(m.get('text') or '')[:200]}")
     # Try to ground first token that looks like a taxon
     tokens = [t for t in req.question.replace(",", " ").split() if t[:1].isupper() and len(t) > 3]
     for t in tokens[:3]:
@@ -313,12 +338,13 @@ def chat(req: ChatRequest) -> ChatResponse:
             lines.append(
                 f"- {b.get('genus')}: {b.get('direction')} p={b.get('p_value')} q={b.get('q_value')}"
             )
-    if not flat and not biomarkers:
+    if not flat and not biomarkers and not memory_hits:
         lines.append("- No curated hits; refine the question or mount fuller database/ RAG dumps.")
 
+    grounded = flat + [{"database": "project_memory", **m} for m in memory_hits]
     return ChatResponse(
         answer="\n".join(lines),
-        grounded_hits=flat,
+        grounded_hits=grounded,
         literature_excerpt=lit_excerpt,
         biomarkers=biomarkers,
     )

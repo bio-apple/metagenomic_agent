@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.21.0` · Metagenomic Research Copilot · HITL / Hybrid RAG / Chat API / 容器一键部署。
+**版本** `0.22.0` · Metagenomic Research Copilot · Web UI · CAMI toy · Memory 检索 · R 差异分析导出。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -41,7 +41,9 @@ Router → Planner → HITL → Executor (cluster → BioContainers + checkpoint
 | [database/README.md](database/README.md) | 知识库 / 参考库路径 |
 
 ```bash
-docker compose up --build   # API :8000  →  POST /analyze  /chat  /runs/.../hitl
+docker compose up --build   # http://127.0.0.1:8000/ui  ·  /analyze  /chat  /hitl
+meta-agent serve --host 127.0.0.1 --port 8000
+open http://127.0.0.1:8000/ui
 ```
 
 ## License

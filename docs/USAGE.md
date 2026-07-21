@@ -1,4 +1,4 @@
-# 使用指南（v0.21）
+# 使用指南（v0.22）
 
 架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。Linux 大内存服务器（≥256 GB）部署见 [DEPLOY_LINUX.md](DEPLOY_LINUX.md)。
 
@@ -52,7 +52,14 @@ curl -X POST http://127.0.0.1:8000/runs/<run_id>/hitl/decide \
   -d '{"outdir":"./results/async1","decisions":[{"id":"confirm_report_publish","key":"B"}],"resume":true}'
 ```
 
-Chat（接地问答，可选绑定已完成 run 的 outdir）：
+Web UI（分析 + Chat）：
+
+```bash
+meta-agent serve --host 127.0.0.1 --port 8000
+open http://127.0.0.1:8000/ui
+```
+
+Chat（接地问答，可选绑定已完成 run 的 outdir / project Memory）：
 
 ```bash
 curl -X POST http://127.0.0.1:8000/chat -H 'Content-Type: application/json' \
@@ -64,6 +71,8 @@ curl -X POST http://127.0.0.1:8000/chat -H 'Content-Type: application/json' \
 ```bash
 docker compose up --build
 ```
+
+差异分析 R 导出（DESeq2 / MaAsLin2 / ANCOM-BC）：运行后见 `biomarkers/r_export/`；可选 `statistics.try_run_r: true`。
 
 环境变量：`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`（可选）。
 

@@ -1,4 +1,4 @@
-# 架构说明（v0.21）
+# 架构说明（v0.22）
 
 CLI / 配置 / 产物见 [USAGE.md](USAGE.md)；Linux ≥256 GB 部署见 [DEPLOY_LINUX.md](DEPLOY_LINUX.md)；短板闭环见 [OPTIMIZATION.md](OPTIMIZATION.md)。
 
@@ -52,6 +52,8 @@ parse → router → bio_reasoning → supervisor → tool_specialist → plan_v
 - 推理链：`outdir/reasoning/chain.md`
 - 文献报告：`literature_report.md`；Chat：`POST /chat`
 
-## 局限
+## 评估 / Memory / UI
 
-全量 CAMI 基准、向量化项目 Memory、完整 Web UI 仍为部分能力。
+- CAMI toy：`evaluation/cami_toy`（属级 P/R/F1；非全量 OPAMI）
+- Memory：`ContextMemory.retrieve`（本地 TF-IDF）
+- Web UI：`GET /ui`；期刊 R 脚本：`biomarkers/r_export/`

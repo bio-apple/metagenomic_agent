@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Metagenomic Research Copilot</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222d;
+      --ink: #e7eef7;
+      --muted: #8b9bb0;
+      --accent: #3d9a7a;
+      --accent2: #c4a35a;
+      --line: #2a3544;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1c3a32 0%, transparent 50%),
+                  radial-gradient(900px 500px at 100% 0%, #2a2618 0%, transparent 45%),
+                  var(--bg);
+      color: var(--ink);
+    }
+    header {
+      padding: 1.5rem 2rem 0.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 {
+      margin: 0;
+      font-family: "IBM Plex Serif", Georgia, serif;
+      font-weight: 600;
+      font-size: 1.6rem;
+      letter-spacing: -0.02em;
+    }
+    header p { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.95rem; }
+    main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      padding: 1rem 2rem 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    section {
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 1.2rem;
+    }
+    section h2 {
+      margin: 0 0 0.8rem;
+      font-size: 1.05rem;
+      color: var(--accent2);
+      font-weight: 600;
+    }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin: 0.5rem 0 0.25rem; }
+    input, select, textarea {
+      width: 100%;
+      background: #111820;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 0.55rem 0.7rem;
+      font: inherit;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    button {
+      margin-top: 0.8rem;
+      background: var(--accent);
+      color: #04140f;
+      border: 0;
+      border-radius: 8px;
+      padding: 0.55rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    pre {
+      background: #111820;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.75rem;
+      overflow: auto;
+      max-height: 280px;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+    }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .row button { flex: 1; min-width: 120px; }
+    a { color: var(--accent2); }
+    .status { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Metagenomic Research Copilot</h1>
+    <p>上传路径 · 启动分析 · 异步 HITL · 接地问答 · 查看结果仪表盘</p>
+  </header>
+  <main>
+    <section>
+      <h2>运行分析</h2>
+      <label>Input path (服务器可读路径)</label>
+      <input id="input_path" value="tests/fixtures/fastq"/>
+      <label>Outdir</label>
+      <input id="outdir" value="./results/webui"/>
+      <label>Query</label>
+      <textarea id="query">IBD gut microbiome biomarker discovery</textarea>
+      <label>Mode</label>
+      <select id="mode">
+        <option value="mock" selected>mock</option>
+        <option value="apptainer">apptainer</option>
+        <option value="docker">docker</option>
+        <option value="local">local</option>
+      </select>
+      <label>HITL</label>
+      <select id="hitl_mode">
+        <option value="auto" selected>auto</option>
+        <option value="async">async</option>
+      </select>
+      <div class="row">
+        <button id="btn_run">POST /analyze</button>
+        <button class="secondary" id="btn_health">Health</button>
+      </div>
+      <p class="status" id="run_status"></p>
+      <pre id="run_out">{}</pre>
+    </section>
+    <section>
+      <h2>Chat（RAG 接地）</h2>
+      <label>Question</label>
+      <textarea id="question">Why is Faecalibacterium reduced in IBD?</textarea>
+      <label>可选 outdir（绑定已完成 run）</label>
+      <input id="chat_outdir" placeholder="./results/webui"/>
+      <button id="btn_chat">POST /chat</button>
+      <p class="status" id="chat_status"></p>
+      <pre id="chat_out"></pre>
+      <p class="status">
+        结果页：
+        <a id="dash_link" href="#" target="_blank">interactive_dashboard.html</a> ·
+        <a id="report_link" href="#" target="_blank">final_report.html</a>
+      </p>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    async function health() {
+      const r = await fetch("/health");
+      $("run_status").textContent = JSON.stringify(await r.json());
+    }
+    $("btn_health").onclick = health;
+    $("btn_run").onclick = async () => {
+      $("run_status").textContent = "running…";
+      const body = {
+        input_path: $("input_path").value,
+        outdir: $("outdir").value,
+        query: $("query").value,
+        mode: $("mode").value,
+        hitl_mode: $("hitl_mode").value,
+      };
+      try {
+        const r = await fetch("/analyze", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(body),
+        });
+        const j = await r.json();
+        $("run_out").textContent = JSON.stringify(j, null, 2);
+        $("run_status").textContent = r.ok ? `status=${j.status}` : `HTTP ${r.status}`;
+        $("chat_outdir").value = body.outdir;
+        const base = body.outdir.replace(/\/$/, "");
+        // File links only work if results are served; show paths for local open
+        $("dash_link").textContent = base + "/interactive_dashboard.html";
+        $("dash_link").href = "#";
+        $("report_link").textContent = (j.report_path || base + "/final_report.html");
+        $("report_link").href = "#";
+      } catch (e) {
+        $("run_status").textContent = String(e);
+      }
+    };
+    $("btn_chat").onclick = async () => {
+      $("chat_status").textContent = "…";
+      const body = {
+        question: $("question").value,
+        outdir: $("chat_outdir").value || null,
+      };
+      const r = await fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body),
+      });
+      const j = await r.json();
+      $("chat_out").textContent = j.answer || JSON.stringify(j, null, 2);
+      $("chat_status").textContent = r.ok ? "ok" : `HTTP ${r.status}`;
+    };
+    health();
+  </script>
+</body>
+</html>

@@ -296,6 +296,18 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         mat_lines.append(sid + "\t" + "\t".join(str(matrix[sid].get(t, 0.0)) for t in all_taxa))
     mat_path.write_text("\n".join(mat_lines) + "\n", encoding="utf-8")
 
+    # Journal-grade R export (DESeq2 / MaAsLin2 / ANCOM-BC scripts)
+    r_export: dict[str, Any] = {}
+    if matrix and len(group_names) >= 2:
+        from metagenomic_agent.stats.export_for_r import export_r_bundle
+
+        try_run = bool(cfg_stats.get("try_run_r", False))
+        r_export = export_r_bundle(
+            matrix, groups, biomarker_dir / "r_export", try_run=try_run
+        )
+        methods.append("r_export_deseq2_maaslin2_ancombc")
+        notes.append(f"R export → {r_export.get('readme')} (Rscript={r_export.get('r_available')})")
+
     (outdir / "notes.txt").write_text("\n".join(notes) + "\n", encoding="utf-8")
 
     stats = {
@@ -305,6 +317,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "biomarkers": str(biomarker_path),
         "lefse_like": str(biomarker_dir / "lefse_like.tsv") if lefse_rows else None,
         "ancom_like": str(biomarker_dir / "ancom_like.tsv") if ancom_rows else None,
+        "r_export": r_export or None,
         "n_biomarkers": len(biomarkers),
         "biomarker_list": biomarkers[:20],
         "lefse_list": lefse_rows[:20],
@@ -316,9 +329,8 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "disclaimer": (
             "Default differential abundance: Mann-Whitney U + BH-FDR. "
             "Also exports lefse_like (Cohen's d proxy) and ancom_like (CLR+MWU). "
-            "Ultra-low-frequency features are culled using HITL-confirmed prevalence thresholds. "
-            "These are lightweight Python approximations — for journal submission prefer "
-            "official LEfSe / ANCOM-BC / MaAsLin2 on exported tables."
+            "Journal tools: biomarkers/r_export/ (DESeq2, MaAsLin2, ANCOM-BC Rscripts). "
+            "Ultra-low-frequency features are culled using HITL-confirmed prevalence thresholds."
         ),
     }
     (outdir / "statistics_summary.json").write_text(

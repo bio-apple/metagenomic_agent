@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metagenomic-agent"
-version = "0.21.0"
+version = "0.22.0"
 description = "Container-sandboxed multi-agent metagenomics platform with self-healing execution"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,6 +42,7 @@ metagenomic_agent = [
   "knowledge/*.json",
   "rag/data/*.json",
   "report/templates/*.html",
+  "web/static/*",
 ]
 
 [tool.pytest.ini_options]
