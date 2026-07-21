@@ -1,85 +1,84 @@
-# 架构说明（v0.5 实现）
+# 架构说明（v0.7）
 
-本文描述**仓库当前代码**的结构，而非早期设计稿。源码根目录：`src/metagenomic_agent/`。
+源码根目录：`src/metagenomic_agent/`。
 
-## 分层总览
+## 分层
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  Interfaces: CLI (meta-agent) · FastAPI (/analyze)          │
-├─────────────────────────────────────────────────────────────┤
-│  Orchestration: LangGraph (graph.py)                        │
-│  parse → supervisor → contract_check → hitl → execute_swarm │
-│       → validate → self_heal* → critic → literature → report│
-├──────────────┬──────────────────────┬───────────────────────┤
-│ Agents       │ Skills / Contracts   │ Tools / Runtime       │
-│ supervisor   │ registry, playbooks  │ fastp, kraken, …      │
-│ qc/tax/asm…  │ checker, router      │ glm, linux_runner     │
-│ critic/lit…  │ bandit (ε-greedy)    │ ToolContext modes     │
-├──────────────┴──────────────────────┴───────────────────────┤
-│ Validators · Knowledge (IBD KB, RAG) · Report + CWL         │
-│ Execution: executor, self_heal, monitor, optional engines   │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  CLI (meta-agent) · FastAPI (/analyze)                       │
+├──────────────────────────────────────────────────────────────┤
+│  LangGraph (graph.py)                                        │
+│  parse → supervisor → export_dag → contract_check → HITL     │
+│       → swarm → validate → quality → self-heal*              │
+│       → critic → literature → pi_review* → viz → report      │
+├─────────────┬────────────────────┬───────────────────────────┤
+│ Agents      │ Skills / RAG       │ Tools / Stats             │
+│ supervisor  │ contracts/playbook │ fastp, kraken, glm…       │
+│ qc/tax/asm  │ router, bandit     │ ToolContext modes         │
+│ stats/crit  │ rag/* + TF-IDF     │ ordination, lefse_like…   │
+│ lit/PI/viz  │ decision           │ linux/docker runners      │
+├─────────────┴────────────────────┴───────────────────────────┤
+│ Validators · Knowledge · Report/CWL/Manuscript · Benchmarks  │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-## 图节点职责
+## 图节点
 
 | 节点 | 模块 | 职责 |
 |------|------|------|
-| `parse_input` | `input/parser.py` | 发现样本、读长等输入特征 |
-| `supervisor` | `agents/supervisor.py` | 任务分解与 DAG / playbook 选择 |
-| `contract_check` | `skills/checker.py` | 技能前置契约；失败可挂 HITL |
-| `hitl` | `agents/hitl.py` | 人机确认或自动通过 |
-| `execute_swarm` | `execution/executor.py` | 按 DAG 调度专用 Agent |
-| `validate` | `validators/loop.py` | 技术 QC + 生物学上下文检查 |
-| `self_heal` | `execution/self_heal.py` 等 | 参数降级、工具切换、有限次重试 |
-| `critic` | `agents/critic_agent.py` | 可靠性与契约/生物警告汇总 |
-| `literature` | `agents/literature_agent.py` | PubMed / RAG 辅助 |
-| `report` | `report/generator.py` | 报告 + `reproducibility` 包 |
+| `parse_input` | `input/parser.py` | 样本与读长特征 |
+| `supervisor` | `agents/supervisor.py` | 规划 + project Memory |
+| `export_dag` | `execution/dag_export.py` | `workflow/dag.json` |
+| `contract_check` | `skills/checker.py` | 前置契约；可选硬失败 |
+| `hitl` | `agents/hitl.py` | 人机确认 |
+| `execute_swarm` | `execution/executor.py` | 拓扑调度专用 Agent |
+| `validate` | `validators/loop.py` | 技术 + 生物学验证 |
+| `quality_scores` | `evaluation/quality_score.py` | 综合质量分 |
+| `self_heal` | `execution/self_heal.py` | 降参 / 换工具重试 |
+| `critic` | `agents/critic_agent.py` | 警告汇总 |
+| `literature` | `agents/literature_agent.py` | 文献 + Evidence Table + bio-RAG |
+| `pi_review` | `agents/pi_agent.py` | PI 复盘，可触发再跑 |
+| `visualization` | `agents/visualization_agent.py` | PCoA / 共现 / Volcano 等 |
+| `report` | `report/generator.py` | HTML + methods + manuscript + CWL |
 
-## Skill / Contract / Playbook
+## 能力清单（相对建议书）
 
-- **Skill**：工具封装（输入/输出契约），见 `skills/registry.py`
-- **Contract**：`skills/contracts.py` 中的 pre/post 条件
-- **Playbook**：强制步骤序列（如 taxonomy_profiling、mag_recovery、ibd_biomarker），见 `skills/playbooks.py`
-- **路由**：`skills/router.py` — 长读长（≥5000 bp）优先 gLM；短读长经典工具；可选双路融合
-- **Bandit**：`skills/bandit.py` — 按历史 match/quality 做 ε-greedy 选择
+| 能力 | 位置 |
+|------|------|
+| Skill / Contract / Playbook | `skills/` |
+| gLM 路由 + ε-greedy | `skills/router.py`, `bandit.py`, `tools/glm.py` |
+| 生物库 RAG | `rag/`（gtdb/card/vfdb/kegg/mgnify/bacdive/hmp/refseq/ncbi/eggnog） |
+| TF-IDF 语义检索 | `rag/embeddings.py` |
+| Evidence Table | `agents/evidence.py` → `evidence/` |
+| PCoA / 共现 / LEfSe-like / ANCOM-like | `stats/` |
+| 质量评分 | `evaluation/quality_score.py` |
+| 手稿草稿 | `report/manuscript.py` |
+| 契约硬失败 | `validation.contract_hard_fail` |
+| gLM 外部推理 | `paths.glm_inference_cmd` |
+| Benchmark | `evaluation/benchmarks.py` |
+| Snakemake / Nextflow | `workflow/` |
 
-## 工具运行时
-
-`tools/context.py` 的 `ToolContext` 统一 `mock|local|conda|docker`。真实二进制通过 `linux_runner` / `docker_runner` 调用；gLM 适配在 `tools/glm.py`。
-
-## 验证与知识
-
-- 技术：`validators/technical.py`
-- 生物学：`validators/biological.py` + `knowledge/ibd_biomarker_kb.json`
-- 自愈动作：`validators/recovery.py`
-
-## 部署扩展（可选）
-
-- `deployment/celery_app.py`、`deployment/slurm.py`
-- `workflow/Snakefile`、`workflow/nextflow/`
-- `execution/engine.py`：可切换外部引擎产物（默认仍为 LangGraph 进程内执行）
-
-## 包结构速查
+## 包结构
 
 ```text
-src/metagenomic_agent/
-  agents/          # 专用智能体
-  skills/          # 契约、剧本、路由、bandit
-  tools/           # 生信与 gLM 适配
-  validators/      # 技术 + 生物学验证
-  execution/       # 调度、监控、自愈
-  report/          # 报告与 CWL
-  knowledge/       # KB / RAG 文本
-  api/             # FastAPI
-  evaluation/      # 基准指标辅助
+agents/          # 专用智能体（含 PI、visualization）
+skills/          # 契约、剧本、路由、决策
+rag/             # 生物数据库检索
+stats/           # 排序、差异近似、共现
+tools/           # 生信与 gLM
+validators/      # 技术 + 生物学
+execution/       # 调度、DAG 导出、自愈、监控
+report/          # 报告、手稿、CWL
+knowledge/       # gut/IBD KB、best_practices
+evaluation/      # metrics、quality、benchmarks
+coordinator/     # Memory、环境探测
+api/             # FastAPI
 ```
 
-设计动机与代码落地表见 [OPTIMIZATION_PROPOSAL_IMPL.md](OPTIMIZATION_PROPOSAL_IMPL.md) 与 [PROPOSAL_2026_IMPL.md](PROPOSAL_2026_IMPL.md)。
+## 设计原则
 
-### v0.6–0.7 图节点增量
-
-- `export_dag` / `quality_scores` / `visualization`
-- `literature`：Evidence Table + bio-DB RAG
-- `pi_review`：PI Agent 可选复盘重跑
+1. **Mock 可测**：无 GPU/全库也可跑通 CI。  
+2. **诚实披露**：近似统计与 curated RAG 在 Methods 中标明。  
+3. **可移交**：DAG JSON + CWL + reproduce.sh 支持外部引擎。  
+4. **可扩展**：全量 DB / 真实 gLM 通过 paths 挂载，不改编排主链。

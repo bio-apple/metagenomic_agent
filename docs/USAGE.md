@@ -1,8 +1,8 @@
-# 使用指南（USAGE）
+# 使用指南（v0.7）
 
 ## CLI
 
-入口命令：`meta-agent`（见 `pyproject.toml` → `[project.scripts]`）。
+入口：`meta-agent`（`pyproject.toml` → `[project.scripts]`）。
 
 ### `meta-agent run`
 
@@ -11,22 +11,19 @@
 | `-i / --input` | 必填 | FASTQ 文件或目录 |
 | `-o / --outdir` | `./results` | 输出目录 |
 | `-m / --mode` | `mock` | `mock` \| `local` \| `conda` \| `docker` |
-| `-q / --query` | 通用分析句 | 自然语言研究问题（影响剧本与生物验证上下文） |
-| `--metadata` | 无 | 含 `sample_id,group` 的 TSV/CSV |
-| `-c / --config` | `config/default.yaml` | YAML 覆盖配置 |
+| `-q / --query` | 通用分析句 | 自然语言问题（影响剧本、生物验证、文献） |
+| `--metadata` | 无 | `sample_id,group` 的 TSV/CSV |
+| `-c / --config` | `config/default.yaml` | YAML 覆盖 |
 | `-y / --yes` | false | 强制自动确认 HITL |
-
-示例：
 
 ```bash
 # 演示
 meta-agent run -i tests/fixtures/fastq -o ./results --mode mock --yes \
-  -q "Healthy gut microbiome profiling"
+  -q "IBD gut microbiome biomarker discovery"
 
-# 真实工具（需本机安装 + 数据库路径）
+# 真实数据
 meta-agent run -i /data/fastq -o /data/out --mode local \
-  -c config/default.yaml \
-  --metadata /data/meta.tsv \
+  -c config/default.yaml --metadata /data/meta.tsv \
   -q "IBD vs healthy biomarker discovery"
 ```
 
@@ -34,60 +31,33 @@ meta-agent run -i /data/fastq -o /data/out --mode local \
 
 ```bash
 meta-agent serve --host 127.0.0.1 --port 8000
+# GET  /health
+# POST /analyze
 ```
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/health` | 健康检查 |
-| POST | `/analyze` | 同步跑完整流水线（API 内默认 `hitl.auto_confirm=true`） |
-
-请求体字段：`input_path`, `outdir`, `query`, `mode`, `metadata_path`, `config_path`。
 
 ### `meta-agent version`
 
-打印包版本（当前 `0.5.0`）。
+打印当前版本。
 
-## 配置分层
+## 配置要点（`config/default.yaml`）
 
-1. 内置默认：`config/default.yaml`
-2. `-c` 指定文件覆盖
-3. CLI `--mode` / `--yes` 运行时覆盖
+| 段 | 作用 |
+|------|------|
+| `routing.*` | gLM / 双路 / ε-greedy |
+| `paths.*` | 数据库、`glm_weights`、`glm_inference_cmd` |
+| `pipeline.*` | 是否组装、分类工具列表 |
+| `validation.contract_hard_fail` | 契约 ERROR 时是否中止 swarm |
+| `literature.*` | PubMed / Europe PMC / OpenAlex / Semantic Scholar |
+| `statistics.lefse_like` / `ancom_like` | 近似差异方法开关 |
+| `rag.mode` | `keyword` \| `semantic`（TF-IDF） |
+| `pi.max_replans` | PI Agent 最多复盘次数 |
+| `report.manuscript_template` | Nature / Cell / ISME / Microbiome / Gut Microbes |
+| `hitl.auto_confirm` | 非交互默认；生产建议 `false` |
+| `project.*` | Memory 中的 host/platform 等 |
 
-### 常用段落
+环境变量：`.env` 中 `OPENAI_API_KEY`、`OPENAI_BASE_URL`（DeepSeek / vLLM / Ollama）。
 
-```yaml
-routing:
-  enable_glm: true      # 允许 gLM 路由
-  dual_path: true       # 短读长可传统+gLM 融合（按路由逻辑）
-  epsilon: 0.15         # ε-greedy 探索率
-
-pipeline:
-  enable_assembly: false
-  taxonomy_tools: ["kraken2", "metaphlan"]
-
-paths:
-  kraken2_db: "database/kraken_db"
-  glm_weights: ""       # 空则 gLM 走桩/mock
-
-hitl:
-  auto_confirm: true    # 交互生产环境建议 false
-
-validation:
-  min_read_retention: 0.3
-  require_gut_markers: true
-```
-
-环境变量：`.env` 中可配 `OPENAI_API_KEY`、`OPENAI_BASE_URL`（兼容 DeepSeek / vLLM / Ollama）。
-
-## 推荐工作流
-
-1. **工程冒烟**：`mock` + `pytest -q`
-2. **小规模真数据**：`local`/`conda`，`enable_assembly: false`，先跑 QC+分类+统计
-3. **MAGs**：打开 `pipeline.enable_assembly`，确认内存/`linux.memory_gb` 与 CheckM 阈值
-4. **长读长**：确保测序特征被识别（读长 ≥ 5000 bp 时优先 `microcafe` 路由）；配置 `glm_weights` 后再解读分类结果
-5. **投稿复现**：提交 `report/methods.md`、`reproduce.sh`、`reproducibility/` 目录
-
-## 元数据格式
+## 元数据
 
 ```tsv
 sample_id	group
@@ -95,16 +65,36 @@ S1	IBD
 S2	Control
 ```
 
-无分组时，统计模块在 `statistics.demo_mode` 或 mock 下可能使用合成对照矩阵——Methods 中需如实说明。
+无分组时，mock/`demo_mode` 可能使用合成对照——Methods 须说明。
 
-## 故障排查
+## 推荐流程
+
+1. `mock` + `pytest -q` 冒烟  
+2. 小规模 `local`/`conda`，`enable_assembly: false`  
+3. 需要 MAGs 时打开组装并确认内存  
+4. 长读长：读长 ≥5000 bp 走 gLM 路由；配置权重后再解读  
+5. 投稿：提交 `methods.md`、`reproduce.sh`、`reproducibility/`、`evidence/`、`workflow/dag.json`
+
+## 外部工作流
+
+```bash
+# Snakemake（委托 meta-agent）
+snakemake -j 4 --configfile config/default.yaml \
+  --config input_dir=tests/fixtures/fastq outdir=results mode=mock
+
+# Nextflow
+nextflow run workflow/nextflow/main.nf --input tests/fixtures/fastq --outdir results --mode mock
+```
+
+## 排障
 
 | 现象 | 处理 |
 |------|------|
-| HITL 卡住 | 加 `--yes`，或设 `hitl.auto_confirm: true` |
-| 契约失败进 HITL | 检查上游 FASTQ/质控产物是否满足 skill 输入契约 |
-| 分类率过低 | Critic 会建议 MetaPhlAn / gLM；检查数据库路径 |
-| OOM / exit 137 | Self-heal 会降组装参数或降级 assembler |
-| 生物学 WARN | 阅读 `biological_context.json`；核对研究背景与 query 措辞 |
+| HITL 卡住 | `--yes` 或 `hitl.auto_confirm: true` |
+| 契约硬失败 | 检查 FASTQ/契约；或设 `contract_hard_fail: false` |
+| 分类率低 | Critic 会建议 MetaPhlAn/gLM；检查 DB 路径 |
+| OOM / 137 | Self-heal 降参数或降级 assembler |
+| 文献为空 | mock 下用 curated；在线需网络且 `literature.online: true` |
+| gLM 未生效 | 配置 `glm_weights` 与可选 `glm_inference_cmd` |
 
-更多实现细节见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+架构细节见 [ARCHITECTURE.md](ARCHITECTURE.md)。

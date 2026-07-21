@@ -2,23 +2,22 @@
 
 ## 0.7.0
 
-- Complete remaining 2026/IF10 backlog: TF-IDF bio-RAG, full DB wrappers, real PCoA/Spearman co-occurrence
-- LEfSe-like + CLR ANCOM-like exports; volcano/sankey/lefse figure JSON
-- Contract hard-fail switch; gLM external inference hook; PI Agent replan loop
-- Benchmark suite; expanded curated index; staged Snakemake/Nextflow docs
+- 补齐建议书剩余项：真实 PCoA/共现、LEfSe-like/ANCOM-like、TF-IDF RAG、全 DB wrapper
+- 契约硬失败、gLM 外部推理钩子、PI Agent、benchmarks
+- 文档收敛为 README / USAGE / ARCHITECTURE / METHODS
 
 ## 0.6.0
 
-- Biological database RAG, Evidence Table, DAG export, quality scores, viz/manuscript skeletons
+- 生物库 RAG、Evidence Table、DAG 导出、质量评分、手稿/可视化骨架
 
 ## 0.5.0
 
-- Skills/contracts, gLM routing, biology validation, CWL bundle
+- Skill/Contract、gLM 路由、生物学验证、CWL
 
 ## 0.4.0
 
-- Four-role optimization (HITL, CheckM, MWU+FDR, CI)
+- HITL、CheckM 门控、MWU+FDR、CI
 
 ## 0.3.x – 0.1.x
 
-- Linux production path, ToolContext, LangGraph MVP
+- Linux 生产路径、ToolContext、LangGraph MVP
