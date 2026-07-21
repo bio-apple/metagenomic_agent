@@ -38,6 +38,17 @@ ASSAY_CUES = {
     "宏基因组": ("shotgun_metagenomics", "Unbiased community + function; preferred for disease association."),
     "16s": ("amplicon_16s", "Cheaper taxonomy; limited function — escalate to shotgun if pathways needed."),
     "amplicon": ("amplicon_16s", "Cheaper taxonomy; limited function — escalate to shotgun if pathways needed."),
+    "metatranscript": (
+        "metatranscriptomics",
+        "RNA-level activity; pair with DNA metagenomes for genome context when possible.",
+    ),
+    "rna-seq": (
+        "metatranscriptomics",
+        "RNA-level activity; pair with DNA metagenomes for genome context when possible.",
+    ),
+    "long-read": ("long_read_metagenomics", "Prefer Flye (+ MetaBAT2/VAMB) for MAG recovery."),
+    "nanopore": ("long_read_metagenomics", "Prefer Flye (+ MetaBAT2/VAMB) for MAG recovery."),
+    "pacbio": ("long_read_metagenomics", "Prefer Flye (+ MetaBAT2/VAMB) for MAG recovery."),
 }
 
 
@@ -120,18 +131,38 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
     enable_statistics = goal == "disease_association_differential" or any(
         k in query.lower() for k in ("biomarker", "差异", "对照")
     )
-    enable_assembly = goal == "mag_recovery" or any(k in query.lower() for k in ("mag", "assembly", "组装"))
+    enable_assembly = goal == "mag_recovery" or any(
+        k in query.lower() for k in ("mag", "assembly", "组装", "binning", "genome recovery")
+    )
+    # Development.docx: large cohorts → recommend MAG recovery
+    auto_mag_n = int(((router.get("config") or {}).get("pipeline") or {}).get("auto_mag_min_samples") or 20)
+    # allow override from ambient config via samples length heuristic when n is large
+    if n >= 20 and goal in {"disease_association_differential", "community_profiling", "mag_recovery"}:
+        enable_assembly = True
+    if n >= auto_mag_n:
+        enable_assembly = True
 
     cot = _match_cot(query)
     assembler = "megahit" if high_complexity else "metaspades"
-    if cot and cot.get("assembler"):
+    if long_reads or any(k in query.lower() for k in ("nanopore", "pacbio", "long-read", "long read", "flye")):
+        assembler = "flye"
+    elif cot and cot.get("assembler"):
         assembler = cot["assembler"]
+    binners_preference = ["metabat2", "maxbin2", "concoct"]
+    if assembler == "flye" or any(k in query.lower() for k in ("vamb", "mag recovery", "das tool")):
+        if "vamb" not in binners_preference:
+            binners_preference.append("vamb")
 
     # Force external KB retrieval (nf-core / SOP / tool manuals + best practices)
     wf_hits = retrieve_workflow_snippets(query, engine=None, top_k=3)
     sop_hits = retrieve_sops(query, top_k=3)
     manual_hits = retrieve_tool_manuals(query, top_k=3)
     env = detect_sample_environment(query)
+    if env == "wastewater":
+        enable_function = True
+        # Wastewater studies often prioritize ARG / resistome
+        if any(k in query.lower() for k in ("arg", "amr", "resist", "耐药", "antibiotic")):
+            enable_assembly = enable_assembly or n >= 8
     bp_excerpt = ""
     if BP_PATH.exists():
         bp_excerpt = BP_PATH.read_text(encoding="utf-8")[:800]
@@ -243,6 +274,7 @@ def reason(query: str, samples: list[dict[str, Any]] | None = None, router: dict
         "enable_statistics": enable_statistics,
         "enable_assembly": enable_assembly,
         "assembler_preference": assembler,
+        "binners_preference": binners_preference,
         "high_complexity": high_complexity,
         "long_reads": long_reads,
         "n_samples": n,

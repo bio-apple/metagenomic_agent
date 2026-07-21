@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metagenomic-agent"
-version = "0.23.1"
+version = "0.24.0"
 description = "Container-sandboxed multi-agent metagenomics platform with self-healing execution"
 readme = "README.md"
 requires-python = ">=3.10"

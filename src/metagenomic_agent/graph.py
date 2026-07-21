@@ -75,20 +75,43 @@ def _route_after_validate(state: AgentState) -> Literal["self_heal", "critic"]:
     return "critic"
 
 
-def _route_after_critic(state: AgentState) -> Literal["self_heal", "literature"]:
+def _route_after_critic(state: AgentState) -> Literal["scientific_replan", "self_heal", "literature"]:
     critic = state.get("critic") or {}
     if critic.get("passed"):
         return "literature"
+    from metagenomic_agent.agents.scientific_replan import should_scientific_replan
+
+    arts = state.get("artifacts") or {}
+    replan_n = int(arts.get("scientific_replan_count") or 0)
+    max_replan = int((state.get("config") or {}).get("pi", {}).get("max_replans", 1))
+    if replan_n < max_replan and should_scientific_replan(state):
+        return "scientific_replan"
     if int(state.get("retry_count", 0)) < int(state.get("max_retries", 2)):
         if critic_suggests_heal(critic.get("recommendations")):
             return "self_heal"
     return "literature"
 
 
-def _route_after_pi(state: AgentState) -> Literal["self_heal", "visualization"]:
-    if state.get("pi_replan"):
+def _route_after_pi(state: AgentState) -> Literal["scientific_replan", "self_heal", "visualization"]:
+    if not state.get("pi_replan"):
+        return "visualization"
+    from metagenomic_agent.agents.scientific_replan import should_scientific_replan
+
+    arts = state.get("artifacts") or {}
+    replan_n = int(arts.get("scientific_replan_count") or 0)
+    max_replan = int((state.get("config") or {}).get("pi", {}).get("max_replans", 1))
+    if replan_n < max_replan and should_scientific_replan(state):
+        return "scientific_replan"
+    # Resource-level fallback when redesign budget exhausted
+    if int(state.get("retry_count", 0)) < int(state.get("max_retries", 2)):
         return "self_heal"
     return "visualization"
+
+
+def _scientific_replan(state: AgentState) -> dict:
+    from metagenomic_agent.agents.scientific_replan import apply_scientific_replan
+
+    return apply_scientific_replan(state)
 
 
 def _route_after_self_heal(state: AgentState) -> Literal["execute_swarm", "critic"]:
@@ -347,6 +370,7 @@ def build_graph():
     g.add_node("quality_scores", _quality_scores)
     g.add_node("hitl_runtime", hitl_checkpoint)
     g.add_node("self_heal", _self_heal)
+    g.add_node("scientific_replan", _scientific_replan)
     g.add_node("critic", critic_agent.run)  # QC & Critic
     g.add_node("literature", literature_agent.run)
     g.add_node("evidence", evidence_agent.run)
@@ -387,13 +411,28 @@ def build_graph():
         _route_after_self_heal,
         {"execute_swarm": "execute_swarm", "critic": "critic"},
     )
-    g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
+    g.add_conditional_edges(
+        "critic",
+        _route_after_critic,
+        {
+            "scientific_replan": "scientific_replan",
+            "self_heal": "self_heal",
+            "literature": "literature",
+        },
+    )
+    g.add_edge("scientific_replan", "execute_swarm")
     g.add_edge("literature", "evidence")
     g.add_edge("evidence", "reviewer")
     g.add_edge("reviewer", "reflection")
     g.add_edge("reflection", "pi_review")
     g.add_conditional_edges(
-        "pi_review", _route_after_pi, {"self_heal": "self_heal", "visualization": "visualization"}
+        "pi_review",
+        _route_after_pi,
+        {
+            "scientific_replan": "scientific_replan",
+            "self_heal": "self_heal",
+            "visualization": "visualization",
+        },
     )
     g.add_edge("visualization", "code_agent")
     g.add_edge("code_agent", "reporter")
@@ -411,6 +450,7 @@ def build_resume_graph():
     g.add_node("quality_scores", _quality_scores)
     g.add_node("hitl_runtime", hitl_checkpoint)
     g.add_node("self_heal", _self_heal)
+    g.add_node("scientific_replan", _scientific_replan)
     g.add_node("critic", critic_agent.run)
     g.add_node("literature", literature_agent.run)
     g.add_node("evidence", evidence_agent.run)
@@ -434,13 +474,28 @@ def build_resume_graph():
         _route_after_self_heal,
         {"execute_swarm": "execute_swarm", "critic": "critic"},
     )
-    g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
+    g.add_conditional_edges(
+        "critic",
+        _route_after_critic,
+        {
+            "scientific_replan": "scientific_replan",
+            "self_heal": "self_heal",
+            "literature": "literature",
+        },
+    )
+    g.add_edge("scientific_replan", "execute_swarm")
     g.add_edge("literature", "evidence")
     g.add_edge("evidence", "reviewer")
     g.add_edge("reviewer", "reflection")
     g.add_edge("reflection", "pi_review")
     g.add_conditional_edges(
-        "pi_review", _route_after_pi, {"self_heal": "self_heal", "visualization": "visualization"}
+        "pi_review",
+        _route_after_pi,
+        {
+            "scientific_replan": "scientific_replan",
+            "self_heal": "self_heal",
+            "visualization": "visualization",
+        },
     )
     g.add_edge("visualization", "code_agent")
     g.add_edge("code_agent", "reporter")

@@ -64,6 +64,7 @@ def retrieve_tool_manuals(query: str, tool: str | None = None, top_k: int = 3) -
         "gut": ["kraken2", "checkm2"],
         "soil": ["megahit", "checkm2", "gtdbtk"],
         "ocean": ["kraken2", "checkm2"],
+        "wastewater": ["kraken2", "megahit", "checkm2", "rgi"],
         "general": ["kraken2", "checkm2", "gtdbtk", "bakta"],
     }.get(env, ["kraken2", "checkm2"])
     out: list[dict[str, Any]] = []
@@ -109,6 +110,8 @@ def detect_sample_environment(query: str) -> str:
         return "ocean"
     if any(k in q for k in ("soil", "土壤", "rhizosphere")):
         return "soil"
+    if any(k in q for k in ("wastewater", "sewage", "wwtp", "activated sludge", "污水", "废水")):
+        return "wastewater"
     if any(k in q for k in ("gut", "stool", "fecal", "肠道", "ibd", "obes", "host", "clinical")):
         return "gut"
     return "general"

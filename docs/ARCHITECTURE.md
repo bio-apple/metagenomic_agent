@@ -1,6 +1,6 @@
 > 中文版: [ARCHITECTURE.zh-CN.md](ARCHITECTURE.zh-CN.md)
 
-# Architecture and Design (v0.23)
+# Architecture and Design (v0.24)
 
 Positioning: **Autonomous AI Scientist for Microbiome Discovery** (a metagenomics research agent, not a thin pipeline wrapper).
 
@@ -22,11 +22,13 @@ Graphical abstract (repository README): [`docs/figures/overview.svg`](figures/ov
 parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
   → planner → export_dag(+HITL) → workflow → contract → HITL
   → executor swarm (QC · Taxonomy · Function · Resistance · Stats · Assembly…)
-  → validate → [self_heal ↻ swarm] → critic → literature → evidence → reviewer → reflection
-  → pi_review → viz → code_agent → reporter → xai → report(+MetaAgentScore)
+  → validate → [self_heal ↻ swarm] → critic → [scientific_replan ↻ swarm] → literature → evidence → reviewer → reflection
+  → pi_review → [scientific_replan ↻ swarm] → viz → code_agent → reporter → xai → report(+MetaAgentScore)
 ```
 
 `self_heal`: classify error → propose actions → **high-risk requires HITL** → update params/DAG → re-run swarm (`max_retries`, default 2). Details: [SELF_HEAL.md](SELF_HEAL.md).
+
+`scientific_replan`: when Critic/PI findings imply tool or pipeline redesign (taxonomy/MAG/stats), patch DAG + config and re-enter `execute_swarm` (capped by `max_scientific_replan`, default 1). Distinct from resource-only self-heal.
 
 Async HITL: `resume_pipeline` continues from `execute_swarm`.
 

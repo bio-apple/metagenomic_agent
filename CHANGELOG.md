@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.24.0
+
+- Scientific replan loop: Critic/PI findings → DAG redesign (`scientific_replan`) → re-execute swarm (beyond resource self-heal)
+- MAG stack: Flye (long-read), VAMB binning stubs, HQ/MQ/LQ `mag_summary.json`; large-cohort auto-MAG; long-read prefers Flye over CoT defaults
+- Statistical Reasoning: abundance diagnostics (compositionality / zero-inflation / method hints), Simpson alpha, PERMANOVA-lite; R export MaAsLin3 / ANCOM-BC2 / ALDEx2
+- Sample types: wastewater SOP + environment routing; metatranscriptomics / long-read assay cues
+- Design source ingested under `docs/design/`
+
 ## 0.23.1
 
 - Self-Heal reliability: node-scoped heuristics, high-risk HITL gate (`confirm_self_heal`), FPR scenario suite (`evaluation/self_heal_fpr`) + [docs/SELF_HEAL.md](docs/SELF_HEAL.md)

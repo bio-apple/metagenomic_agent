@@ -1,6 +1,6 @@
 > 中文版: [USAGE.zh-CN.md](USAGE.zh-CN.md)
 
-# Usage Guide (v0.23)
+# Usage Guide (v0.24)
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for architecture and design; see [DEPLOY_LINUX.md](DEPLOY_LINUX.md) for Linux deployments with ≥256 GB RAM.
 

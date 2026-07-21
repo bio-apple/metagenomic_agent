@@ -83,6 +83,25 @@
       "pitfalls": ["Viral DNA may dominate; prokaryote-only DBs under-classify"]
     },
     {
+      "id": "env_wastewater_prep",
+      "title": "Wastewater / WWTP sample preprocessing strategy",
+      "tags": ["wastewater", "sewage", "wwtp", "activated sludge", "污水", "废水", "ARG"],
+      "triggers": ["wastewater", "sewage", "wwtp", "activated sludge", "污水", "废水", "effluent"],
+      "steps": [
+        "QC/trim; document influent vs effluent / solids fraction metadata",
+        "Often mixed human + environmental DNA — optional human host filter if clinical ARG focus",
+        "Taxonomy: Kraken2 broad DB; expect high diversity and transient taxa",
+        "Assembly: MEGAHIT for complex sludge; MAG recovery recommended for large cohorts",
+        "Function + AMR: RGI/DeepARG/ResFinder — wastewater is ARG hotspot; report with caution",
+        "Stats: compositional methods (ANCOM-BC2 / MaAsLin3); control for plant/batch when multi-site"
+      ],
+      "qc_gates": {"Q30_min_pct": 75, "read_retention_min": 0.2, "host_fraction_warn": 0.15},
+      "pitfalls": [
+        "ARG abundance ≠ clinical risk without context",
+        "Strong batch effects across WWTPs and seasons"
+      ]
+    },
+    {
       "id": "mag_qc_gate",
       "title": "MAG QC gating (CheckM2 → GTDB-Tk / Bakta)",
       "tags": ["mag", "checkm2", "gtdbtk", "bakta", "completeness"],

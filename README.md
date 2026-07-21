@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-0.23.1-0B6E4F.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.24.0-0B6E4F.svg)](CHANGELOG.md)
 
 **Autonomous AI Scientist for shotgun metagenomics** — multi-agent planning, container-sandboxed tool execution, evidence-grounded interpretation, and reproducible reporting.
 

@@ -1,6 +1,6 @@
 > English: [USAGE.md](USAGE.md)
 
-# 使用指南（v0.23）
+# 使用指南（v0.24）
 
 架构与设计见 [ARCHITECTURE.zh-CN.md](ARCHITECTURE.zh-CN.md)；内存 ≥256 GB 的 Linux 部署见 [DEPLOY_LINUX.zh-CN.md](DEPLOY_LINUX.zh-CN.md)。
 

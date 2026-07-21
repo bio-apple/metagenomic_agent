@@ -112,14 +112,24 @@ def _default_plan(
     ]
     if wants_assembly or pipe.get("enable_assembly", False):
         assembler = bio.get("assembler_preference") or pipe.get("default_assembler", "megahit")
+        binners = list(
+            bio.get("binners_preference")
+            or pipe.get("binners")
+            or (["metabat2", "maxbin2", "vamb"] if assembler == "flye" else ["metabat2", "maxbin2"])
+        )
+        asm_tools = ["megahit", "metaspades", "metabat2", "maxbin2", "checkm2", "gtdbtk"]
+        if assembler == "flye":
+            asm_tools = ["flye"] + [t for t in asm_tools if t != "megahit"]
+        if "vamb" in [b.lower() for b in binners]:
+            asm_tools.append("vamb")
         tasks.append(
             {
                 "name": "assembly_binning",
                 "agent": "Assembly Agent",
-                "tools": ["megahit", "metaspades", "metabat2", "maxbin2", "checkm2", "gtdbtk"],
+                "tools": asm_tools,
                 "params": {
                     "assembler": assembler,
-                    "binners": pipe.get("binners", ["metabat2", "maxbin2"]),
+                    "binners": binners,
                     "complexity": "high" if bio.get("high_complexity") else "low",
                 },
                 "depends_on": ["quality_control"],

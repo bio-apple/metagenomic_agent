@@ -39,6 +39,11 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             if cached and cached.get("contigs"):
                 asm = dict(cached)
                 checkpoints_reused += 1
+            elif assembler == "flye":
+                from metagenomic_agent.tools import flye as flye_tool
+
+                asm = flye_tool.run(sample, upstream, asm_dir, ctx=ctx)
+                asm["assembler"] = "flye"
             elif assembler == "metaspades":
                 try:
                     asm = binning.run_metaspades(sample, upstream, asm_dir, ctx)
@@ -71,6 +76,11 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
                     pass
                 else:
                     bins = binning.run_binning(sid, contigs, upstream, bin_dir, ctx, binners=binners)
+                    if "vamb" in [b.lower() for b in binners]:
+                        from metagenomic_agent.tools import vamb as vamb_tool
+
+                        vamb_art = vamb_tool.run_vamb(sid, contigs, bin_dir / "vamb", ctx)
+                        bins = {**bins, **vamb_art}
                     check = binning.run_checkm2(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
                     gtdb = binning.run_gtdbtk(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
                     asm = {**asm, **bins, **check, **gtdb}
@@ -100,15 +110,44 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     }
     if errors:
         result["errors"] = errors
-    # Write MAG summary
+    # Write MAG summary (Development.docx: HQ/MQ counts)
     mag_dir = outdir / "mags"
     mag_dir.mkdir(parents=True, exist_ok=True)
-    rows = ["sample\tassembler\tn_bins\tcompleteness\tcontamination\tgtdb"]
+    rows = [
+        "sample\tassembler\tn_bins\tcompleteness\tcontamination\tquality_class\tgtdb"
+    ]
+    hq = mq = lq = 0
     for sid, art in per_sample.items():
+        try:
+            comp = float(art.get("completeness") or 0)
+            cont = float(art.get("contamination") or 100)
+        except (TypeError, ValueError):
+            comp, cont = 0.0, 100.0
+        if comp >= 90 and cont <= 5:
+            qclass = "high"
+            hq += 1
+        elif comp >= 50 and cont <= 10:
+            qclass = "medium"
+            mq += 1
+        else:
+            qclass = "low"
+            lq += 1
         rows.append(
             f"{sid}\t{art.get('assembler', '')}\t{art.get('n_bins', '')}\t"
-            f"{art.get('completeness', '')}\t{art.get('contamination', '')}\t{art.get('gtdb_summary', '')}"
+            f"{art.get('completeness', '')}\t{art.get('contamination', '')}\t"
+            f"{qclass}\t{art.get('gtdb_summary', '')}"
         )
     (mag_dir / "mag_summary.tsv").write_text("\n".join(rows) + "\n", encoding="utf-8")
+    summary_json = {
+        "total_MAG": hq + mq + lq,
+        "high_quality_MAG": hq,
+        "medium_quality_MAG": mq,
+        "low_quality_MAG": lq,
+        "n_samples": len(per_sample),
+    }
+    (mag_dir / "mag_summary.json").write_text(
+        __import__("json").dumps(summary_json, indent=2), encoding="utf-8"
+    )
     result["mag_summary"] = str(mag_dir / "mag_summary.tsv")
+    result["mag_summary_stats"] = summary_json
     return result

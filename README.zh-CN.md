@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-0.23.1-0B6E4F.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.24.0-0B6E4F.svg)](CHANGELOG.md)
 
 **面向 shotgun 宏基因组的自主 AI 科学家** — 多智能体规划、容器沙箱工具执行、有据解读与可重复报告。
 

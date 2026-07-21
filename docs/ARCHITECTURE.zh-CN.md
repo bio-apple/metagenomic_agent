@@ -1,6 +1,6 @@
 > English: [ARCHITECTURE.md](ARCHITECTURE.md)
 
-# 架构与设计（v0.23）
+# 架构与设计（v0.24）
 
 定位：**面向微生物组发现的自主 AI 科学家**（宏基因组研究 Agent，而非薄封装流水线包装器）。
 
@@ -22,11 +22,13 @@
 parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
   → planner → export_dag(+HITL) → workflow → contract → HITL
   → executor swarm (QC · Taxonomy · Function · Resistance · Stats · Assembly…)
-  → validate → [self_heal ↻ swarm] → critic → literature → evidence → reviewer → reflection
-  → pi_review → viz → code_agent → reporter → xai → report(+MetaAgentScore)
+  → validate → [self_heal ↻ swarm] → critic → [scientific_replan ↻ swarm] → literature → evidence → reviewer → reflection
+  → pi_review → [scientific_replan ↻ swarm] → viz → code_agent → reporter → xai → report(+MetaAgentScore)
 ```
 
 `self_heal`：分类错误 → 提出动作 → **高风险需 HITL** → 更新参数/DAG → 重跑 swarm（`max_retries`，默认 2）。详情：[SELF_HEAL.zh-CN.md](SELF_HEAL.zh-CN.md)。
+
+`scientific_replan`：当 Critic/PI 结论暗示工具或流程重设计（分类/MAG/统计）时，修补 DAG + 配置并重新进入 `execute_swarm`（受 `max_scientific_replan` 限制，默认 1）。与仅资源级的 self-heal 区分。
 
 异步 HITL：`resume_pipeline` 从 `execute_swarm` 继续。
 

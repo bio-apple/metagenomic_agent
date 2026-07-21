@@ -204,20 +204,56 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         __import__("json").dumps(filter_meta, indent=2), encoding="utf-8"
     )
 
-    alpha_lines = ["sample\tgroup\tshannon\trichness"]
+    alpha_lines = ["sample\tgroup\tshannon\tsimpson\trichness"]
+    from metagenomic_agent.stats.diagnostics import (
+        diagnose_abundance,
+        permanova_pseudo_f,
+        simpson_index,
+    )
+
+    diagnostics = diagnose_abundance(matrix, groups)
+    (outdir / "abundance_diagnostics.json").write_text(
+        __import__("json").dumps(diagnostics, indent=2), encoding="utf-8"
+    )
+    notes.append(
+        "Statistical reasoning: "
+        f"compositional={diagnostics.get('compositional')} "
+        f"zero_inflation={diagnostics.get('zero_inflation')} "
+        f"→ diff={','.join(diagnostics.get('recommended_diff_methods') or [])}"
+    )
     for sid, abund in matrix.items():
-        alpha_lines.append(f"{sid}\t{groups.get(sid, 'unknown')}\t{_shannon(abund):.4f}\t{len(abund)}")
+        alpha_lines.append(
+            f"{sid}\t{groups.get(sid, 'unknown')}\t{_shannon(abund):.4f}\t"
+            f"{simpson_index(abund):.4f}\t{len(abund)}"
+        )
     alpha_path = outdir / "alpha_diversity.tsv"
     alpha_path.write_text("\n".join(alpha_lines) + "\n", encoding="utf-8")
 
     ids = sorted(matrix)
     beta_lines = ["sample_a\tsample_b\tbray_curtis"]
+    dist = [[0.0] * len(ids) for _ in ids]
     for i, a in enumerate(ids):
-        for b in ids[i + 1 :]:
-            beta_lines.append(f"{a}\t{b}\t{_bray_curtis(matrix[a], matrix[b]):.4f}")
+        for j, b in enumerate(ids):
+            if j <= i:
+                continue
+            d = _bray_curtis(matrix[a], matrix[b])
+            dist[i][j] = dist[j][i] = d
+            beta_lines.append(f"{a}\t{b}\t{d:.4f}")
     beta_path = outdir / "beta_diversity.tsv"
     beta_path.write_text("\n".join(beta_lines) + "\n", encoding="utf-8")
 
+    permanova: dict[str, Any] = {}
+    ord_tests = (diagnostics.get("recommended_diversity") or {}).get("ordination_test") or []
+    if "permanova" in ord_tests:
+        labels = [groups.get(s, "unknown") for s in ids]
+        if len({g for g in labels if g != "unknown"}) >= 2:
+            permanova = permanova_pseudo_f(dist, labels)
+            (outdir / "permanova.json").write_text(
+                __import__("json").dumps(permanova, indent=2), encoding="utf-8"
+            )
+            notes.append(
+                f"PERMANOVA-lite pseudo_F={permanova.get('pseudo_f')} p={permanova.get('p_value')}"
+            )
     biomarker_rows = ["genus\tgroup_a\tgroup_b\tmean_a\tmean_b\tlog2fc\tp_value\tq_value\tdirection"]
     biomarkers: list[dict[str, Any]] = []
     group_names = sorted({g for g in groups.values() if g != "unknown"})
@@ -253,13 +289,19 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
     methods = [
         "shannon_alpha",
+        "simpson_alpha",
         "bray_curtis_beta",
         "mannwhitney_u",
         "benjamini_hochberg_fdr",
+        "abundance_diagnostics",
     ]
+    if permanova:
+        methods.append("permanova_lite")
     cfg_stats = (state.get("config") or {}).get("statistics") or {}
+    # Prefer compositional journal methods when diagnostics recommend them
+    prefer_comp = bool(cfg_stats.get("prefer_compositional") or diagnostics.get("compositional"))
     enable_lefse = bool(cfg_stats.get("lefse_like", True))
-    enable_ancom = bool(cfg_stats.get("ancom_like", True))
+    enable_ancom = bool(cfg_stats.get("ancom_like", prefer_comp or True))
     lefse_rows: list[dict[str, Any]] = []
     ancom_rows: list[dict[str, Any]] = []
     if len(group_names) >= 2:
@@ -305,7 +347,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         r_export = export_r_bundle(
             matrix, groups, biomarker_dir / "r_export", try_run=try_run
         )
-        methods.append("r_export_deseq2_maaslin2_ancombc")
+        methods.append("r_export_deseq2_maaslin3_ancombc2_aldex2")
         notes.append(f"R export → {r_export.get('readme')} (Rscript={r_export.get('r_available')})")
 
     (outdir / "notes.txt").write_text("\n".join(notes) + "\n", encoding="utf-8")
@@ -318,6 +360,8 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "lefse_like": str(biomarker_dir / "lefse_like.tsv") if lefse_rows else None,
         "ancom_like": str(biomarker_dir / "ancom_like.tsv") if ancom_rows else None,
         "r_export": r_export or None,
+        "diagnostics": diagnostics,
+        "permanova": permanova or None,
         "n_biomarkers": len(biomarkers),
         "biomarker_list": biomarkers[:20],
         "lefse_list": lefse_rows[:20],
@@ -327,10 +371,11 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "notes": notes,
         "otu_asv_filter": filter_meta,
         "disclaimer": (
-            "Default differential abundance: Mann-Whitney U + BH-FDR. "
-            "Also exports lefse_like (Cohen's d proxy) and ancom_like (CLR+MWU). "
-            "Journal tools: biomarkers/r_export/ (DESeq2, MaAsLin2, ANCOM-BC Rscripts). "
-            "Ultra-low-frequency features are culled using HITL-confirmed prevalence thresholds."
+            "Statistical Reasoning: abundance diagnostics select method hints "
+            "(ANCOM-BC2 / ALDEx2 / MaAsLin3 / DESeq2). "
+            "Default Python differential: Mann-Whitney U + BH-FDR; also lefse_like / ancom_like. "
+            "Alpha includes Shannon + Simpson; beta Bray–Curtis + optional PERMANOVA-lite. "
+            "Journal Rscripts under biomarkers/r_export/."
         ),
     }
     (outdir / "statistics_summary.json").write_text(

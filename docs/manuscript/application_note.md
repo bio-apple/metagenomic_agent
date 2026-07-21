@@ -1,7 +1,7 @@
 # Metagenomic Agent: a multi-agent platform for reproducible shotgun metagenomic analysis
 
 **Manuscript type:** Application Note / Software article (draft for journal submission)  
-**Software version described:** 0.23.1  
+**Software version described:** 0.24.0  
 **Figure:** [`docs/figures/overview.svg`](../figures/overview.svg) (Graphical abstract / Overview)
 
 > **Editorial note.** This draft follows common *Application Note* / BMC *Software* conventions. For *Bioinformatics* (OUP), replace the unstructured Background–Results–Conclusions abstract with the journal’s four-part abstract (*Summary*; *Availability and Implementation*; *Contact*; *Supplementary information*) and keep total length ≤ ~4 printed pages (~2,000–2,600 words + one figure). Author names, affiliations, and funding should be completed before submission.
