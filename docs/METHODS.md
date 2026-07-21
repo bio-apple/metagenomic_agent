@@ -1,4 +1,4 @@
-# Methods note（v0.17）
+# Methods note（v0.18）
 
 See [USAGE.md](USAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [ROADMAP.md](ROADMAP.md).
 

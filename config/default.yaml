@@ -124,7 +124,7 @@ rag:
 
 interpretation:
   require_grounding: true  # block ungrounded taxa; LLM may only paraphrase retrieval context
-  require_evidence_chain: true  # abundance / p-value / DB IDs / PMIDs on allowed claims
+  require_evidence_chain: true  # p/q/effect must come from biomarkers/LEfSe tables (no invented stats)
 
 # Long-context: agents consume statistical metadata, not raw Fastq/Bam/Fasta contents.
 summary:
@@ -138,8 +138,13 @@ reproducibility:
 validation:
   min_read_retention: 0.3
   max_host_fraction: 0.95
+  # CheckM2: medium gate (technical fail) + high-quality target (Completeness>90, Contamination<5)
   min_mag_completeness: 50
   max_mag_contamination: 10
+  mag_high_completeness: 90
+  mag_high_contamination: 5
+  min_classification_rate: 0.3
+  max_unclassified_fraction: 0.5  # Kraken2/MetaPhlAn unclassified too high → swap DB / raise confidence
   require_gut_markers: true
   contract_hard_fail: false  # true → abort swarm on contract ERROR
   plan_validator_hard_fail: false  # true → block when domain constraints missing

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.0
+
+- Automated bio QC chain: CheckM2 high-quality (≥90% / ≤5%) + Kraken2/MetaPhlAn unclassified gates
+- Hallucination guardrails: species / p / q / effect sizes must come from biomarkers/LEfSe tables
+- `grounded_interp` for Reporter/Interpreter; `require_evidence_chain` enforced in evidence claims
+
 ## 0.17.0
 
 - BioContainers pins + `run_docker` routes to Apptainer/Docker sandbox

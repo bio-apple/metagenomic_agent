@@ -1,6 +1,6 @@
 # 使用指南
 
-面向 **v0.17**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
+面向 **v0.18**。架构见 [ARCHITECTURE.md](ARCHITECTURE.md)，论文表述见 [METHODS.md](METHODS.md)。
 
 ## CLI
 
@@ -97,7 +97,8 @@ S2	Control
 | `executor/submit.{slurm,pbs,sge}` · `job.k8s.yaml` | Executor：多调度器提交规格 |
 | `executor/cluster_sense.json` · `resource_allocation.json` | 队列压力与封顶后的 CPU/内存/GPU |
 | `outdir/<sample>/assembly/checkpoint.json` | MEGAHIT/SPAdes 中间 Checkpoint |
-| `critic/qc_critic.md` | QC & Critic：Q20/Q30、污染、CheckM |
+| `critic/qc_critic.md` · `bio_qc_chain.json` | QC 链：CheckM2 HQ、unclassified、Q20/Q30 |
+| `evidence/grounded_interp.md` | 表绑定解读（物种/p/q/effect 仅来自程序表） |
 | `reporter/biological_report.md` | Reporter：多样性与通路解读 |
 | `workflow/params.yaml` · `params.json` | 校验后的引擎参数（Schema + 任务图） |
 | `workflow/ENGINE_README.md` | Nextflow/Snakemake 启动说明 |

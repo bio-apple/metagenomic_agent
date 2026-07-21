@@ -86,6 +86,12 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             for tr in tool_results:
                 art["top_genera"] = list(dict.fromkeys(art.get("top_genera", []) + tr.get("top_genera", [])))
                 art["classification_rate"] = max(float(art.get("classification_rate") or 0), float(tr.get("classification_rate") or 0))
+        # Prefer explicit unclassified; else derive from classification_rate
+        uncls = [float(tr["unclassified_fraction"]) for tr in tool_results if tr.get("unclassified_fraction") is not None]
+        if uncls:
+            art["unclassified_fraction"] = min(uncls)
+        elif art.get("classification_rate") is not None:
+            art["unclassified_fraction"] = max(0.0, 1.0 - float(art["classification_rate"]))
 
         per_sample[sid] = art
 

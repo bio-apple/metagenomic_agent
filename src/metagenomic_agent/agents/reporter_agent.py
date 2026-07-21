@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from metagenomic_agent.knowledge.domain_rag import retrieve_sops
+from metagenomic_agent.knowledge.grounded_interp import write_grounded_interp
 from metagenomic_agent.messaging import append_msg, emit
 
 
@@ -69,22 +70,27 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
     diversity = _diversity_notes(arts, state.get("statistics"))
     pathways = _pathway_notes(arts)
+    grounded = write_grounded_interp(state)
 
     interpretation = [
         f"Study framing (Planner): assay=`{planner.get('recommended_assay')}`, "
         f"env=`{planner.get('sample_environment')}`, goal=`{planner.get('study_goal')}`.",
         *diversity,
         *pathways,
+        grounded.get("pcoa_note") or "",
+        "### Table-bound differential claims (p / q / effect from program tables)",
+        *(grounded.get("interpretation_bullets") or ["_(no biomarker table rows)_"]),
+        "### Pathways (from functional tables only)",
+        *(grounded.get("pathway_bullets") or ["_(no pathway rows)_"]),
     ]
     if critic and not critic.get("passed", True):
         interpretation.append(
             "QC & Critic raised warnings — interpret diversity/pathway claims cautiously: "
             + "; ".join((critic.get("warnings") or critic.get("all_warnings") or [])[:3])
         )
-    # Literature grounding pointer (no hallucinated taxa)
     if lit.get("n_papers") or lit.get("evidence_table") or arts.get("evidence_chain"):
         interpretation.append(
-            "Literature/evidence chain attached; taxa and pathways should be read with PMID/DB IDs."
+            "Literature/evidence chain attached; taxa stats remain table-bound (no invented p/effect)."
         )
     else:
         interpretation.append("Evidence chain sparse — avoid strong causal language in the narrative.")
@@ -95,7 +101,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     report = {
         "role": "reporter",
         "title": "Biological interpretation (diversity & pathways)",
-        "interpretation": interpretation,
+        "interpretation": [x for x in interpretation if x],
         "figures": {
             "interactive_dashboard": viz.get("dashboard") or str(Path(state["outdir"]) / "interactive_dashboard.html"),
             "diversity": "diversity_analysis/",
@@ -103,7 +109,13 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         },
         "ontology_focus": ["Alpha/Beta diversity", "KEGG", "COG", "GO"],
         "sops": [{"id": s.get("id"), "title": s.get("title")} for s in sops],
-        "policy": "grounded_narrative_no_ungrounded_taxa_or_pathways",
+        "grounded_interp": {
+            "n_allowed": grounded.get("n_allowed"),
+            "n_blocked": grounded.get("n_blocked"),
+            "allowed_taxa": (grounded.get("universe") or {}).get("allowed_taxa"),
+            "path": grounded.get("path"),
+        },
+        "policy": "table_bound_taxa_pvalues_effects_no_hallucination",
     }
 
     out = Path(state["outdir"]) / "reporter"

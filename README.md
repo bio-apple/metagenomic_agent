@@ -1,6 +1,6 @@
 # Metagenomic Research Agent
 
-**版本** `0.17.0` · BioContainers + Apptainer · SLURM/PBS/SGE 资源感知 · 组装 Checkpoint。
+**版本** `0.18.0` · CheckM2/分类 QC 链 · 表绑定抗幻觉解读（p/q/effect）。
 
 仓库：[bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 

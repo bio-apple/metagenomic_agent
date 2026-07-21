@@ -88,9 +88,22 @@ def run(
         )
         ctx.run_docker("kraken2", inner, vols)
 
+    classification_rate = 0.5
+    unclassified_fraction = 0.5
+    if report.exists():
+        try:
+            for line in report.read_text(encoding="utf-8").splitlines():
+                parts = line.split("\t")
+                if len(parts) >= 6 and parts[5].strip().lower() in {"unclassified", "u"}:
+                    unclassified_fraction = float(parts[0]) / 100.0
+                    classification_rate = max(0.0, 1.0 - unclassified_fraction)
+                    break
+        except (OSError, ValueError):
+            pass
     return {
         "kraken2_report": str(report),
         "kraken2_abundance": str(bracken if bracken.exists() else report),
         "top_genera": [],
-        "classification_rate": 0.5,
+        "classification_rate": classification_rate,
+        "unclassified_fraction": unclassified_fraction,
     }

@@ -47,8 +47,35 @@ def run(
         )
         ctx.run_docker("metaphlan", inner, vols)
 
+    classification_rate = 0.6
+    unclassified_fraction = 0.4
+    if out.exists():
+        try:
+            # MetaPhlAn relative abundance; UNCLASSIFIED / UNKNOWN lines if present
+            total = 0.0
+            uncl = 0.0
+            for line in out.read_text(encoding="utf-8").splitlines():
+                if line.startswith("#") or not line.strip():
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 2:
+                    continue
+                try:
+                    val = float(parts[-1])
+                except ValueError:
+                    continue
+                total += val
+                name = parts[0].lower()
+                if "unclassified" in name or "unknown" in name or name.endswith("|t__"):
+                    uncl += val
+            if total > 0:
+                unclassified_fraction = min(1.0, uncl / total) if uncl else max(0.0, 1.0 - min(1.0, total / 100.0))
+                classification_rate = max(0.0, 1.0 - unclassified_fraction)
+        except OSError:
+            pass
     return {
         "metaphlan_abundance": str(out),
         "top_genera": [],
-        "classification_rate": 0.6,
+        "classification_rate": classification_rate,
+        "unclassified_fraction": unclassified_fraction,
     }

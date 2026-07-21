@@ -68,6 +68,7 @@ def write_taxonomy(outdir: Path, sample_id: str, tool: str) -> dict[str, Any]:
         f"{tool}_report": str(report),
         "top_genera": [g for g, _ in rows[:5]],
         "classification_rate": 0.72,
+        "unclassified_fraction": 0.28,
     }
 
 

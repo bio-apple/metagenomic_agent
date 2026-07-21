@@ -10,19 +10,28 @@ from metagenomic_agent.rag.authority import authority_context_block
 
 
 def interpret(state: dict[str, Any]) -> str:
+    from metagenomic_agent.knowledge.grounded_interp import write_grounded_interp
+
     cfg = (state.get("config") or {}).get("interpretation") or {}
     require_grounding = cfg.get("require_grounding", True)
+    require_chain = cfg.get("require_evidence_chain", True)
 
     report = write_evidence_chains(state)
+    grounded = write_grounded_interp(state)
     lines = [
         "## 生物学意义解读（证据锚定）",
         "",
         "策略：仅陈述已在 GTDB/NCBI Taxonomy 锚定的分类单元；"
-        "每条允许的陈述附带测定丰度、显著性（若有）及数据库 ID / PMID。",
+        "物种名、p/q、effect size（log2FC/LDA）必须来自程序生成的 biomarkers/LEfSe 表；"
+        "禁止对表外实体作 PCoA/通路断言。",
         "",
         f"- 候选分类单元: {report['n_candidates']}",
         f"- 权威库锚定: {report['n_grounded']}",
         f"- 拒绝（未锚定）: {report['n_rejected_ungrounded']}",
+        f"- 表绑定允许陈述: {grounded.get('n_allowed')}（require_evidence_chain={require_chain}）",
+        f"- 表绑定阻断: {grounded.get('n_blocked')}",
+        "",
+        f"- {grounded.get('pcoa_note')}",
         "",
     ]
     if report.get("rejected_taxa"):
@@ -73,7 +82,8 @@ def interpret(state: dict[str, Any]) -> str:
             [
                 SystemMessage(
                     content=(
-                        "你是宏基因组学专家。只能基于给定 AUTHORITY CONTEXT 与 CLAIM 进行改写，"
+                        "你是宏基因组学专家。只能基于给定 AUTHORITY CONTEXT 与 CLAIM 进行改写。"
+                        "CLAIM 中的物种名、p值、q值、log2FC/LDA 均来自程序表格，禁止改动数值，"
                         "禁止引入未出现的菌种名、通路或因果断言；不得夸大疾病关联。"
                         "用中文 2–4 句总结。"
                     )
@@ -81,8 +91,8 @@ def interpret(state: dict[str, Any]) -> str:
                 HumanMessage(
                     content=(
                         f"用户问题：{state.get('user_query')}\n\n"
-                        f"AUTHORITY CONTEXT + CLAIMS:\n{contexts}\n\n"
-                        "请在不添加新实体的前提下做简洁综述。"
+                        f"AUTHORITY CONTEXT + TABLE-BOUND CLAIMS:\n{contexts}\n\n"
+                        "请在不添加新实体、不篡改 p/effect 的前提下做简洁综述。"
                     )
                 ),
             ]

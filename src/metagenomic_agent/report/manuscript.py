@@ -33,7 +33,8 @@ def write_manuscript(state: dict[str, Any], template: str = "Microbiome") -> dic
     bio_warns = (state.get("validation") or {}).get("biological", {}).get("warnings") or []
 
     bio_lines = "\n".join(
-        f"- {b.get('genus')}: {b.get('direction')} (p={b.get('p_value')}, FDR={b.get('fdr')})"
+        f"- {b.get('genus')}: {b.get('direction')} "
+        f"(p={b.get('p_value')}, q={b.get('q_value')}, log2FC={b.get('log2fc')})"
         for b in biomarkers[:12]
     ) or "- (no biomarkers detected)"
 

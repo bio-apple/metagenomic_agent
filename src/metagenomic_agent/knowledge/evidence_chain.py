@@ -100,9 +100,16 @@ def build_claim(
         seen.add(p["pmid"])
         refs.append(p)
 
-    allowed = bool(ground["grounded"]) and (
-        bio.get("p_value") is not None or mean_ab is not None or bool(abundances)
-    )
+    interp_cfg = (state.get("config") or {}).get("interpretation") or {}
+    require_chain = bool(interp_cfg.get("require_evidence_chain", True))
+    # Hallucination guard: differential claims need real table stats (p_value);
+    # when require_evidence_chain, abundance-only top_genera are not enough.
+    has_table_stats = bio.get("p_value") is not None
+    has_abundance = mean_ab is not None or bool(abundances)
+    if require_chain:
+        allowed = bool(ground["grounded"]) and has_table_stats
+    else:
+        allowed = bool(ground["grounded"]) and (has_table_stats or has_abundance)
     statement = None
     if allowed:
         bits = [f"**{ground.get('canonical_name') or taxon}**"]
@@ -124,10 +131,16 @@ def build_claim(
         statement = "；".join(bits) + "。"
         statement += " 以上陈述仅基于本样本测定值与权威库/文献检索，未经验证的因果关系不作断言。"
     else:
-        statement = (
-            f"拒绝无依据陈述：`{taxon}` 未在 GTDB/NCBI 索引中锚定，"
-            f"或缺少丰度/显著性统计支撑（抗幻觉策略）。"
-        )
+        if ground["grounded"] and require_chain and not has_table_stats:
+            statement = (
+                f"拒绝无表统计陈述：`{taxon}` 已锚定但不在 biomarkers/LEfSe 表或缺少 p_value "
+                f"（抗幻觉：差异/PCoA 解读必须引用程序生成表格）。"
+            )
+        else:
+            statement = (
+                f"拒绝无依据陈述：`{taxon}` 未在 GTDB/NCBI 索引中锚定，"
+                f"或缺少丰度/显著性统计支撑（抗幻觉策略）。"
+            )
 
     return {
         "taxon": taxon,
@@ -142,11 +155,13 @@ def build_claim(
             "q_value": bio.get("q_value"),
             "log2fc": bio.get("log2fc"),
             "direction": direction or bio.get("direction"),
+            "effect_size": bio.get("log2fc") if bio.get("log2fc") is not None else bio.get("lda_score"),
+            "from_biomarker_table": has_table_stats,
         },
         "database_ids": ground.get("database_ids") or [],
         "references": refs[:8],
         "authority_context": authority_context_block(taxon),
-        "policy": "rag_bound_no_ungrounded_claims",
+        "policy": "table_bound_stats_and_authority_dbs",
     }
 
 
