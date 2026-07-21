@@ -306,6 +306,8 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
     ) or "- (empty)"
     stats_methods = (stats.get("methods") if isinstance(stats, dict) else None) or []
     self_heal = (state.get("artifacts") or {}).get("self_heal_actions") or []
+    self_heal_withheld = (state.get("artifacts") or {}).get("self_heal_withheld") or []
+    self_heal_decision = (state.get("artifacts") or {}).get("self_heal_decision") or "n/a"
     methods_md = (
         f"# Methods\n\n"
         f"Software: metagenomic-agent **v{__version__}**  \n"
@@ -319,13 +321,17 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         f"- Assembly/MAGs (if planned): MEGAHIT or metaSPAdes → MetaBAT2/MaxBin2 → DAS-Tool-style consensus → CheckM2 → GTDB-Tk\n"
         f"- Function: DIAMOND / profile tables (KEGG/eggNOG/CAZy/CARD/VFDB labels)\n"
         f"- Statistics: {', '.join(stats_methods) if stats_methods else 'shannon / bray-curtis / Mann-Whitney U + BH-FDR'}\n"
-        f"- Self-heal actions: {self_heal or 'none'}\n\n"
+        f"- Self-heal applied: {self_heal or 'none'} "
+        f"(decision=`{self_heal_decision}`; withheld high-risk: {self_heal_withheld or 'none'})\n\n"
         f"## Limitations (honest reporting)\n\n"
         f"- Default differential abundance is Mann-Whitney U + Benjamini–Hochberg FDR; "
         f"for journal submission prefer ANCOM-BC / MaAsLin2 / LEfSe on exported tables.\n"
         f"- Nextflow/Snakemake configs are generated for handoff; primary orchestration is LangGraph unless "
         f"`execution.engine` is set and the binary is available.\n"
         f"- Mock mode synthesizes tool outputs for software demos and CI — do not treat mock abundances as biological truth.\n"
+        f"- Automated self-heal can alter resources/tools; high-risk actions "
+        f"(mock fallback, loosen QC, lower Kraken confidence, assembler downgrade) require HITL by default — "
+        f"see docs/SELF_HEAL.md.\n"
     )
     (report_dir / "methods.md").write_text(methods_md, encoding="utf-8")
 

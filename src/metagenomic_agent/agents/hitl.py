@@ -153,6 +153,20 @@ def _apply_action(state: AgentState, action: str) -> dict[str, Any]:
         arts["report_publish_confirmed"] = False
         arts["hold_report"] = True
         messages.append("HITL: report generation held — analyst deferred publish")
+    elif action == "approve_all_heal":
+        arts["self_heal_decision"] = "approve_all_heal"
+        arts["self_heal_approved_actions"] = list(
+            ((state.get("artifacts") or {}).get("self_heal_proposed") or [])
+        )
+        messages.append("HITL: approved all self-heal actions including high-risk")
+    elif action == "approve_safe_heal_only":
+        arts["self_heal_decision"] = "approve_safe_heal_only"
+        arts["self_heal_approved_actions"] = []
+        messages.append("HITL: approved safe self-heal only (high-risk withheld)")
+    elif action == "reject_heal":
+        arts["self_heal_decision"] = "reject_heal"
+        arts["self_heal_skipped"] = True
+        messages.append("HITL: rejected self-heal — continue without auto-correction")
 
     arts["bio_reasoning"] = bio
     arts.setdefault("hitl_decisions", []).append(action)

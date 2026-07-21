@@ -40,6 +40,7 @@ def ordination_smoke() -> dict[str, Any]:
 
 def run_benchmark_suite(outdir: Path | None = None) -> dict[str, Any]:
     from metagenomic_agent.evaluation.cami_toy import evaluate_cami_toy, write_cami_report
+    from metagenomic_agent.evaluation.self_heal_fpr import evaluate_self_heal_fpr
 
     queries = ["Faecalibacterium", "Escherichia", "Akkermansia", "butyrate", "TEM-1"]
     report: dict[str, Any] = {
@@ -48,6 +49,7 @@ def run_benchmark_suite(outdir: Path | None = None) -> dict[str, Any]:
         "semantic_hit_rate": semantic_hit_rate(queries),
         "ordination": ordination_smoke(),
         "cami_toy": evaluate_cami_toy(outdir),
+        "self_heal_fpr": evaluate_self_heal_fpr(),
     }
     if outdir and outdir.exists():
         report["evaluate_run"] = evaluate_run(outdir, golden={"biomarker_genera": ["Faecalibacterium", "Escherichia"]})
@@ -62,5 +64,7 @@ def run_benchmark_suite(outdir: Path | None = None) -> dict[str, Any]:
         and report["semantic_hit_rate"] >= 0.4
         and report["ordination"]["ok"]
         and bool(report["cami_toy"].get("passed"))
+        and float(report["self_heal_fpr"]["trigger"]["fpr"]) == 0.0
+        and float(report["self_heal_fpr"]["action"]["fpr_after_safe_policy"]) == 0.0
     )
     return report

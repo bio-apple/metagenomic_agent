@@ -4,7 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![GitHub](https://img.shields.io/badge/GitHub-bio--apple%2Fmetagenomic__agent-181717?logo=github)](https://github.com/bio-apple/metagenomic_agent)
 
-**Version** `0.23.0` — multi-agent AI Scientist for shotgun metagenomics (planning · execution · review · KG · reproducible reports).
+**Version** `0.23.1` — multi-agent AI Scientist for shotgun metagenomics (planning · execution · review · KG · reproducible reports).
 
 **Repository (public):** [https://github.com/bio-apple/metagenomic_agent](https://github.com/bio-apple/metagenomic_agent)
 
@@ -136,6 +136,7 @@ Planner → HITL → Swarm(QC / Taxonomy / Function / Resistance / Stats)
 |------|------|
 | [docs/USAGE.md](docs/USAGE.md) | CLI / API / 配置 / 产物 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构与设计 |
+| [docs/SELF_HEAL.md](docs/SELF_HEAL.md) | Self-Heal 假阳性分析与 HITL 防呆 |
 | [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md) | Linux ≥256 GB 部署 |
 | [database/README.md](database/README.md) | 参考库目录与**构建步骤** |
 | [examples/demo_data/README.md](examples/demo_data/README.md) | 演示数据 |

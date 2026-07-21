@@ -33,10 +33,13 @@ from metagenomic_agent.execution.resource_estimate import write_resource_estimat
 from metagenomic_agent.execution.workflow_params import write_workflow_params
 from metagenomic_agent.execution.self_heal import (
     apply_self_heal,
+    collect_heal_actions,
+    critic_suggests_heal,
+    deep_merge_config,
+    filter_actions_for_policy,
+    partition_actions,
     patch_workflow_params_on_heal,
     summarize_error_logs,
-    classify_from_errors,
-    deep_merge_config,
     summarize_heal_for_user,
 )
 from metagenomic_agent.input.parser import parse_input
@@ -44,7 +47,7 @@ from metagenomic_agent.report import generator as report_agent
 from metagenomic_agent.skills.checker import contract_check
 from metagenomic_agent.state import AgentState
 from metagenomic_agent.validators.loop import validate
-from metagenomic_agent.validators.recovery import apply_recovery, plan_recovery
+from metagenomic_agent.validators.recovery import apply_recovery
 
 
 def _route_after_hitl(state: AgentState) -> Literal["execute_swarm", "report", "awaiting"]:
@@ -77,8 +80,7 @@ def _route_after_critic(state: AgentState) -> Literal["self_heal", "literature"]
     if critic.get("passed"):
         return "literature"
     if int(state.get("retry_count", 0)) < int(state.get("max_retries", 2)):
-        recs = " ".join(critic.get("recommendations") or []).lower()
-        if any(k in recs for k in ("metaphlan", "fastp", "quality", "assembler", "memory", "oom", "contract")):
+        if critic_suggests_heal(critic.get("recommendations")):
             return "self_heal"
     return "literature"
 
@@ -89,43 +91,99 @@ def _route_after_pi(state: AgentState) -> Literal["self_heal", "visualization"]:
     return "visualization"
 
 
-def _self_heal(state: AgentState) -> dict:
-    actions: list[str] = []
-    errors = list(state.get("artifacts", {}).get("errors") or [])
-    actions.extend(classify_from_errors(errors))
-    validation = state.get("validation") or {}
-    if validation and not validation.get("passed"):
-        actions.extend(
-            plan_recovery(state, validation.get("technical") or {}, validation.get("biological") or {})
-        )
-        actions.extend(validation.get("recovery_actions") or [])
-    critic = state.get("critic") or {}
-    recs = " ".join(critic.get("recommendations") or []).lower()
-    if "metaphlan" in recs:
-        actions.append("switch_taxonomy_tool")
-    if "fastp" in recs or "quality" in recs:
-        actions.append("loosen_qc")
-    if "assembler" in recs or "megahit" in recs:
-        actions.append("downgrade_assembler")
-    if "glm" in recs or "microcafe" in recs or "long" in recs:
-        actions.append("switch_taxonomy_tool")
-    if state.get("pi_replan"):
-        actions.append("switch_taxonomy_tool")
-        actions.append("loosen_qc")
+def _route_after_self_heal(state: AgentState) -> Literal["execute_swarm", "critic"]:
+    """If analyst rejects heal (or only audit), continue to critic instead of re-running swarm."""
+    arts = state.get("artifacts") or {}
+    if arts.get("self_heal_skipped"):
+        return "critic"
+    return "execute_swarm"
 
-    actions = list(dict.fromkeys(actions))
+
+def _resolve_self_heal_policy(state: AgentState, proposed: list[str]) -> tuple[str, bool, list[str]]:
+    """Return (decision, approve_high_risk, approved_action_list).
+
+    decision ∈ approve_all_heal | approve_safe_heal_only | reject_heal
+    """
+    from metagenomic_agent.agents.hitl_gates import build_self_heal_gate, confirm_gate_inline
+
+    hitl_cfg = (state.get("config") or {}).get("hitl") or {}
+    arts = state.get("artifacts") or {}
+    parts = partition_actions(proposed)
+    prior = arts.get("self_heal_decision")
+    if prior in {"approve_all_heal", "approve_safe_heal_only", "reject_heal"}:
+        return (
+            prior,
+            prior == "approve_all_heal",
+            list(arts.get("self_heal_approved_actions") or []),
+        )
+
+    require = bool(hitl_cfg.get("require_self_heal_confirm", True))
+    if not parts["high"] or not require:
+        # No high-risk → auto safe path; or policy disabled → apply all proposed
+        if not require:
+            return "approve_all_heal", True, list(proposed)
+        return "approve_safe_heal_only", False, []
+
+    auto = bool(state.get("hitl_auto_confirm")) or bool(hitl_cfg.get("auto_confirm", False))
+    gate = build_self_heal_gate(state, proposed)
+    if gate is None:
+        return "approve_safe_heal_only", False, []
+
+    async_mode = str(hitl_cfg.get("mode") or "").lower() == "async" or bool(state.get("hitl_async"))
+    if async_mode and not auto:
+        # Park: resume after /hitl/decide; until then withhold high-risk
+        return "approve_safe_heal_only", False, []
+
+    action, _patch = confirm_gate_inline(state, gate, auto=auto)
+    if action == "approve_all_heal":
+        return action, True, list(proposed)
+    if action == "reject_heal":
+        return action, False, []
+    return "approve_safe_heal_only", False, []
+
+
+def _self_heal(state: AgentState) -> dict:
+    errors = list(state.get("artifacts", {}).get("errors") or [])
+    proposed = collect_heal_actions(state)
+    decision, approve_high, approved_list = _resolve_self_heal_policy(state, proposed)
+    actions, withheld = filter_actions_for_policy(
+        proposed, approve_high_risk=approve_high, approved_actions=approved_list
+    )
     log_digest = summarize_error_logs(errors)
+    artifacts = dict(state.get("artifacts") or {})
+    artifacts["self_heal_proposed"] = proposed
+    artifacts["self_heal_decision"] = decision
+    artifacts["self_heal_withheld"] = withheld
+    artifacts["self_heal_risk"] = partition_actions(proposed)
+    artifacts["self_heal_error_digest"] = log_digest
+
+    if decision == "reject_heal" or not actions:
+        artifacts["self_heal_skipped"] = True
+        artifacts["self_heal_actions"] = []
+        summary = (
+            f"Self-heal skipped (decision={decision}); withheld={withheld or proposed}"
+            if decision == "reject_heal"
+            else "Self-heal: no safe actions to apply"
+        )
+        artifacts["self_heal_summary"] = summary
+        # Do not clear errors — critic / report must see the failure
+        return {
+            "artifacts": artifacts,
+            "pi_replan": False,
+            "messages": state.get("messages", []) + [summary],
+        }
+
     new_dag, cfg_patch = apply_self_heal(list(state.get("dag", [])), actions, state.get("config"))
     new_dag = apply_recovery(new_dag, actions)
     new_config = deep_merge_config(dict(state.get("config") or {}), cfg_patch)
-    artifacts = dict(state.get("artifacts") or {})
     artifacts["errors"] = []
     artifacts["self_heal_actions"] = actions
-    artifacts["self_heal_error_digest"] = log_digest
+    artifacts["self_heal_skipped"] = False
     summary = summarize_heal_for_user(actions, errors)
+    if withheld:
+        summary += f"；已暂缓高风险动作(需HITL): {', '.join(withheld)}"
     artifacts["self_heal_summary"] = summary
 
-    # Rewrite engine params.yaml/json with healed resources (structured retry, not shell rewrite)
     healed_state = {**state, "dag": new_dag, "config": new_config, "artifacts": artifacts}
     try:
         from pathlib import Path
@@ -151,6 +209,20 @@ def _self_heal(state: AgentState) -> dict:
             artifacts["workflow_params"] = write_workflow_params(healed_state)
     except Exception as exc:  # noqa: BLE001
         artifacts["workflow_params_heal_error"] = str(exc)
+
+    # Register audit gate record for report (even when auto safe-only)
+    from metagenomic_agent.agents.hitl_gates import build_self_heal_gate
+
+    gate = build_self_heal_gate({**state, "artifacts": artifacts}, proposed)
+    if gate:
+        opts = list(artifacts.get("hitl_options") or [])
+        if not any(o.get("id") == gate["id"] for o in opts):
+            # Audit-only stamp when already resolved this cycle
+            artifacts.setdefault("hitl_critical_gates", [])
+            if "self_heal_high_risk" not in artifacts["hitl_critical_gates"]:
+                artifacts["hitl_critical_gates"] = list(artifacts["hitl_critical_gates"]) + [
+                    "self_heal_high_risk"
+                ]
 
     return {
         "dag": new_dag,
@@ -310,7 +382,11 @@ def build_graph():
     g.add_conditional_edges(
         "hitl_runtime", _route_after_validate, {"self_heal": "self_heal", "critic": "critic"}
     )
-    g.add_edge("self_heal", "execute_swarm")
+    g.add_conditional_edges(
+        "self_heal",
+        _route_after_self_heal,
+        {"execute_swarm": "execute_swarm", "critic": "critic"},
+    )
     g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
     g.add_edge("literature", "evidence")
     g.add_edge("evidence", "reviewer")
@@ -353,7 +429,11 @@ def build_resume_graph():
     g.add_conditional_edges(
         "hitl_runtime", _route_after_validate, {"self_heal": "self_heal", "critic": "critic"}
     )
-    g.add_edge("self_heal", "execute_swarm")
+    g.add_conditional_edges(
+        "self_heal",
+        _route_after_self_heal,
+        {"execute_swarm": "execute_swarm", "critic": "critic"},
+    )
     g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
     g.add_edge("literature", "evidence")
     g.add_edge("evidence", "reviewer")

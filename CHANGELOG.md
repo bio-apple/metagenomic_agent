@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.1
+
+- Self-Heal reliability: node-scoped heuristics, high-risk HITL gate (`confirm_self_heal`), FPR scenario suite (`evaluation/self_heal_fpr`) + [docs/SELF_HEAL.md](docs/SELF_HEAL.md)
+
 ## 0.23.0
 
 - Design-doc agents: Resistance/Virulence, Evidence Integration, Scientific Reviewer, Reflection, Code

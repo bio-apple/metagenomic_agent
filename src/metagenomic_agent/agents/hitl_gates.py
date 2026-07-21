@@ -208,6 +208,58 @@ def build_report_publish_gate(state: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def build_self_heal_gate(state: dict[str, Any], proposed: list[str] | None = None) -> dict[str, Any] | None:
+    """Confirm before applying high-risk self-heal actions that can change biology."""
+    hitl_cfg = (state.get("config") or {}).get("hitl") or {}
+    if hitl_cfg.get("require_self_heal_confirm", True) is False:
+        return None
+    from metagenomic_agent.execution.self_heal import HIGH_RISK_ACTIONS, partition_actions
+
+    proposed = list(
+        proposed
+        if proposed is not None
+        else ((state.get("artifacts") or {}).get("self_heal_proposed") or [])
+    )
+    parts = partition_actions(proposed)
+    if not parts["high"]:
+        return None
+    high = ", ".join(parts["high"])
+    safe = ", ".join(parts["medium"] + parts["low"]) or "(none)"
+    return {
+        "id": "confirm_self_heal",
+        "gate": "self_heal_high_risk",
+        "critical": True,
+        "question": (
+            "[Self-Heal] 自动纠错拟执行高风险动作，可能改变生物学结论："
+            f"{high}。安全动作：{safe}。请选择："
+        ),
+        "choices": [
+            {
+                "key": "A",
+                "label": f"批准全部动作（含高风险：{high}）",
+                "action": "approve_all_heal",
+            },
+            {
+                "key": "B",
+                "label": "仅执行安全动作（暂缓高风险）— 推荐",
+                "action": "approve_safe_heal_only",
+            },
+            {
+                "key": "C",
+                "label": "拒绝自愈，保留原错误进入 Critic/报告",
+                "action": "reject_heal",
+            },
+        ],
+        "default": str(hitl_cfg.get("default_self_heal") or "B"),
+        "context": {
+            "proposed": proposed,
+            "high_risk": parts["high"],
+            "safe": parts["medium"] + parts["low"],
+            "high_risk_catalog": sorted(HIGH_RISK_ACTIONS),
+        },
+    }
+
+
 def register_critical_gates(state: dict[str, Any]) -> dict[str, Any]:
     """Merge critical gates into hitl_options / hitl_pending (idempotent by id)."""
     arts = dict(state.get("artifacts") or {})

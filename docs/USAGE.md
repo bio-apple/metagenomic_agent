@@ -109,6 +109,8 @@ docker compose up --build
 | `hitl.require_otu_filter_confirm` | 极低频 OTU/ASV 阈值人工确认 |
 | `hitl.require_database_confirm` | 非 mock 且参考库路径缺失时确认 |
 | `hitl.require_report_publish_confirm` | 报告可分享 / 草稿 / 暂缓 |
+| `hitl.require_self_heal_confirm` | 高风险自愈（mock / loosen_qc / 降 confidence / 降 assembler）确认 |
+| `hitl.default_self_heal` | `B`=仅安全（推荐）· `A`=全部 · `C`=拒绝 |
 | `hitl.default_report_publish` | `A` 可分享 · `B` 草稿 · `C` 暂缓 |
 | `statistics.min_prevalence` / `min_rel_abundance` | HITL 确认后的特征过滤阈值 |
 | `project.*` | 宿主/坐标系统/领域等 Memory 字段 |
@@ -177,6 +179,7 @@ S2	Control
 | 缺分组无法差异分析 | `--metadata`，或 `statistics.demo_mode: true` |
 | HITL 卡住 | `--yes` / `hitl.auto_confirm: true`；API 用 `hitl_mode=async` 后 `/hitl/decide` |
 | 宿主机缺库 / ARM 报错 | `--mode docker`；自愈可切容器 / 钉 amd64 |
-| OOM / exit 137 | 自愈降 threads/memory，组装降级 MEGAHIT |
+| OOM / exit 137 | 自愈升 memory/降 threads；**仅组装节点**才降级 MEGAHIT；见 [SELF_HEAL.md](SELF_HEAL.md) |
+| 担心自愈「纠错」 | 默认 `hitl.require_self_heal_confirm` + `default_self_heal: B` 暂缓高风险 |
 | 病毒工具未安装 | Specialist 仍写命令；安装工具或保持 mock |
 | 原始 stderr 刷屏 | 用户侧看自愈摘要；细节在 `artifacts.errors` / `logs/` |

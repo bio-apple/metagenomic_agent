@@ -19,7 +19,17 @@ def test_self_heal_downgrades_assembler():
             "status": "failed",
         }
     ]
-    actions = classify_from_errors([{"returncode": 137, "error": "Killed", "classified": "oom"}])
+    actions = classify_from_errors(
+        [
+            {
+                "returncode": 137,
+                "error": "Killed",
+                "classified": "oom",
+                "node": "assembly_binning",
+                "agent": "assembly",
+            }
+        ]
+    )
     assert "downgrade_assembler" in actions
     new_dag, patch = apply_self_heal(dag, actions, {"linux": {"threads": 16, "memory_gb": 64}})
     assert new_dag[0]["params"]["assembler"] == "megahit"
@@ -27,6 +37,22 @@ def test_self_heal_downgrades_assembler():
     assert patch["linux"]["threads"] == 8
     # OOM first raises memory ceiling (64 → 128), while reducing threads
     assert patch["linux"]["memory_gb"] == 128
+
+
+def test_taxonomy_oom_does_not_downgrade_assembler():
+    actions = classify_from_errors(
+        [
+            {
+                "returncode": 137,
+                "classified": "oom",
+                "node": "taxonomy_profiling",
+                "agent": "taxonomy",
+                "stderr": "cannot allocate memory",
+            }
+        ]
+    )
+    assert "increase_memory" in actions
+    assert "downgrade_assembler" not in actions
 
 
 def test_rag_akkermansia():

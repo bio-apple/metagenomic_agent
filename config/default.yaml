@@ -167,6 +167,8 @@ hitl:
   require_database_confirm: true  # before taxonomy/MAG when paths missing (skipped in mock)
   database_confirm_only_when_missing: true
   require_report_publish_confirm: true  # before marking final report shareable
+  require_self_heal_confirm: true  # high-risk heal (mock/loosen_qc/lower_confidence/downgrade assembler)
+  default_self_heal: B  # A=all incl. high-risk  B=safe only (recommended)  C=reject heal
   default_report_publish: B  # A=shareable B=internal draft C=hold
   gate_before_assembly_run: true  # mid-swarm re-check if not yet confirmed
   gate_before_otu_filter: true

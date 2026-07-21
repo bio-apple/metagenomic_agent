@@ -2,7 +2,7 @@
 
 定位：**Autonomous AI Scientist for Microbiome Discovery**（宏基因组科研智能体，非简单 pipeline wrapper）。
 
-配套：[USAGE.md](USAGE.md)（用法）· [DEPLOY_LINUX.md](DEPLOY_LINUX.md)（≥256 GB 部署）· [database/README.md](../database/README.md)（参考库）。
+配套：[USAGE.md](USAGE.md)（用法）· [DEPLOY_LINUX.md](DEPLOY_LINUX.md)（≥256 GB 部署）· [database/README.md](../database/README.md)（参考库）· [SELF_HEAL.md](SELF_HEAL.md)（自愈 FPR / HITL）。
 
 ## 目标
 
@@ -16,9 +16,11 @@
 parse → router → bio_reasoning → supervisor → tool_specialist → plan_validator
   → planner → export_dag(+HITL) → workflow → contract → HITL
   → executor swarm (QC · Taxonomy · Function · Resistance · Stats · Assembly…)
-  → validate → critic → literature → evidence → reviewer → reflection
+  → validate → [self_heal ↻ swarm] → critic → literature → evidence → reviewer → reflection
   → pi_review → viz → code_agent → reporter → xai → report(+MetaAgentScore)
 ```
+
+`self_heal`：错误分类 → 提议动作 → **高风险需 HITL** → 改参数/DAG → 重跑 swarm（`max_retries`，默认 2）。详见 [SELF_HEAL.md](SELF_HEAL.md)。
 
 异步 HITL：`resume_pipeline` 从 `execute_swarm` 续跑。
 
@@ -55,6 +57,7 @@ parse → router → bio_reasoning → supervisor → tool_specialist → plan_v
 | Assembly 算力 | 提交 · MEGAHIT · 跳过 |
 | OTU/ASV 低频 | 均衡 / 严格 / 宽松 / 不剔除 |
 | 参考库路径 | 就绪 · 部分 · 中止 |
+| **Self-Heal 高风险** | 全部批准 · **仅安全（默认）** · 拒绝自愈 |
 | 报告外发 | 可分享 · 草稿 · 暂缓 |
 
 `hitl.mode`: `sync`（CLI）\| `async`（API `/runs/{id}/hitl`）。
