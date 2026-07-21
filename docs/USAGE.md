@@ -74,7 +74,9 @@ curl -X POST http://127.0.0.1:8000/chat -H 'Content-Type: application/json' \
 容器编排层：
 
 ```bash
+# 编排层（镜像不含 database/；参考库按需挂载）
 docker compose up --build
+# 生产挂载主机库：META_REF=/ref/databases docker compose up --build
 ```
 
 差异分析 R 导出（DESeq2 / MaAsLin2 / ANCOM-BC）：运行后见 `biomarkers/r_export/`；可选 `statistics.try_run_r: true`。

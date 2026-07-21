@@ -1,9 +1,10 @@
-# Orchestration API + optional volume mounts for data / results / reference DBs.
-# Bio tools still use mode=docker|apptainer (BioContainers) on the host or sibling runtime.
+# Orchestration API. Reference databases are NOT built into the image.
+# Mount a host DB tree when needed, e.g.:
+#   META_REF=/ref/databases docker compose up --build
 services:
   meta-agent:
     build: .
-    image: metagenomic-agent:0.21
+    image: metagenomic-agent:0.23.1
     ports:
       - "8000:8000"
     environment:
@@ -14,8 +15,10 @@ services:
       - ./config:/app/config:ro
       - meta_results:/results
       - ${META_DATA:-./tests/fixtures}:/data:ro
-      - ${META_REF:-./database}:/ref:ro
+      # Default: empty named volume (tiny). Override with host path for real DBs.
+      - ${META_REF:-meta_ref_empty}:/ref:ro
     command: ["serve", "--host", "0.0.0.0", "--port", "8000"]
 
 volumes:
   meta_results:
+  meta_ref_empty:

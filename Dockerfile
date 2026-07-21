@@ -15,9 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY config ./config
-COPY database ./database
+# Reference DBs are NOT copied — too large; bind-mount host path at runtime (/ref).
 COPY workflow ./workflow
 COPY tests ./tests
+COPY examples ./examples
+COPY scripts ./scripts
 
 RUN pip install -U pip setuptools wheel \
  && pip install -e ".[dev]"

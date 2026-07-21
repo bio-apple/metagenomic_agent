@@ -1,11 +1,26 @@
-.venv
-.git
-results
-**/__pycache__
+# Keep Docker build context small — never bake reference DBs into the image.
+.venv/
+.git/
+.cursor/
+results/
+results_*/
+workdir/
+scratch/
+outdir/
+**/__pycache__/
 *.pyc
-.pytest_cache
-.mypy_cache
-*.egg-info
-outdir
-scratch
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
 .DS_Store
+.env
+*.fastq.gz
+
+# Full reference libraries (Kraken2 / GTDB / MetaPhlAn / …).
+# Mount at runtime: META_REF=/ref/databases docker compose up
+database/
+
+# Local run artifacts / caches
+htmlcov/
+.coverage
