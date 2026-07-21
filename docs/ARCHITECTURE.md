@@ -1,6 +1,6 @@
 > 中文版: [ARCHITECTURE.zh-CN.md](ARCHITECTURE.zh-CN.md)
 
-# Architecture and Design (v0.24)
+# Architecture and Design (v0.25)
 
 Positioning: **Autonomous AI Scientist for Microbiome Discovery** (a metagenomics research agent, not a thin pipeline wrapper).
 

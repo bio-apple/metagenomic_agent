@@ -90,6 +90,39 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         warnings.append("No biomarkers detected despite biomarker-oriented query")
         recommendations.append("Check group metadata and increase sample size")
 
+    # Statistical reasonableness: flag naive t-test mentions / push compositional methods
+    methods = [str(m).lower() for m in (stats.get("methods") or [])]
+    if any("t-test" in m or "ttest" in m for m in methods) and not any(
+        "ancom" in m or "aldex" in m or "maaslin" in m for m in methods
+    ):
+        warnings.append("t-test on compositional abundance is statistically inappropriate")
+        recommendations.append("Prefer ANCOM-BC2 / ALDEx2 / MaAsLin3 for differential abundance")
+    diag = stats.get("diagnostics") or {}
+    if diag.get("compositional") and "mannwhitney_u" in methods:
+        recommendations.append(
+            "Abundance table looks compositional — confirm journal methods "
+            "(ANCOM-BC2 / ALDEx2 / MaAsLin3) alongside Python MWU"
+        )
+    batch = stats.get("batch_effect") or diag.get("batch_effect") or {}
+    if batch.get("suspect"):
+        warnings.append(
+            f"PCA/PCoA dominated by batch (PC1~batch R²={batch.get('pc1_batch_r2')})"
+        )
+        recommendations.append(
+            "Remove/adjust batch effect, apply normalization, and re-run diversity/differential analysis"
+        )
+
+    # Literature / biology over-interpretation checks
+    lit = artifacts.get("literature") or state.get("literature") or {}
+    for entry in lit.get("entries") or []:
+        interp = (entry.get("interpretation") or "").lower()
+        if any(k in interp for k in ("cause", "causes", "导致", "证明")):
+            warnings.append(f"{entry.get('genus')}: interpretation may over-claim causality")
+            recommendations.append("Tone down causal language; report associations with confidence")
+        if entry.get("contradiction"):
+            warnings.append(f"{entry.get('genus')}: conflicting literature evidence noted")
+            recommendations.append("Present both supporting and conflicting studies; lower confidence")
+
     q = (state.get("user_query") or "").lower()
     if any(k in q for k in ("gut", "肠道", "ibd", "fecal", "stool")):
         tops: set[str] = set()
@@ -107,6 +140,11 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
     details["llm_context_preview"] = get_llm_context(state, max_chars=2000)
     details["pipeline_summary_ref"] = (artifacts.get("pipeline_summary") or {}).get("path")
+    details["statistical_reasoning"] = {
+        "methods": stats.get("methods"),
+        "batch_effect": batch,
+        "recommended_diff": (diag.get("recommended_diff_methods") if isinstance(diag, dict) else None),
+    }
     critic: CriticResult = {
         "passed": passed,
         "warnings": warnings,
@@ -127,8 +165,12 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             "Q30",
             "host_contamination",
             "CheckM2_high_quality_90_5",
+            "BUSCO",
             "taxonomy_unclassified",
             "contracts",
+            "compositional_stats",
+            "batch_pca",
+            "literature_overclaim",
         ],
         "checkm_gates": {
             "high_completeness": gates["high_completeness"],

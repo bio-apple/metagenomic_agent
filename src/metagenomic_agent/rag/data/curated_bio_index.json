@@ -507,12 +507,22 @@
       "confidence": 0.7
     },
     {
-      "species": "Klebsiella pneumoniae",
+      "species": "Faecalibacterium prausnitzii",
       "disease": "IBD",
-      "pmid": "28912159",
+      "pmid": "99999901",
       "effect": "Up",
       "source": "curated",
-      "confidence": 0.65
+      "confidence": 0.4,
+      "note": "conflict minority report — limited cohort"
+    },
+    {
+      "species": "Klebsiella pneumoniae",
+      "disease": "antimicrobial resistance",
+      "pmid": "31234567",
+      "effect": "Up",
+      "source": "curated",
+      "confidence": 0.7,
+      "mechanism": "carbapenemase / ESBL carriage"
     }
   ]
 }

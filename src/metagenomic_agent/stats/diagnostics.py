@@ -66,7 +66,7 @@ def diagnose_abundance(
 
     diversity = {
         "alpha": ["shannon", "simpson"],
-        "beta": ["bray_curtis"],
+        "beta": ["bray_curtis", "weighted_unifrac"],
         "ordination_test": ["permanova"] if len(set(known)) >= 2 and len(known) >= 4 else [],
     }
 

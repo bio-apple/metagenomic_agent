@@ -93,13 +93,18 @@ def apply_scientific_replan(state: dict[str, Any]) -> dict[str, Any]:
         pipe["enable_host_filter"] = True
         patches.append("pipeline.enable_host_filter=true")
 
-    if any(k in blob for k in ("ancom", "maaslin", "deseq", "composition", "batch")):
+    if any(k in blob for k in ("ancom", "maaslin", "deseq", "composition", "batch", "pca", "permanova")):
         stats = dict(cfg.get("statistics") or {})
         stats["prefer_compositional"] = True
-        if "batch" in blob:
+        if any(k in blob for k in ("batch", "pca")):
             stats["check_batch_effect"] = True
+            stats["correct_batch"] = True
         cfg["statistics"] = stats
         patches.append("statistics:compositional_reasoning")
+        for node in dag:
+            if node.get("agent") in {"statistics", "stats", "visualization"}:
+                node["status"] = "pending"
+                patches.append(f"{node.get('id') or node.get('agent')}:pending")
 
     if any(k in blob for k in ("long-read", "long read", "nanopore", "pacbio", "flye")):
         for node in dag:

@@ -3,4 +3,13 @@
 - [`Metagenomic Agent Development.docx`](Metagenomic%20Agent%20Development.docx) — product roadmap (Planner/Critic/replan, MAG, Statistical Reasoning, literature/KG; sample & assay types).
 - [`DEVELOPMENT_ROADMAP.txt`](DEVELOPMENT_ROADMAP.txt) — plain-text extract of the same roadmap.
 
-Implemented against this roadmap in **v0.24.0** (scientific replan, Flye/VAMB + MAG summary tiers, abundance diagnostics / Simpson / PERMANOVA-lite, wastewater SOP, metatranscriptomics & long-read assay cues). Remaining items (full DAS Tool / BUSCO production paths, UniFrac, mixed models) stay future work.
+## Implementation status
+
+| Priority | Status | Version |
+|----------|--------|---------|
+| P1 Planner / Critic / self-correction (scientific replan) | Done | 0.24+ |
+| P2 MAG (Flye/VAMB/DAS Tool/CheckM2/BUSCO/GTDB; cohort auto-MAG) | Done (lite/mock + BioContainers pins) | 0.24–0.25 |
+| P3 Statistical Reasoning (diagnostics, UniFrac, PERMANOVA, associations, batch loop) | Done | 0.24–0.25 |
+| P4/P5 Literature Evidence + Knowledge Graph | Done (deepened confidence/contradiction/resistance) | 0.25 |
+
+Publication-grade DAS Tool / BUSCO / reference-tree UniFrac / lme4 still require installed binaries and real phylogeny inputs; Python paths are Methods-disclosed fallbacks for CI and orchestration.

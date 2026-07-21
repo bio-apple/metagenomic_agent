@@ -142,8 +142,20 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         llm_extra = _llm_explain(genus, direction, state.get("user_query", ""), auth_ctx)
 
         from metagenomic_agent.agents.evidence import collect_papers
+        from metagenomic_agent.knowledge.microbiome_kg import explain_microbe, opposing_evidence
 
-        papers = collect_papers(f"{genus} microbiome IBD OR gut", mode, cfg)
+        disease = ((state.get("artifacts") or {}).get("bio_reasoning") or {}).get("disease_context") or ""
+        q_extra = state.get("user_query") or ""
+        search_q = f"{genus} microbiome"
+        if disease:
+            search_q += f" {disease}"
+        elif any(k in q_extra.lower() for k in ("ibd", "obes", "crc", "diabet", "autism")):
+            search_q += f" {q_extra}"
+        else:
+            search_q += " association OR mechanism"
+        papers = collect_papers(search_q, mode, cfg)
+        kg_expl = explain_microbe(genus)
+        oppose = opposing_evidence(genus, disease or None)
         if not papers:
             papers = [
                 {
@@ -156,11 +168,17 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             ] or [
                 {
                     "pmid": "mock",
-                    "title": f"Curated note on {genus} in gut inflammation contexts",
+                    "title": f"Curated note on {genus} in microbiome disease contexts",
                     "source": "internal_kb",
                     "url": "",
                 }
             ]
+
+        confidence = "medium"
+        if ground["grounded"] and papers and not oppose.get("conflicts"):
+            confidence = "high"
+        elif oppose.get("conflicts") or not ground["grounded"]:
+            confidence = "low"
 
         db_ids = [
             {"database": h.get("database"), "id": h.get("id"), "name": h.get("name")}
@@ -180,12 +198,25 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             "rag": rag_hits[:2],
             "bio_db_rag": bio_hits,
             "authority_context": auth_ctx,
+            "kg": kg_expl,
+            "contradiction": oppose.get("conflicts") or [],
+            "confidence": confidence,
+            "disease_context": disease or None,
+            "evidence": {
+                "association": disease or "microbiome phenotype",
+                "mechanism": (mechanism[:240] if mechanism else None),
+                "confidence": confidence,
+                "references": [p.get("pmid") for p in papers if p.get("pmid")],
+            },
         }
         entries.append(entry)
         md_lines.append(f"## {genus}")
         if direction:
             md_lines.append(f"- Direction: `{direction}`")
         md_lines.append(f"- Grounded: `{ground['grounded']}` canonical=`{ground.get('canonical_name')}`")
+        md_lines.append(f"- Confidence: `{confidence}`")
+        if entry["contradiction"]:
+            md_lines.append(f"- Conflicting evidence: {len(entry['contradiction'])} record(s)")
         for d in (ground.get("database_ids") or [])[:4]:
             md_lines.append(f"- DB: {d.get('database')}:{d.get('id')}")
         md_lines.append(f"- Interpretation: {mechanism}")

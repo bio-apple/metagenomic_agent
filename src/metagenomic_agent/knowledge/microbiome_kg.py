@@ -60,6 +60,21 @@ def build_kg() -> dict[str, Any]:
         edges.append({"source": mid, "target": did, "relation": "associated_with", "effect": link.get("effect")})
         edges.append({"source": mid, "target": pub, "relation": "supported_by"})
         edges.append({"source": pub, "target": did, "relation": "studies"})
+        if link.get("mechanism"):
+            mech = f"mechanism:{link['mechanism']}"
+            add_node(mech, "Function", name=link["mechanism"])
+            edges.append({"source": mid, "target": mech, "relation": "mechanism"})
+
+    # Drug resistance edges from CARD entries
+    for e in (index.get("databases") or {}).get("card") or []:
+        eid = f"card:{e.get('id') or e.get('name')}"
+        add_node(eid, "Gene", name=e.get("name"), database="card", resistance=True)
+        add_node("concept:drug_resistance", "Phenotype", name="drug_resistance")
+        edges.append({"source": eid, "target": "concept:drug_resistance", "relation": "confers_resistance"})
+        for hint in e.get("taxa_hint") or []:
+            tid = f"taxon:{hint}"
+            add_node(tid, "Microbe", name=hint)
+            edges.append({"source": tid, "target": eid, "relation": "carries_arg"})
 
     return {"nodes": list(nodes.values()), "edges": edges, "n_nodes": len(nodes), "n_edges": len(edges)}
 
@@ -98,3 +113,54 @@ def explain_microbe(taxon: str, top_k: int = 8) -> dict[str, Any]:
         "rag": multi,
         "chain_hint": f"{genus} → pathways/ARG/VF → disease associations (KG+RAG grounded)",
     }
+
+
+def opposing_evidence(taxon: str, disease: str | None = None) -> dict[str, Any]:
+    """Find supporting vs conflicting disease associations for a microbe."""
+    from metagenomic_agent.rag import load_index
+
+    genus = taxon.split()[0].lower()
+    disease_l = (disease or "").lower()
+    support: list[dict[str, Any]] = []
+    conflict: list[dict[str, Any]] = []
+    effects: dict[str, list[dict[str, Any]]] = {}
+    for link in load_index().get("evidence_links") or []:
+        sp = str(link.get("species") or "").lower()
+        if genus not in sp and genus not in str(link.get("species") or "").lower():
+            continue
+        if disease_l and disease_l not in str(link.get("disease") or "").lower():
+            # still keep for conflict scan across diseases if disease filter empty
+            if disease_l:
+                continue
+        effect = str(link.get("effect") or "").capitalize()
+        effects.setdefault(effect, []).append(link)
+        support.append(link)
+    # Conflicts: both Up and Down for same disease, or curated contradiction flag
+    if "Up" in effects and "Down" in effects:
+        conflict = effects["Up"][:2] + effects["Down"][:2]
+    for link in support:
+        if link.get("contradicts") or str(link.get("note") or "").lower().startswith("conflict"):
+            conflict.append(link)
+    return {
+        "taxon": taxon.split()[0],
+        "disease": disease,
+        "supporting": support[:6],
+        "conflicts": conflict[:6],
+        "confidence_hint": "low" if conflict else ("high" if support else "medium"),
+    }
+
+
+def subgraph_for_taxon(taxon: str) -> dict[str, Any]:
+    """Extract a small Microbe–Disease–Gene–Pathway–Resistance subgraph."""
+    kg = build_kg()
+    genus = taxon.split()[0].lower()
+    keep_nodes: set[str] = set()
+    keep_edges: list[dict[str, Any]] = []
+    for e in kg["edges"]:
+        src, tgt = str(e.get("source", "")), str(e.get("target", ""))
+        if genus in src.lower() or genus in tgt.lower():
+            keep_edges.append(e)
+            keep_nodes.add(src)
+            keep_nodes.add(tgt)
+    nodes = [n for n in kg["nodes"] if n["id"] in keep_nodes]
+    return {"taxon": taxon.split()[0], "nodes": nodes, "edges": keep_edges, "n_nodes": len(nodes), "n_edges": len(keep_edges)}

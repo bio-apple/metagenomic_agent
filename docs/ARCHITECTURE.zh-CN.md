@@ -1,6 +1,6 @@
 > English: [ARCHITECTURE.md](ARCHITECTURE.md)
 
-# 架构与设计（v0.24）
+# 架构与设计（v0.25）
 
 定位：**面向微生物组发现的自主 AI 科学家**（宏基因组研究 Agent，而非薄封装流水线包装器）。
 

@@ -151,6 +151,32 @@ message("Wrote aldex2_results.csv")
         encoding="utf-8",
     )
 
+    lmer_r = out / "run_lmer.R"
+    lmer_r.write_text(
+        """#!/usr/bin/env Rscript
+# Mixed model association (lme4) — requires subject column in sample_metadata.tsv when available
+suppressPackageStartupMessages({
+  library(lme4)
+})
+rel <- read.delim("feature_rel.tsv", row.names=1, check.names=FALSE)
+meta <- read.delim("sample_metadata.tsv", row.names=1, stringsAsFactors=TRUE)
+feat <- as.data.frame(t(rel))
+meta <- meta[rownames(feat), , drop=FALSE]
+# Example: first feature ~ group + (1|subject) if subject present
+taxon <- colnames(feat)[1]
+df <- data.frame(y=feat[[taxon]], group=meta$group, subject=if ("subject" %in% names(meta)) meta$subject else rownames(meta))
+if (length(unique(df$subject)) > 1 && length(unique(df$group)) > 1) {
+  fit <- lmer(y ~ group + (1|subject), data=df)
+  write.csv(as.data.frame(coef(summary(fit))), "lmer_example.csv")
+} else {
+  fit <- lm(y ~ group, data=df)
+  write.csv(as.data.frame(coef(summary(fit))), "lmer_example.csv")
+}
+message("Wrote lmer_example.csv")
+""",
+        encoding="utf-8",
+    )
+
     readme = out / "README.md"
     readme.write_text(
         "# R differential abundance export\n\n"
@@ -161,6 +187,7 @@ message("Wrote aldex2_results.csv")
         "Rscript run_maaslin3.R    # MaAsLin3 (or Maaslin2 fallback)\n"
         "Rscript run_ancombc2.R    # ANCOM-BC2 / ANCOMBC\n"
         "Rscript run_aldex2.R      # ALDEx2\n"
+        "Rscript run_lmer.R        # mixed model (lme4) example\n"
         "```\n"
         "Pseudo-counts are scaled from relative abundances — prefer true counts when available.\n"
         "Method choice should follow `diversity_analysis/abundance_diagnostics.json`.\n",
@@ -177,13 +204,14 @@ message("Wrote aldex2_results.csv")
         "run_ancombc2": str(ancom_r),
         "run_ancombc": str(out / "run_ancombc.R"),
         "run_aldex2": str(aldex_r),
+        "run_lmer": str(lmer_r),
         "readme": str(readme),
         "r_available": bool(shutil.which("Rscript")),
         "executed": [],
     }
 
     if try_run and result["r_available"]:
-        for script in (deseq_r, maaslin_r, ancom_r, aldex_r):
+        for script in (deseq_r, maaslin_r, ancom_r, aldex_r, lmer_r):
             try:
                 proc = subprocess.run(
                     ["Rscript", script.name],

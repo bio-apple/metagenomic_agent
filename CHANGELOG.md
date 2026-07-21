@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.25.0
+
+- MAG refinement & quality: DAS Tool wrapper, BUSCO alongside CheckM2; `mag_agent` facade; richer MAG summary
+- Statistical Reasoning complete: UniFrac-lite, batch PC1/Bray ratio detection + residualization, linear/mixed/ML associations; R `run_lmer.R`
+- Critic: compositional method checks, batch/PCA flags, literature over-claim; scientific replan forces batch correction + stats re-run
+- Literature/KG: disease-aware PubMed queries, confidence + contradiction fields, CARD resistance edges, taxon subgraphs
+- Roadmap `docs/design/` marked complete for Development.docx Priority 2–5 (production DAS/BUSCO/UniFrac still Methods-disclosed lite paths)
+
 ## 0.24.0
 
 - Scientific replan loop: Critic/PI findings → DAG redesign (`scientific_replan`) → re-execute swarm (beyond resource self-heal)

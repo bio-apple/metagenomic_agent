@@ -81,9 +81,31 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
 
                         vamb_art = vamb_tool.run_vamb(sid, contigs, bin_dir / "vamb", ctx)
                         bins = {**bins, **vamb_art}
+                    # DAS Tool refinement across binners
+                    from metagenomic_agent.tools import das_tool as das_tool_mod
+
+                    sources: dict[str, str] = {}
+                    for key, label in (
+                        ("metabat2_dir", "metabat"),
+                        ("maxbin2_dir", "maxbin"),
+                        ("concoct_dir", "concoct"),
+                        ("vamb_bins_dir", "vamb"),
+                        ("das_tool_dir", "pre"),
+                        ("bins_dir", "bins"),
+                    ):
+                        if bins.get(key):
+                            sources[label] = str(bins[key])
+                    if len(sources) >= 1:
+                        das = das_tool_mod.run_das_tool(sid, contigs, sources, bin_dir / "das_tool", ctx)
+                        bins = {**bins, **das}
                     check = binning.run_checkm2(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
+                    from metagenomic_agent.tools import busco as busco_tool
+
+                    busco = busco_tool.run_busco(
+                        bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid
+                    )
                     gtdb = binning.run_gtdbtk(bins.get("bins_dir", str(bin_dir / "bins")), bin_dir, ctx, sid)
-                    asm = {**asm, **bins, **check, **gtdb}
+                    asm = {**asm, **bins, **check, **busco, **gtdb}
                     pipe = (state.get("config") or {}).get("pipeline") or {}
                     if pipe.get("enable_virus", False):
                         from metagenomic_agent.tools import virus as virus_tools
@@ -114,7 +136,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     mag_dir = outdir / "mags"
     mag_dir.mkdir(parents=True, exist_ok=True)
     rows = [
-        "sample\tassembler\tn_bins\tcompleteness\tcontamination\tquality_class\tgtdb"
+        "sample\tassembler\tn_bins\tcompleteness\tcontamination\tbusco_complete\tquality_class\tgtdb"
     ]
     hq = mq = lq = 0
     for sid, art in per_sample.items():
@@ -123,6 +145,10 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             cont = float(art.get("contamination") or 100)
         except (TypeError, ValueError):
             comp, cont = 0.0, 100.0
+        try:
+            busco_c = float(art.get("busco_complete") or 0)
+        except (TypeError, ValueError):
+            busco_c = 0.0
         if comp >= 90 and cont <= 5:
             qclass = "high"
             hq += 1
@@ -135,7 +161,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         rows.append(
             f"{sid}\t{art.get('assembler', '')}\t{art.get('n_bins', '')}\t"
             f"{art.get('completeness', '')}\t{art.get('contamination', '')}\t"
-            f"{qclass}\t{art.get('gtdb_summary', '')}"
+            f"{busco_c}\t{qclass}\t{art.get('gtdb_summary', '')}"
         )
     (mag_dir / "mag_summary.tsv").write_text("\n".join(rows) + "\n", encoding="utf-8")
     summary_json = {
@@ -144,6 +170,8 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "medium_quality_MAG": mq,
         "low_quality_MAG": lq,
         "n_samples": len(per_sample),
+        "refinement": "das_tool",
+        "quality_tools": ["checkm2", "busco"],
     }
     (mag_dir / "mag_summary.json").write_text(
         __import__("json").dumps(summary_json, indent=2), encoding="utf-8"

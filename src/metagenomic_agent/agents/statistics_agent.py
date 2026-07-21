@@ -242,6 +242,77 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     beta_path = outdir / "beta_diversity.tsv"
     beta_path.write_text("\n".join(beta_lines) + "\n", encoding="utf-8")
 
+    # UniFrac-lite phylogenetic beta
+    from metagenomic_agent.stats.unifrac import unifrac_summary
+
+    uni = unifrac_summary(matrix)
+    uni_path = outdir / "beta_unifrac.tsv"
+    uni_lines = ["sample_a\tsample_b\tweighted_unifrac"]
+    for p in uni.get("pairs") or []:
+        uni_lines.append(f"{p['sample_a']}\t{p['sample_b']}\t{p['weighted_unifrac']}")
+    uni_path.write_text("\n".join(uni_lines) + "\n", encoding="utf-8")
+    (outdir / "unifrac_summary.json").write_text(
+        __import__("json").dumps({k: v for k, v in uni.items() if k != "distance_matrix"}, indent=2),
+        encoding="utf-8",
+    )
+
+    # Batch-effect PCA dominance + optional residualization
+    from metagenomic_agent.input.metadata import (
+        extract_batch,
+        extract_covariates,
+        extract_subject,
+        load_metadata_table,
+    )
+    from metagenomic_agent.stats.batch_effect import batch_pca_dominance, residualize_by_batch
+
+    meta_path = (state.get("config") or {}).get("paths", {}).get("metadata") or state.get("metadata_path")
+    meta_table: dict[str, dict[str, Any]] = {}
+    try:
+        meta_table = load_metadata_table(meta_path) if meta_path else {}
+    except FileNotFoundError:
+        meta_table = {}
+    for s in samples:
+        sid = s.get("sample_id")
+        if not sid:
+            continue
+        row = dict(meta_table.get(sid) or {})
+        for k in ("batch", "subject", "age", "bmi", "fiber"):
+            if s.get(k) is not None:
+                row[k] = s[k]
+        if s.get("group"):
+            row.setdefault("group", s["group"])
+        if row:
+            meta_table[sid] = row
+    batch_map = extract_batch(meta_table, samples)
+    subject_map = extract_subject(meta_table)
+    covariates = extract_covariates(meta_table)
+    batch_diag: dict[str, Any] = {}
+    force_batch = bool(stats_cfg.get("check_batch_effect") or stats_cfg.get("correct_batch"))
+    if batch_map:
+        batch_diag = batch_pca_dominance(matrix, batch_map)
+        (outdir / "batch_effect.json").write_text(
+            __import__("json").dumps(batch_diag, indent=2), encoding="utf-8"
+        )
+        if batch_diag.get("suspect") or force_batch:
+            matrix = residualize_by_batch(matrix, batch_map)
+            notes.append(
+                f"Batch correction applied (PC1~batch R²={batch_diag.get('pc1_batch_r2')}); "
+                "recomputed relative abundances"
+            )
+            beta_lines = ["sample_a\tsample_b\tbray_curtis"]
+            dist = [[0.0] * len(ids) for _ in ids]
+            for i, a in enumerate(ids):
+                for j, b in enumerate(ids):
+                    if j <= i:
+                        continue
+                    d = _bray_curtis(matrix[a], matrix[b])
+                    dist[i][j] = dist[j][i] = d
+                    beta_lines.append(f"{a}\t{b}\t{d:.4f}")
+            beta_path.write_text("\n".join(beta_lines) + "\n", encoding="utf-8")
+        diagnostics["batch_effect"] = batch_diag
+        if batch_diag.get("suspect"):
+            diagnostics["batch_effect_suspect"] = True
+
     permanova: dict[str, Any] = {}
     ord_tests = (diagnostics.get("recommended_diversity") or {}).get("ordination_test") or []
     if "permanova" in ord_tests:
@@ -291,13 +362,16 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "shannon_alpha",
         "simpson_alpha",
         "bray_curtis_beta",
+        "weighted_unifrac_lite",
         "mannwhitney_u",
         "benjamini_hochberg_fdr",
         "abundance_diagnostics",
     ]
     if permanova:
         methods.append("permanova_lite")
-    cfg_stats = (state.get("config") or {}).get("statistics") or {}
+    if batch_diag:
+        methods.append("batch_pca_eta2")
+    cfg_stats = stats_cfg
     # Prefer compositional journal methods when diagnostics recommend them
     prefer_comp = bool(cfg_stats.get("prefer_compositional") or diagnostics.get("compositional"))
     enable_lefse = bool(cfg_stats.get("lefse_like", True))
@@ -350,11 +424,25 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         methods.append("r_export_deseq2_maaslin3_ancombc2_aldex2")
         notes.append(f"R export → {r_export.get('readme')} (Rscript={r_export.get('r_available')})")
 
+    # Association analysis: linear / mixed / ML
+    from metagenomic_agent.stats.association import run_association_suite
+
+    assoc = run_association_suite(matrix, groups, covariates=covariates or None, subject=subject_map or None)
+    assoc_path = biomarker_dir / "associations.json"
+    assoc_path.write_text(__import__("json").dumps(assoc, indent=2), encoding="utf-8")
+    if assoc.get("linear") or assoc.get("mixed") or assoc.get("ml"):
+        methods.extend(["association_linear", "association_mixed_lite", "association_ml_trees"])
+        notes.append(
+            f"Associations: linear={len(assoc.get('linear') or [])} "
+            f"mixed={len(assoc.get('mixed') or [])} ml={len(assoc.get('ml') or [])}"
+        )
+
     (outdir / "notes.txt").write_text("\n".join(notes) + "\n", encoding="utf-8")
 
     stats = {
         "alpha_diversity": str(alpha_path),
         "beta_diversity": str(beta_path),
+        "beta_unifrac": str(uni_path),
         "genus_matrix": str(mat_path),
         "biomarkers": str(biomarker_path),
         "lefse_like": str(biomarker_dir / "lefse_like.tsv") if lefse_rows else None,
@@ -362,6 +450,9 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         "r_export": r_export or None,
         "diagnostics": diagnostics,
         "permanova": permanova or None,
+        "batch_effect": batch_diag or None,
+        "associations": assoc,
+        "associations_path": str(assoc_path),
         "n_biomarkers": len(biomarkers),
         "biomarker_list": biomarkers[:20],
         "lefse_list": lefse_rows[:20],
@@ -374,7 +465,9 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             "Statistical Reasoning: abundance diagnostics select method hints "
             "(ANCOM-BC2 / ALDEx2 / MaAsLin3 / DESeq2). "
             "Default Python differential: Mann-Whitney U + BH-FDR; also lefse_like / ancom_like. "
-            "Alpha includes Shannon + Simpson; beta Bray–Curtis + optional PERMANOVA-lite. "
+            "Alpha: Shannon + Simpson; beta: Bray–Curtis + UniFrac-lite + PERMANOVA-lite. "
+            "Batch: PC1~batch η² with optional mean-centering correction. "
+            "Associations: linear / mixed-lite / ML feature ranking. "
             "Journal Rscripts under biomarkers/r_export/."
         ),
     }

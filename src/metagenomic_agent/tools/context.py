@@ -30,6 +30,8 @@ DEFAULT_IMAGES: dict[str, str] = {
     "metabat2": "quay.io/biocontainers/metabat2:2.15--h4ac6f70_1",
     "maxbin2": "quay.io/biocontainers/maxbin2:2.2.7--hdbdd923_5",
     "vamb": "quay.io/biocontainers/vamb:4.1.3--pyhdfd78af_0",
+    "das_tool": "quay.io/biocontainers/das_tool:1.1.6--r43hdfd78af_0",
+    "busco": "quay.io/biocontainers/busco:5.7.1--pyhdfd78af_0",
     "checkm2": "quay.io/biocontainers/checkm2:1.0.2--pyh7cba7a3_0",
     "gtdbtk": "quay.io/biocontainers/gtdbtk:2.4.0--pyhdfd78af_1",
     "bakta": "quay.io/biocontainers/bakta:1.9.3--pyhdfd78af_0",
