@@ -1,5 +1,8 @@
 # Metagenomic Research Agent
 
+> **归档说明（v0.5）**：本文为早期开发者总览，主链路与模块表可能已过时。  
+> 请优先阅读：[ARCHITECTURE.md](ARCHITECTURE.md) · [USAGE.md](USAGE.md) · [METHODS.md](METHODS.md) · 仓库 [README](../README.md)。
+
 ## An Autonomous AI Agent System for End-to-End Metagenomic Analysis and Biological Discovery
 
 ------------------------------------------------------------------------

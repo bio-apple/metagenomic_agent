@@ -1,6 +1,8 @@
 # Methods note for manuscripts (software description)
 
-This document describes what **metagenomic-agent** actually implements today (v0.5.x), for Methods / Software sections.
+> 对应实现版本：**v0.5.x**。中文使用说明见 [USAGE.md](USAGE.md)；架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+
+This document describes what **metagenomic-agent** actually implements today, for Methods / Software sections.
 
 ## System
 

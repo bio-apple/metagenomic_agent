@@ -1,5 +1,8 @@
 # 宏基因组生信智能体（Metagenomics AI Agent）架构设计与部署优化方案
 
+> **归档说明（v0.5）**：本文为 Linux 生产 / MAGs 优化方案草稿，部分节点命名已演进。  
+> 当前实现请以 [ARCHITECTURE.md](ARCHITECTURE.md) 与 [METHODS.md](METHODS.md) 为准；顶刊三阶段落地见 [OPTIMIZATION_PROPOSAL_IMPL.md](OPTIMIZATION_PROPOSAL_IMPL.md)。
+
 ## 1. 概述
 
 本方案旨在针对基于大语言模型（LLM）的**宏基因组生信智能体（Metagenomics AI Agent）**进行架构完善与工程化升级。针对从传统 Mac/单机环境迁移至 **Linux 生产级服务器环境** 的需求，提供从任务规划、容错闭环、多组学/MAGs工具链扩展到高性能 Linux 部署的全套优化策略。

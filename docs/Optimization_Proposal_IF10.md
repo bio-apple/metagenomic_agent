@@ -1,5 +1,7 @@
 # 宏基因组生信智能体 `bio-apple/metagenomic_agent` 优化建议书
 
+> 落地对照（代码路径与状态）：[OPTIMIZATION_PROPOSAL_IMPL.md](OPTIMIZATION_PROPOSAL_IMPL.md) · 架构：[ARCHITECTURE.md](ARCHITECTURE.md)
+
 ## 1. 项目现状评估
 
 `bio-apple/metagenomic_agent` 项目展现了一个设计良好、功能完整的宏基因组分析智能体框架。其核心优势体现在：

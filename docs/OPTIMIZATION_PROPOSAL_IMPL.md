@@ -1,6 +1,7 @@
-# 顶刊导向优化实施说明（对应优化建议书）
+# 顶刊导向优化实施说明
 
-本文档记录建议书三阶段在代码中的落地位置。
+对应建议书：[Optimization_Proposal_IF10.md](Optimization_Proposal_IF10.md)  
+状态：**v0.5.0 已完成三阶段 MVP**（契约 / gLM 路由 / 生物学验证 + CWL）。
 
 ## 第一阶段：技能与契约
 
@@ -22,7 +23,7 @@
 | Epsilon-Greedy 工具档案 | `src/metagenomic_agent/skills/bandit.py` |
 | Taxonomy Agent 集成 | `src/metagenomic_agent/agents/taxonomy_agent.py` |
 
-长读长（≥5000 bp）优先 `microcafe`；短读长默认经典工具，可 dual-path 融合。
+长读长（≥5000 bp）优先 `microcafe`；短读长默认经典工具，可 dual-path 融合。配置见 `config/default.yaml` → `routing:`。
 
 ## 第三阶段：生物学验证与可复现
 
@@ -32,6 +33,14 @@
 | 上下文感知验证 | `src/metagenomic_agent/validators/biological.py` |
 | CWL + run_manifest | `src/metagenomic_agent/report/reproducibility.py` → `results/reproducibility/` |
 
-## 配置
+## 测试与文档
 
-见 `config/default.yaml` 中 `routing:` 段。
+- 契约/路由/生物警告：`tests/test_skills_contracts.py`
+- 端到端产物断言：`tests/test_graph_dryrun.py`（含 `contract_check.json`、`meta_agent.cwl`）
+- 架构与用法：[ARCHITECTURE.md](ARCHITECTURE.md)、[USAGE.md](USAGE.md)
+
+## 尚未纳入本 MVP（后续）
+
+- 真实 gLM 权重与 GPU 推理服务绑定
+- 长读长公开数据集的正式基准报告
+- 契约硬失败默认中止（当前可走 HITL / Critic 警告路径）
