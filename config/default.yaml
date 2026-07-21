@@ -1,10 +1,11 @@
-mode: mock  # mock | docker
+mode: mock  # mock | local | docker
 workdir: ./workdir
 max_retries: 2
 
 docker:
-  image: meta:latest
   threads: 8
+  # Optional per-tool public biocontainer overrides (defaults baked into ToolContext)
+  images: {}
 
 paths:
   host_index: ""
@@ -12,6 +13,7 @@ paths:
   metaphlan_db: ""
   gtdb: "database/gtdb"
   eggnog: "database/eggnog"
+  diamond_db: ""
 
 pipeline:
   enable_host_filter: true

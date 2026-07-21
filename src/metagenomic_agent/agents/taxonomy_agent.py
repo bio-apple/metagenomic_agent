@@ -1,4 +1,4 @@
-"""Taxonomy Agent — Kraken2/Bracken + MetaPhlAn4."""
+"""Taxonomy Agent — Kraken2/Bracken + MetaPhlAn."""
 
 from __future__ import annotations
 
@@ -6,14 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from metagenomic_agent.tools import kraken, metaphlan
+from metagenomic_agent.tools.context import ToolContext
 
 
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
     outdir = Path(state["outdir"])
-    mode = state["mode"]
-    cfg = state["config"]
-    image = cfg.get("docker", {}).get("image", "meta:latest")
-    kraken_db = cfg.get("paths", {}).get("kraken2_db", "")
+    ctx = ToolContext.from_config(state["config"], outdir, mode=state.get("mode"))
     tools = (node or {}).get("params", {}).get("tools") or (node or {}).get("tools") or ["kraken2", "metaphlan"]
     confidence = float((node or {}).get("params", {}).get("confidence", 0.05))
     qc_arts = state.get("artifacts", {}).get("qc_host", {})
@@ -31,17 +29,15 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
                 sample,
                 upstream,
                 tax_dir,
-                mode=mode,
-                docker_image=image,
-                kraken_db=kraken_db,
-                read_length=sample.get("read_length_est", 150),
+                ctx=ctx,
                 confidence=confidence,
+                read_length=sample.get("read_length_est", 150),
             )
             art.update(k)
             art["top_genera"] = list(dict.fromkeys(art.get("top_genera", []) + k.get("top_genera", [])))
             _append_abundance(merged_rows, sid, k.get("kraken2_abundance"), "kraken2")
         if "metaphlan" in tools or "metaphlan4" in tools:
-            m = metaphlan.run(sample, upstream, tax_dir, mode=mode, docker_image=image)
+            m = metaphlan.run(sample, upstream, tax_dir, ctx=ctx)
             art.update(m)
             art["top_genera"] = list(dict.fromkeys(art.get("top_genera", []) + m.get("top_genera", [])))
             _append_abundance(merged_rows, sid, m.get("metaphlan_abundance"), "metaphlan")

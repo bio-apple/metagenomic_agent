@@ -208,7 +208,7 @@ def _llm_plan(query: str, samples: list[dict], config: dict[str, Any]) -> list[T
 def plan(state: AgentState) -> dict:
     """Supervisor entry: decompose scientific question into executable tasks."""
     config = state["config"]
-    env = probe_environment(config.get("docker", {}).get("image", "meta:latest"))
+    env = probe_environment()
     memory = ContextMemory(Path(state["outdir"]) / "context")
     memory.update(samples=state.get("samples", []), env=env)
 

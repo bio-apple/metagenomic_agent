@@ -1,4 +1,4 @@
-"""Function Agent — KEGG / eggNOG / CAZy / CARD / VFDB."""
+"""Function Agent — pathway / gene annotation profiles."""
 
 from __future__ import annotations
 
@@ -6,22 +6,19 @@ from pathlib import Path
 from typing import Any
 
 from metagenomic_agent.tools import functional
+from metagenomic_agent.tools.context import ToolContext
 
 
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
     outdir = Path(state["outdir"])
-    mode = state["mode"]
-    cfg = state["config"]
-    image = cfg.get("docker", {}).get("image", "meta:latest")
+    ctx = ToolContext.from_config(state["config"], outdir, mode=state.get("mode"))
     qc_arts = state.get("artifacts", {}).get("qc_host", {})
     per_sample: dict[str, Any] = {}
     merged = ["sample\tfeature\tabundance\tdatabase"]
 
     for sample in state["samples"]:
         sid = sample["sample_id"]
-        upstream = qc_arts.get(sid, {})
-        fun_dir = outdir / sid / "functional"
-        art = functional.run(sample, upstream, fun_dir, mode=mode, docker_image=image)
+        art = functional.run(sample, qc_arts.get(sid, {}), outdir / sid / "functional", ctx=ctx)
         per_sample[sid] = art
         path = art.get("functional_profile")
         if path and Path(path).exists():

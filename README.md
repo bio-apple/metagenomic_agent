@@ -1,36 +1,31 @@
 # Metagenomic Research Agent
 
-Autonomous AI agent system for end-to-end metagenomic analysis and biological discovery.
+面向科学问题的自主宏基因组分析 Agent（LangGraph 多 Agent 协作），不依赖任何既有私有流水线仓库。
 
-See the full design in [`docs/Metagenomic_Research_Agent_Developer_Documentation.md`](docs/Metagenomic_Research_Agent_Developer_Documentation.md).
+设计文档：[`docs/Metagenomic_Research_Agent_Developer_Documentation.md`](docs/Metagenomic_Research_Agent_Developer_Documentation.md)
 
-## Architecture
+## 思路
 
-```
-User (natural language)
-        │
- Supervisor Agent
-        │
- ┌──────┼──────────┬──────────┐
- QC   Taxonomy  Assembly  Function
-        │
- Statistics Agent
-        │
- Critic Agent
-        │
- Literature Agent
-        │
- Report Generator
-```
+- **Supervisor** 把自然语言问题拆成任务图
+- **专用 Agent**（QC / Taxonomy / Assembly / Function / Statistics）调用工具
+- **Critic** 做可靠性审查并可触发重试
+- **Literature** 连接机制解释与文献
+- **Report** 产出可复现报告
 
-Implemented with **LangGraph** + optional **Snakemake** (`workflow/Snakefile`) + **FastAPI** (`meta-agent serve`).
+工具执行三态（`ToolContext`）：
 
-## Quick start
+| mode | 行为 |
+|------|------|
+| `mock` | 无外部依赖，生成可演示产物（默认） |
+| `local` | 调用本机 PATH 上的 fastp/kraken2/... |
+| `docker` | 使用公开 biocontainers 镜像（可在 config 覆盖） |
+
+## 快速开始
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env   # optional LLM keys (DeepSeek/Qwen/OpenAI)
+cp .env.example .env   # 可选：配置 LLM
 
 meta-agent run \
   --input tests/fixtures/fastq \
@@ -40,7 +35,7 @@ meta-agent run \
   --yes
 ```
 
-Outputs (documentation §8):
+产物：
 
 ```
 results/
@@ -53,32 +48,18 @@ results/
 └── final_report.html
 ```
 
-## API
+## API / Snakemake
 
 ```bash
 meta-agent serve --host 127.0.0.1 --port 8000
-# POST /analyze  GET /health
+snakemake -j 2 --snakefile workflow/Snakefile
 ```
 
-## Docker mode
+## 配置
 
-Requires image `meta:latest` (or configure `docker.image`) and databases under `database/` / `config/default.yaml` paths.
+见 [`config/default.yaml`](config/default.yaml)：数据库路径、`docker.images`、流水线开关。
 
-## Agents & tools
-
-| Agent | Module | Tools |
-|-------|--------|-------|
-| Supervisor | `agents/supervisor.py` | LLM / heuristic planner |
-| QC | `agents/qc_agent.py` | fastp, host filter |
-| Taxonomy | `agents/taxonomy_agent.py` | Kraken2, Bracken, MetaPhlAn |
-| Assembly | `agents/assembly_agent.py` | MEGAHIT, MetaBAT2, GTDB-Tk |
-| Function | `agents/function_agent.py` | KEGG/eggNOG/CAZy/CARD/VFDB |
-| Statistics | `agents/statistics_agent.py` | Shannon, Bray-Curtis, biomarkers |
-| Critic | `agents/critic_agent.py` | reliability checks |
-| Literature | `agents/literature_agent.py` | PubMed + mechanism KB |
-| Report | `report/generator.py` | HTML / methods / reproduce.sh |
-
-## Tests
+## 测试
 
 ```bash
 pytest -q
