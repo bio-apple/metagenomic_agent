@@ -39,9 +39,10 @@ Async HITL: `resume_pipeline` continues from `execute_swarm`.
 | Planner | Research question → analysis plan | `agents/planner_agent.py` |
 | QC | fastp / MultiQC-style scoring | `agents/qc_agent.py` |
 | Taxonomy | Kraken2 / Bracken / MetaPhlAn / Centrifuge | `agents/taxonomy_agent.py` |
+| Assembly / MAG | MEGAHIT/metaSPAdes/Flye → MetaBAT2/MaxBin2/CONCOCT/VAMB → DAS Tool → CheckM2+BUSCO → GTDB-Tk | `agents/assembly_agent.py`, `agents/mag_agent.py` |
 | Function | DIAMOND / KEGG / HUMAnN | `agents/function_agent.py` |
 | Resistance | CARD/RGI / DeepARG / ResFinder / VFDB | `agents/resistance_agent.py` |
-| Statistics | Alpha/Beta / differential / R export | `agents/statistics_agent.py` |
+| Statistics | Shannon/Simpson · Bray–Curtis/UniFrac · PERMANOVA · associations · batch correction · R export | `agents/statistics_agent.py` |
 | Literature | PubMed + RAG | `agents/literature_agent.py` |
 | Evidence | Statistics + literature + KG | `agents/evidence_agent.py` |
 | Reviewer | Peer-review-style confidence/concerns | `agents/reviewer_agent.py` |
