@@ -70,6 +70,16 @@ HTML_TEMPLATE = Template(
   </div>
 
   <div class="card">
+    <h2>Data Quality Scores</h2>
+    <pre>{{ quality_json }}</pre>
+  </div>
+
+  <div class="card">
+    <h2>Evidence Table</h2>
+    <div>{{ evidence_html | safe }}</div>
+  </div>
+
+  <div class="card">
     <h2>Literature</h2>
     <div>{{ literature_html | safe }}</div>
   </div>
@@ -162,6 +172,13 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
     if lit_path and Path(lit_path).exists():
         lit_md = Path(lit_path).read_text(encoding="utf-8")
 
+    evidence_md = ""
+    ev_path = Path(state["outdir"]) / "evidence" / "evidence_table.md"
+    if ev_path.exists():
+        evidence_md = ev_path.read_text(encoding="utf-8")
+
+    quality = (state.get("artifacts") or {}).get("quality_scores") or {}
+
     stats = state.get("artifacts", {}).get("statistics") or state.get("statistics") or {}
     biomarkers = ""
     if stats.get("biomarkers") and Path(stats["biomarkers"]).exists():
@@ -178,6 +195,11 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         "diversity_analysis": str(outdir / "diversity_analysis"),
         "biomarkers": str(outdir / "biomarkers"),
         "literature_summary": str(outdir / "literature_summary"),
+        "evidence": str(outdir / "evidence"),
+        "quality": str(outdir / "quality"),
+        "workflow_dag": str(outdir / "workflow" / "dag.json"),
+        "manuscript": str(outdir / "report" / "manuscript"),
+        "figures": str(outdir / "report" / "figures"),
         "final_report.html": str(outdir / "final_report.html"),
     }
 
@@ -191,6 +213,8 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         biomarkers=biomarkers or "(none)",
         warnings=critic.get("warnings") or [],
         recommendations=critic.get("recommendations") or [],
+        quality_json=json.dumps(quality.get("scores") or quality, indent=2, ensure_ascii=False),
+        evidence_html=_md_to_html(evidence_md or "_No evidence table_"),
         literature_html=_md_to_html(lit_md or "_No literature summary_"),
         interpretation_html=_md_to_html(interpretation),
         paths_json=json.dumps(key_paths, indent=2),
@@ -238,8 +262,12 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
     )
     (report_dir / "methods.md").write_text(methods_md, encoding="utf-8")
 
+    from metagenomic_agent.report.manuscript import write_manuscript
+
+    ms_template = ((state.get("config") or {}).get("report") or {}).get("manuscript_template", "Microbiome")
+    manuscript_paths = write_manuscript(state, template=ms_template)
+
     meta = state.get("metadata_path")
-    cfg_note = ""
     reproduce = report_dir / "reproduce.sh"
     reproduce.write_text(
         "#!/usr/bin/env bash\nset -euo pipefail\n"
@@ -261,6 +289,7 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         "legacy_html": str(report_dir / "report.html"),
         "methods": str(report_dir / "methods.md"),
         "reproduce": str(reproduce),
+        "manuscript": manuscript_paths.get("combined", ""),
         "paths": str(outdir / "paths.json"),
     }
 

@@ -76,4 +76,11 @@ src/metagenomic_agent/
   evaluation/      # 基准指标辅助
 ```
 
-设计动机与代码落地表见 [OPTIMIZATION_PROPOSAL_IMPL.md](OPTIMIZATION_PROPOSAL_IMPL.md)。
+设计动机与代码落地表见 [OPTIMIZATION_PROPOSAL_IMPL.md](OPTIMIZATION_PROPOSAL_IMPL.md) 与 [PROPOSAL_2026_IMPL.md](PROPOSAL_2026_IMPL.md)。
+
+### v0.6 图节点增量
+
+- `export_dag`：写出可移植 `workflow/dag.json`
+- `quality_scores`：数据质量综合评分
+- `visualization`：figures/tables 布局
+- `literature`：Evidence Table + bio-DB RAG

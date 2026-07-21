@@ -9,6 +9,7 @@ from metagenomic_agent.agents import (
     statistics_agent,
     supervisor,
     taxonomy_agent,
+    visualization_agent,
 )
 from metagenomic_agent.report import generator as report_agent
 
@@ -22,6 +23,7 @@ AGENT_REGISTRY = {
     "function": function_agent.run,
     "statistics": statistics_agent.run,
     "stats": statistics_agent.run,
+    "visualization": visualization_agent.run,
 }
 
 __all__ = [
@@ -34,5 +36,6 @@ __all__ = [
     "statistics_agent",
     "critic_agent",
     "literature_agent",
+    "visualization_agent",
     "report_agent",
 ]

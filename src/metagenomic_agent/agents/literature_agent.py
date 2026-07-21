@@ -1,15 +1,16 @@
-"""Literature Agent — PubMed search and mechanism explanation."""
+"""Literature Agent — multi-source search, bio-DB RAG, and Evidence Table."""
 
 from __future__ import annotations
 
 import json
 import os
-import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any
 
-# Curated fallback knowledge for offline / mock mode
+from metagenomic_agent.agents.evidence import build_evidence_table, evidence_table_md
+from metagenomic_agent.knowledge import rag as micro_rag
+from metagenomic_agent.rag import retrieve_multi
+
 MECHANISM_KB = {
     "Faecalibacterium": (
         "Faecalibacterium produces butyrate, which may influence intestinal barrier integrity "
@@ -34,9 +35,6 @@ MECHANISM_KB = {
 }
 
 
-from metagenomic_agent.knowledge import rag as micro_rag
-
-
 def _biomarker_genera(state: dict[str, Any]) -> list[str]:
     stats = state.get("artifacts", {}).get("statistics") or state.get("statistics") or {}
     genera = [b["genus"] for b in stats.get("biomarker_list", []) if b.get("genus")]
@@ -45,44 +43,9 @@ def _biomarker_genera(state: dict[str, Any]) -> list[str]:
     tops: list[str] = []
     for art in state.get("artifacts", {}).get("taxonomy", {}).values():
         tops.extend(art.get("top_genera") or [])
-    # Prefer RAG search hits for the user query
     for hit in micro_rag.search_kb(state.get("user_query") or "", top_k=3):
         tops.append(hit["taxon"])
     return list(dict.fromkeys(tops))[:5]
-
-
-def _pubmed_search(term: str, retmax: int = 3) -> list[dict[str, str]]:
-    """Lightweight NCBI E-utilities search (no API key required for low volume)."""
-    try:
-        esearch = (
-            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?"
-            + urllib.parse.urlencode({"db": "pubmed", "retmode": "json", "retmax": retmax, "term": term})
-        )
-        with urllib.request.urlopen(esearch, timeout=8) as resp:
-            data = json.loads(resp.read().decode())
-        ids = data.get("esearchresult", {}).get("idlist", [])
-        if not ids:
-            return []
-        esummary = (
-            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?"
-            + urllib.parse.urlencode({"db": "pubmed", "retmode": "json", "id": ",".join(ids)})
-        )
-        with urllib.request.urlopen(esummary, timeout=8) as resp:
-            summary = json.loads(resp.read().decode())
-        results = []
-        for pmid in ids:
-            item = summary.get("result", {}).get(pmid, {})
-            results.append(
-                {
-                    "pmid": pmid,
-                    "title": item.get("title", ""),
-                    "source": item.get("fulljournalname") or item.get("source", ""),
-                    "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
-                }
-            )
-        return results
-    except Exception:  # noqa: BLE001 — offline fallback
-        return []
 
 
 def _llm_explain(genus: str, direction: str, query: str) -> str | None:
@@ -116,11 +79,13 @@ def _llm_explain(genus: str, direction: str, query: str) -> str | None:
 def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, Any]:
     outdir = Path(state["outdir"]) / "literature_summary"
     outdir.mkdir(parents=True, exist_ok=True)
+    evidence_dir = Path(state["outdir"]) / "evidence"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
 
     genera = _biomarker_genera(state)
     stats = state.get("artifacts", {}).get("statistics") or state.get("statistics") or {}
     directions = {b["genus"]: b.get("direction", "") for b in stats.get("biomarker_list", [])}
-    enable_pubmed = bool(state.get("config", {}).get("literature", {}).get("pubmed", True))
+    cfg = state.get("config") or {}
     mode = state.get("mode", "mock")
 
     entries: list[dict[str, Any]] = []
@@ -129,6 +94,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     for genus in genera:
         direction = directions.get(genus, "")
         rag_hits = micro_rag.retrieve(genus)
+        bio_hits = retrieve_multi(genus, dbs=["gtdb", "kegg", "card", "vfdb", "mgnify"], top_k_per_db=2)
         if rag_hits:
             mechanism = rag_hits[0].get("mechanism") or MECHANISM_KB.get(genus, "")
             refs = rag_hits[0].get("references") or []
@@ -136,9 +102,10 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             mechanism = MECHANISM_KB.get(genus, f"{genus} has been reported in human microbiome studies.")
             refs = []
         llm_extra = _llm_explain(genus, direction, state.get("user_query", ""))
-        papers: list[dict[str, str]] = []
-        if enable_pubmed and mode != "mock":
-            papers = _pubmed_search(f"{genus} microbiome IBD OR gut")
+
+        from metagenomic_agent.agents.evidence import collect_papers
+
+        papers = collect_papers(f"{genus} microbiome IBD OR gut", mode, cfg)
         if not papers:
             papers = [
                 {
@@ -164,6 +131,7 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             "llm_interpretation": llm_extra,
             "papers": papers,
             "rag": rag_hits[:2],
+            "bio_db_rag": bio_hits,
         }
         entries.append(entry)
         md_lines.append(f"## {genus}")
@@ -172,18 +140,39 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         md_lines.append(f"- Interpretation: {mechanism}")
         if llm_extra:
             md_lines.append(f"- LLM: {llm_extra}")
+        for db, hits in bio_hits.items():
+            if hits:
+                md_lines.append(f"- BioDB[{db}]: {hits[0].get('name') or hits[0].get('id')}")
         for p in papers:
             md_lines.append(f"- Paper: {p.get('title')} ({p.get('pmid')}) {p.get('url', '')}")
         md_lines.append("")
+
+    evidence_rows = build_evidence_table(
+        genera, directions, state.get("user_query") or "", mode, cfg
+    )
+    (evidence_dir / "evidence_table.json").write_text(
+        json.dumps(evidence_rows, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    (evidence_dir / "evidence_table.md").write_text(evidence_table_md(evidence_rows), encoding="utf-8")
 
     (outdir / "literature_summary.md").write_text("\n".join(md_lines), encoding="utf-8")
     (outdir / "literature_summary.json").write_text(
         json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
-    literature = {"entries": entries, "path": str(outdir / "literature_summary.md")}
+    literature = {
+        "entries": entries,
+        "path": str(outdir / "literature_summary.md"),
+        "evidence_table": str(evidence_dir / "evidence_table.md"),
+    }
     return {
         "literature": literature,
-        "artifacts": {**state.get("artifacts", {}), "literature": literature},
-        "messages": state.get("messages", []) + [f"Literature Agent summarized {len(entries)} taxa"],
+        "artifacts": {
+            **state.get("artifacts", {}),
+            "literature": literature,
+            "evidence_table": evidence_rows,
+            "evidence_table_path": str(evidence_dir / "evidence_table.json"),
+        },
+        "messages": state.get("messages", [])
+        + [f"Literature Agent summarized {len(entries)} taxa; Evidence Table n={len(evidence_rows)}"],
     }

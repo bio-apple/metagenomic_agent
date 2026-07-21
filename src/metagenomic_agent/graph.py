@@ -1,4 +1,4 @@
-"""LangGraph: playbooks/contracts → HITL → swarm → validate → self-heal → critic → literature → report."""
+"""LangGraph: playbooks/contracts → HITL → swarm → validate → self-heal → critic → literature → viz → report."""
 
 from __future__ import annotations
 
@@ -6,8 +6,10 @@ from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
-from metagenomic_agent.agents import critic_agent, literature_agent, supervisor
+from metagenomic_agent.agents import critic_agent, literature_agent, supervisor, visualization_agent
 from metagenomic_agent.agents.hitl import hitl_checkpoint
+from metagenomic_agent.evaluation.quality_score import write_quality_report
+from metagenomic_agent.execution.dag_export import export_workflow_dag
 from metagenomic_agent.execution.executor import execute_swarm
 from metagenomic_agent.execution.self_heal import apply_self_heal, classify_from_errors, deep_merge_config
 from metagenomic_agent.input.parser import parse_input
@@ -69,7 +71,6 @@ def _self_heal(state: AgentState) -> dict:
     new_dag, cfg_patch = apply_self_heal(list(state.get("dag", [])), actions, state.get("config"))
     new_dag = apply_recovery(new_dag, actions)
     new_config = deep_merge_config(dict(state.get("config") or {}), cfg_patch)
-    # On taxonomy issues, prefer adding metaphlan/microcafe via recovery already
     artifacts = dict(state.get("artifacts") or {})
     artifacts["errors"] = []
     artifacts["self_heal_actions"] = actions
@@ -83,29 +84,58 @@ def _self_heal(state: AgentState) -> dict:
     }
 
 
+def _export_dag(state: AgentState) -> dict:
+    info = export_workflow_dag(state)
+    arts = dict(state.get("artifacts") or {})
+    arts["workflow_dag"] = info
+    return {
+        "artifacts": arts,
+        "messages": state.get("messages", []) + [f"Exported workflow DAG ({info.get('n_nodes')} nodes)"],
+    }
+
+
+def _quality_scores(state: AgentState) -> dict:
+    report = write_quality_report(state)
+    arts = dict(state.get("artifacts") or {})
+    arts["quality_scores"] = report
+    return {
+        "artifacts": arts,
+        "messages": state.get("messages", [])
+        + [f"Quality overall={report.get('scores', {}).get('Overall Score')}"],
+    }
+
+
 def build_graph():
     g = StateGraph(AgentState)
     g.add_node("parse_input", parse_input)
     g.add_node("supervisor", supervisor.plan)
+    g.add_node("export_dag", _export_dag)
     g.add_node("contract_check", contract_check)
     g.add_node("hitl", hitl_checkpoint)
     g.add_node("execute_swarm", execute_swarm)
     g.add_node("validate", validate)
+    g.add_node("quality_scores", _quality_scores)
     g.add_node("self_heal", _self_heal)
     g.add_node("critic", critic_agent.run)
     g.add_node("literature", literature_agent.run)
+    g.add_node("visualization", visualization_agent.run)
     g.add_node("report", report_agent.run)
 
     g.set_entry_point("parse_input")
     g.add_edge("parse_input", "supervisor")
-    g.add_edge("supervisor", "contract_check")
+    g.add_edge("supervisor", "export_dag")
+    g.add_edge("export_dag", "contract_check")
     g.add_edge("contract_check", "hitl")
     g.add_conditional_edges("hitl", _route_after_hitl, {"execute_swarm": "execute_swarm", "report": "report"})
     g.add_edge("execute_swarm", "validate")
-    g.add_conditional_edges("validate", _route_after_validate, {"self_heal": "self_heal", "critic": "critic"})
+    g.add_edge("validate", "quality_scores")
+    g.add_conditional_edges(
+        "quality_scores", _route_after_validate, {"self_heal": "self_heal", "critic": "critic"}
+    )
     g.add_edge("self_heal", "execute_swarm")
     g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
-    g.add_edge("literature", "report")
+    g.add_edge("literature", "visualization")
+    g.add_edge("visualization", "report")
     g.add_edge("report", END)
     return g.compile()
 

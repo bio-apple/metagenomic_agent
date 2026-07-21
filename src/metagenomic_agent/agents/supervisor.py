@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, ValidationError
 from metagenomic_agent.coordinator.env_manager import probe_environment
 from metagenomic_agent.coordinator.memory import ContextMemory
 from metagenomic_agent.messaging import append_msg, emit
+from metagenomic_agent.skills.decision import decide_taxonomy_tools
 from metagenomic_agent.state import AgentState, DagNode, TaskSpec
 
 KB_PATH = Path(__file__).resolve().parents[1] / "knowledge" / "best_practices.md"
@@ -64,12 +65,20 @@ def _default_plan(query: str, config: dict[str, Any]) -> list[TaskSpec]:
     wants_function = any(k in q for k in ("function", "pathway", "功能", "kegg", "resistance", "耐药"))
     pipe = config.get("pipeline", {})
 
+    tax_tools = list(pipe.get("taxonomy_tools") or []) or decide_taxonomy_tools(
+        {
+            "memory_gb": (config.get("linux") or {}).get("memory_gb", 32),
+            "n_samples": int(config.get("_n_samples") or 1),
+            "read_length": float(config.get("_read_length") or 150),
+            "prefer_accuracy": "accurate" in q or "高精度" in q,
+        }
+    )
     tasks: list[TaskSpec] = [
         {"name": "quality_control", "agent": "QC Agent", "tools": ["fastp", "filter_host"], "params": {}, "depends_on": []},
         {
             "name": "taxonomy_profile",
             "agent": "Taxonomy Agent",
-            "tools": list(pipe.get("taxonomy_tools", ["kraken2", "metaphlan"])),
+            "tools": tax_tools,
             "params": {"confidence": 0.05},
             "depends_on": ["quality_control"],
         },
@@ -201,19 +210,36 @@ def _llm_plan(query: str, samples: list[dict], config: dict[str, Any]) -> list[T
 
 
 def plan(state: AgentState) -> dict:
-    config = state["config"]
+    config = dict(state["config"] or {})
+    samples = state.get("samples", []) or []
+    read_lengths = [float(s.get("read_length_est") or 150) for s in samples] or [150.0]
+    config["_n_samples"] = len(samples)
+    config["_read_length"] = max(read_lengths)
+
     env = probe_environment()
     memory = ContextMemory(Path(state["outdir"]) / "context")
-    memory.update(samples=state.get("samples", []), env=env)
+    project = {
+        "project": (config.get("project") or {}).get("name")
+        or _infer_project_name(state.get("user_query") or ""),
+        "host": (config.get("project") or {}).get("host", "human"),
+        "platform": (config.get("project") or {}).get("platform", "illumina"),
+        "read_length": f"PE{int(config['_read_length'])}"
+        if config["_read_length"] < 1000
+        else f"long:{int(config['_read_length'])}",
+        "query": state.get("user_query"),
+        "n_samples": len(samples),
+    }
+    memory.set_project_profile(project)
+    memory.update(samples=samples, env=env)
 
-    tasks = _llm_plan(state["user_query"], state.get("samples", []), config)
+    tasks = _llm_plan(state["user_query"], samples, config)
     source = "llm"
     if tasks is None:
         tasks = _default_plan(state["user_query"], config)
         source = "heuristic"
 
     dag = _tasks_to_dag(tasks)
-    memory.update(tasks=tasks, dag=dag)
+    memory.update(tasks=tasks, dag=dag, project=project)
     memory.append_history(f"supervisor_plan:{source}:{len(tasks)}")
 
     hitl: list[str] = []
@@ -232,10 +258,25 @@ def plan(state: AgentState) -> dict:
         "tasks": tasks,
         "dag": dag,
         "hitl_pending": hitl,
-        "artifacts": {**state.get("artifacts", {}), "env": env, "plan_source": source, "supervisor_plan": task_json},
+        "artifacts": {
+            **state.get("artifacts", {}),
+            "env": env,
+            "plan_source": source,
+            "supervisor_plan": task_json,
+            "project_profile": project,
+        },
         "messages": state.get("messages", []) + [f"Supervisor planned {len(tasks)} task(s) via {source}"],
         "agent_messages": append_msg(state.get("agent_messages"), amsg),
     }
+
+
+def _infer_project_name(query: str) -> str:
+    q = query.lower()
+    if "ibd" in q:
+        return "IBD cohort"
+    if "tumor" in q or "cancer" in q:
+        return "tumor microbiome"
+    return "metagenome project"
 
 
 decompose = plan

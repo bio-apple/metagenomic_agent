@@ -74,6 +74,11 @@ def test_graph_dryrun_mock(tmp_path: Path):
     assert (out / "logs" / "events.jsonl").exists()
     assert (out / "contract_check.json").exists()
     assert (out / "reproducibility" / "meta_agent.cwl").exists()
+    assert (out / "evidence" / "evidence_table.md").exists()
+    assert (out / "workflow" / "dag.json").exists()
+    assert (out / "quality" / "quality_scores.json").exists()
+    assert (out / "report" / "manuscript" / "manuscript_draft.md").exists()
+    assert (out / "report" / "figures" / "manifest.json").exists()
     assert final.get("critic") is not None
     assert final.get("literature") is not None
     assert final.get("agent_messages") is not None

@@ -1,4 +1,4 @@
-"""Context memory: persist paths, metadata, and intermediate artifacts."""
+"""Context memory: project profile + paths, metadata, and intermediate artifacts."""
 
 from __future__ import annotations
 
@@ -13,18 +13,26 @@ class ContextMemory:
         self.workdir.mkdir(parents=True, exist_ok=True)
         self.path = self.workdir / "context.json"
         self._data: dict[str, Any] = {
+            "project": {},
             "samples": [],
             "artifacts": {},
             "history": [],
             "dag": [],
         }
         if self.path.exists():
-            self._data = json.loads(self.path.read_text())
+            loaded = json.loads(self.path.read_text())
+            self._data.update(loaded)
+
+    def set_project_profile(self, profile: dict[str, Any]) -> None:
+        self._data["project"] = {**(self._data.get("project") or {}), **profile}
+        self.flush()
 
     def update(self, **kwargs: Any) -> None:
         for key, value in kwargs.items():
             if key in {"artifacts"} and isinstance(value, dict):
                 self._data.setdefault("artifacts", {}).update(value)
+            elif key == "project" and isinstance(value, dict):
+                self._data["project"] = {**(self._data.get("project") or {}), **value}
             else:
                 self._data[key] = value
         self.flush()
@@ -34,8 +42,12 @@ class ContextMemory:
         self.flush()
 
     def flush(self) -> None:
-        self.path.write_text(json.dumps(self._data, indent=2, ensure_ascii=False))
+        self.path.write_text(json.dumps(self._data, indent=2, ensure_ascii=False), encoding="utf-8")
 
     @property
     def data(self) -> dict[str, Any]:
         return self._data
+
+    @property
+    def project(self) -> dict[str, Any]:
+        return dict(self._data.get("project") or {})

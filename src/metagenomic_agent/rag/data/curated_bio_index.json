@@ -1,0 +1,51 @@
+{
+  "version": "0.6.0",
+  "databases": {
+    "gtdb": [
+      {"id": "s__Faecalibacterium_prausnitzii", "name": "Faecalibacterium prausnitzii", "rank": "species", "phylum": "Bacillota", "notes": "Butyrate producer; depleted in IBD cohorts", "aliases": ["Faecalibacterium"]},
+      {"id": "s__Escherichia_coli", "name": "Escherichia coli", "rank": "species", "phylum": "Pseudomonadota", "notes": "Includes AIEC pathotypes linked to IBD mucosa", "aliases": ["Escherichia"]},
+      {"id": "s__Akkermansia_muciniphila", "name": "Akkermansia muciniphila", "rank": "species", "phylum": "Verrucomicrobiota", "notes": "Mucin degrader; metabolic health associations", "aliases": ["Akkermansia"]},
+      {"id": "s__Bacteroides_fragilis", "name": "Bacteroides fragilis", "rank": "species", "phylum": "Bacteroidota", "notes": "Polysaccharide utilization; immunomodulation", "aliases": ["Bacteroides"]},
+      {"id": "s__Bifidobacterium_longum", "name": "Bifidobacterium longum", "rank": "species", "phylum": "Actinomycetota", "notes": "Early-life colonizer; SCFA support", "aliases": ["Bifidobacterium"]}
+    ],
+    "ncbi_taxonomy": [
+      {"id": "216851", "name": "Faecalibacterium prausnitzii", "rank": "species", "lineage": "Bacteria;Bacillota;Clostridia;Eubacteriales;Oscillospiraceae"},
+      {"id": "562", "name": "Escherichia coli", "rank": "species", "lineage": "Bacteria;Pseudomonadota;Gammaproteobacteria;Enterobacterales;Enterobacteriaceae"},
+      {"id": "239935", "name": "Akkermansia muciniphila", "rank": "species", "lineage": "Bacteria;Verrucomicrobiota;Verrucomicrobiae;Verrucomicrobiales;Akkermansiaceae"}
+    ],
+    "kegg": [
+      {"id": "K00929", "name": "butyrate kinase", "pathway": "Butanoate metabolism", "module": "M00027", "taxa_hint": ["Faecalibacterium", "Roseburia"]},
+      {"id": "K01034", "name": "acetate CoA-transferase", "pathway": "Butanoate metabolism", "module": "M00027", "taxa_hint": ["Faecalibacterium"]},
+      {"id": "K05349", "name": "beta-glucosidase", "pathway": "Starch and sucrose metabolism", "module": "", "taxa_hint": ["Bacteroides", "Bifidobacterium"]}
+    ],
+    "eggnog": [
+      {"id": "COG1254", "name": "Acyl-CoA dehydrogenase", "category": "Lipid transport and metabolism", "taxa_hint": ["Faecalibacterium"]},
+      {"id": "COG0366", "name": "Glycosidase", "category": "Carbohydrate transport and metabolism", "taxa_hint": ["Bacteroides", "Bifidobacterium"]}
+    ],
+    "card": [
+      {"id": "ARO:3000010", "name": "TEM-1", "family": "beta-lactamase", "drug_class": "penam", "taxa_hint": ["Escherichia"]},
+      {"id": "ARO:3000024", "name": "CTX-M", "family": "beta-lactamase", "drug_class": "cephalosporin", "taxa_hint": ["Escherichia", "Klebsiella"]}
+    ],
+    "vfdb": [
+      {"id": "VFG000001", "name": "fimH", "category": "Adherence", "organism": "Escherichia coli", "taxa_hint": ["Escherichia"]},
+      {"id": "VFG037462", "name": "aggR", "category": "Regulation", "organism": "Escherichia coli", "taxa_hint": ["Escherichia"]}
+    ],
+    "mgnify": [
+      {"id": "MGYS00005792", "name": "Human gut IBD cohort (curated stub)", "biome": "root:Host-associated:Human:Digestive system:Large intestine", "study_type": "metagenomic", "taxa_hint": ["Faecalibacterium", "Escherichia"]},
+      {"id": "MGYS00001234", "name": "HMP gut reference (curated stub)", "biome": "root:Host-associated:Human:Digestive system", "study_type": "metagenomic", "taxa_hint": ["Bacteroides", "Prevotella"]}
+    ],
+    "bacdive": [
+      {"id": "BD:001", "name": "Faecalibacterium prausnitzii", "oxygen": "anaerobic", "temp_opt": 37, "habitat": "human intestine"},
+      {"id": "BD:002", "name": "Akkermansia muciniphila", "oxygen": "anaerobic", "temp_opt": 37, "habitat": "human intestine mucus"}
+    ],
+    "hmp": [
+      {"id": "HMP:gut", "name": "HMP healthy adult gut reference profile (stub)", "body_site": "stool", "notes": "Bacteroides/Faecalibacterium-dominated community archetype"}
+    ]
+  },
+  "evidence_links": [
+    {"species": "Faecalibacterium prausnitzii", "disease": "IBD", "pmid": "36332312", "effect": "Down", "source": "curated", "confidence": 0.9},
+    {"species": "Escherichia coli", "disease": "IBD", "pmid": "25320205", "effect": "Up", "source": "curated", "confidence": 0.85},
+    {"species": "Akkermansia muciniphila", "disease": "metabolic syndrome", "pmid": "27076061", "effect": "Down", "source": "curated", "confidence": 0.8},
+    {"species": "Bifidobacterium", "disease": "IBD", "pmid": "32042144", "effect": "Down", "source": "curated", "confidence": 0.75}
+  ]
+}
