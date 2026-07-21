@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.0
+
+- Interactive Plotly dashboard: composition, alpha/beta boxplots, PCoA, heatmap, volcano
+- FDR q slider to filter significant taxa on heatmap/volcano; embedded in final report
+
 ## 0.11.0
 
 - Summary-driven pipeline context: Q30 / reads / N50 / CheckM completeness only — never raw sequences in LLM window

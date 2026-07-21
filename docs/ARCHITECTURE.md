@@ -1,4 +1,4 @@
-# 架构说明（v0.11 · 多智能体 + 摘要上下文 + 可复现）
+# 架构说明（v0.12 · 多智能体 + 交互可视化）
 
 源码：`src/metagenomic_agent/`。
 
@@ -79,6 +79,17 @@ parse → router → supervisor → tool_specialist → plan_validator
 | 复现包 | `report/reproducibility.py` | manifest + CWL + seeds + config snapshot |
 
 配置：`summary.enabled`、`reproducibility.auto_export` / `seed`。
+
+## 交互式可视化（v0.12）
+
+| 组件 | 路径 | 作用 |
+|------|------|------|
+| Plotly figures | `report/interactive.py` | 组成 / Alpha·Beta 箱线 / PCoA / Heatmap / Volcano |
+| Dashboard | `interactive_dashboard.html` | 分栏 + FDR q 滑块筛选显著菌群 |
+| Visualization Agent | `agents/visualization_agent.py` | 生成 JSON + 仪表盘 |
+| Final report | `report/generator.py` | 内嵌多图 + 链接仪表盘 |
+
+配置：`visualization.default_q` / `top_n_taxa`。
 
 ## 工作流 RAG 与 XAI
 

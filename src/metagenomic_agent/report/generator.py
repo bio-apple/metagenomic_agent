@@ -31,6 +31,11 @@ HTML_TEMPLATE = Template(
     .warn { color: #9a3412; }
     .ok { color: #166534; }
     ul { line-height: 1.6; }
+    .plot { height: 420px; width: 100%; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+    a.btn { display: inline-block; margin-top: .5rem; padding: .45rem .9rem; background: #1b9e77; color: #fff;
+            text-decoration: none; border-radius: 8px; font-size: .9rem; }
   </style>
 </head>
 <body>
@@ -46,13 +51,36 @@ HTML_TEMPLATE = Template(
   </div>
 
   <div class="card">
+    <h2>Interactive Analytics</h2>
+    <p>物种组成、Alpha/Beta 箱线图、PCoA、显著差异菌群 Heatmap（可按 FDR q 筛选）。</p>
+    <a class="btn" href="{{ dashboard_href }}" target="_blank" rel="noopener">打开交互式仪表盘</a>
+  </div>
+
+  <div class="card">
     <h2>Supervisor Plan</h2>
     <pre>{{ plan_json }}</pre>
   </div>
 
   <div class="card">
-    <h2>Taxonomy Profile</h2>
-    <div id="taxplot" style="height:420px;"></div>
+    <h2>Taxonomic Composition</h2>
+    <div id="plot-composition" class="plot"></div>
+  </div>
+
+  <div class="card">
+    <h2>Diversity &amp; Ordination</h2>
+    <div class="grid2">
+      <div id="plot-alpha" class="plot"></div>
+      <div id="plot-beta" class="plot"></div>
+    </div>
+    <div id="plot-pcoa" class="plot" style="margin-top:1rem;"></div>
+  </div>
+
+  <div class="card">
+    <h2>Significant Taxa Heatmap &amp; Volcano</h2>
+    <div class="grid2">
+      <div id="plot-heatmap" class="plot"></div>
+      <div id="plot-volcano" class="plot"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -100,8 +128,18 @@ HTML_TEMPLATE = Template(
   </div>
 
   <script>
-    var data = {{ plot_data | safe }};
-    Plotly.newPlot('taxplot', data.traces, data.layout, {responsive: true});
+    var FIGS = {{ interactive_figs | safe }};
+    var cfg = {responsive: true, displaylogo: false};
+    function draw(id, key) {
+      var f = FIGS[key] || {data: [], layout: {title: key}};
+      Plotly.newPlot(id, f.data || [], f.layout || {}, cfg);
+    }
+    draw('plot-composition', 'composition');
+    draw('plot-alpha', 'alpha_box');
+    draw('plot-beta', 'beta_box');
+    draw('plot-pcoa', 'pcoa');
+    draw('plot-heatmap', 'heatmap');
+    draw('plot-volcano', 'volcano');
   </script>
 </body>
 </html>
@@ -214,12 +252,21 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         "workflow_dag": str(outdir / "workflow" / "dag.json"),
         "manuscript": str(outdir / "report" / "manuscript"),
         "figures": str(outdir / "report" / "figures"),
+        "interactive_dashboard": str(outdir / "interactive_dashboard.html"),
         "xai": str(outdir / "xai"),
         "router": str(outdir / "router_decision.json"),
         "tool_specialist": str(outdir / "tool_specialist"),
         "reproducibility": str(outdir / "reproducibility"),
         "final_report.html": str(outdir / "final_report.html"),
     }
+
+    from metagenomic_agent.report.interactive import build_interactive_figures, write_interactive_dashboard
+
+    dash = outdir / "interactive_dashboard.html"
+    if not dash.exists():
+        write_interactive_dashboard(state)
+    figs_payload = build_interactive_figures(state)
+    interactive_figs = figs_payload["figures"]
 
     html = HTML_TEMPLATE.render(
         query=state.get("user_query", ""),
@@ -237,7 +284,8 @@ def generate(state: dict[str, Any]) -> dict[str, str]:
         literature_html=_md_to_html(lit_md or "_No literature summary_"),
         interpretation_html=_md_to_html(interpretation),
         paths_json=json.dumps(key_paths, indent=2),
-        plot_data=json.dumps(_plot_payload(state)),
+        dashboard_href="interactive_dashboard.html",
+        interactive_figs=json.dumps(interactive_figs, ensure_ascii=False),
     )
 
     final_html = outdir / "final_report.html"

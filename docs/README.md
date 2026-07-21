@@ -1,6 +1,6 @@
 # 文档索引
 
-面向 **metagenomic-agent v0.11.x**。建议顺序：README → USAGE → ARCHITECTURE → METHODS。
+面向 **metagenomic-agent v0.12.x**。建议顺序：README → USAGE → ARCHITECTURE → METHODS。
 
 | 文档 | 说明 |
 |------|------|

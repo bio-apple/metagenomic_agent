@@ -121,6 +121,15 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
         encoding="utf-8",
     )
 
+    from metagenomic_agent.report.interactive import write_interactive_dashboard
+
+    viz_cfg = ((state.get("config") or {}).get("visualization") or {})
+    default_q = float(viz_cfg.get("default_q", 0.1))
+    interactive = write_interactive_dashboard(
+        {**state, "artifacts": {**(state.get("artifacts") or {}), "statistics": stats}},
+        default_q=default_q,
+    )
+
     manifest = {
         "figures": [
             str(heat_path.relative_to(outdir)),
@@ -130,13 +139,33 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
             "report/figures/lefse_like_bars.json",
             "report/figures/sankey.json",
             "report/figures/nmds.json",
+            "report/figures/composition.plotly.json",
+            "report/figures/alpha_box.plotly.json",
+            "report/figures/beta_box.plotly.json",
+            "report/figures/pcoa.plotly.json",
+            "report/figures/heatmap.plotly.json",
+            "report/figures/volcano.plotly.json",
+            "report/figures/interactive_dashboard.html",
+            "interactive_dashboard.html",
         ],
         "tables": [str(p.relative_to(outdir)) for p in tab_dir.glob("*")],
-        "methods": ["classical_mds_pcoa", "spearman_cooccurrence", "volcano", "lefse_like_bars", "sankey"],
+        "methods": [
+            "classical_mds_pcoa",
+            "spearman_cooccurrence",
+            "volcano",
+            "lefse_like_bars",
+            "sankey",
+            "interactive_plotly_dashboard",
+        ],
+        "interactive": interactive,
     }
     (fig_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     return {
         "artifacts": {**state.get("artifacts", {}), "visualization": manifest},
-        "messages": state.get("messages", []) + [f"Visualization Agent wrote {len(manifest['figures'])} figures"],
+        "messages": state.get("messages", [])
+        + [
+            f"Visualization Agent wrote {len(manifest['figures'])} figures; "
+            f"interactive dashboard → {interactive.get('dashboard_root')}"
+        ],
     }

@@ -81,6 +81,10 @@ project:
 report:
   manuscript_template: Microbiome  # Nature | Cell | ISME Journal | Microbiome | Gut Microbes
 
+visualization:
+  default_q: 0.1  # FDR q cutoff for interactive heatmap / volcano highlighting
+  top_n_taxa: 25
+
 pi:
   max_replans: 1
 
