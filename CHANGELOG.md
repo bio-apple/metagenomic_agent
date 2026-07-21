@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.0
+
+- Async HITL for Web/API: `hitl.mode=async`, session under `hitl/async/`, `resume_pipeline`
+- API: `hitl_mode` on `POST /analyze`; `GET/POST /runs/{run_id}/hitl`
+- Gates: `confirm_databases` (missing `paths.*`), `confirm_report_publish` (shareable / draft / hold)
+
 ## 0.19.0
 
 - Critical HITL gates: confirm before Assembly compute; choose OTU/ASV prevalence cutoffs

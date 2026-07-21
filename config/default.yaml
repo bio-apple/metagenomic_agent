@@ -158,9 +158,14 @@ validation:
 
 hitl:
   auto_confirm: true  # set false to require interactive confirmation; CLI --yes overrides to true
+  mode: sync  # sync=CLI Rich Prompt; async=park for Web/API approval (GET/POST /runs/{id}/hitl)
   # Critical gates (bioinformatician confirmation)
   require_assembly_confirm: true  # before heavy Assembly/binning
   require_otu_filter_confirm: true  # before rare OTU/ASV culling
+  require_database_confirm: true  # before taxonomy/MAG when paths missing (skipped in mock)
+  database_confirm_only_when_missing: true
+  require_report_publish_confirm: true  # before marking final report shareable
+  default_report_publish: B  # A=shareable B=internal draft C=hold
   gate_before_assembly_run: true  # mid-swarm re-check if not yet confirmed
   gate_before_otu_filter: true
   default_confirm_assembly: true  # auto default A=submit when auto_confirm

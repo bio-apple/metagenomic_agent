@@ -84,6 +84,8 @@ class AgentState(TypedDict):
     hitl_pending: list[str]
     hitl_auto_confirm: bool
     hitl_resolved: NotRequired[bool]
+    hitl_awaiting: NotRequired[bool]
+    hitl_async: NotRequired[bool]
     report_path: NotRequired[str | None]
     error: NotRequired[str | None]
     run_id: NotRequired[str | None]

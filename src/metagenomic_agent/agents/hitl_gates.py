@@ -146,15 +146,82 @@ def build_otu_filter_gate(state: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def build_database_gate(state: dict[str, Any]) -> dict[str, Any] | None:
+    """Confirm reference DB paths before taxonomy/MAG steps (download / mount)."""
+    hitl_cfg = (state.get("config") or {}).get("hitl") or {}
+    if hitl_cfg.get("require_database_confirm", True) is False:
+        return None
+    paths = (state.get("config") or {}).get("paths") or {}
+    mode = state.get("mode") or "mock"
+    if mode == "mock":
+        return None
+    missing = []
+    for key in ("kraken2_db", "gtdb", "host_index", "metaphlan_db"):
+        val = (paths.get(key) or "").strip()
+        if not val or val.startswith("<"):
+            missing.append(key)
+            continue
+        p = Path(val)
+        if not p.exists():
+            missing.append(f"{key} (missing: {val})")
+    if not missing and hitl_cfg.get("database_confirm_only_when_missing", True):
+        return None
+    detail = ", ".join(missing) if missing else "paths look present"
+    return {
+        "id": "confirm_databases",
+        "gate": "database_download",
+        "critical": True,
+        "question": (
+            f"[Databases] 参考库路径需确认后再跑分类/MAG（{detail}）。"
+            "请确认已下载/挂载 BioContainers 配套库："
+        ),
+        "choices": [
+            {"key": "A", "label": "已就绪，继续分析", "action": "confirm_databases"},
+            {"key": "B", "label": "仅用已有库，跳过缺失库相关步骤", "action": "databases_partial"},
+            {"key": "C", "label": "中止，先去下载/配置 paths.*", "action": "abort_for_databases"},
+        ],
+        "default": "A",
+        "context": {"missing": missing, "paths": {k: paths.get(k) for k in ("kraken2_db", "gtdb", "host_index")}},
+    }
+
+
+def build_report_publish_gate(state: dict[str, Any]) -> dict[str, Any] | None:
+    """Confirm before publishing / exporting final report externally."""
+    hitl_cfg = (state.get("config") or {}).get("hitl") or {}
+    if hitl_cfg.get("require_report_publish_confirm", True) is False:
+        return None
+    return {
+        "id": "confirm_report_publish",
+        "gate": "report_publish",
+        "critical": True,
+        "question": (
+            "[Report] 即将生成并可外发最终报告（HTML/手稿草稿）。"
+            "请确认是否允许写入 final_report 并标记为可分享："
+        ),
+        "choices": [
+            {"key": "A", "label": "允许生成并标记可外发", "action": "publish_report"},
+            {"key": "B", "label": "仅内部草稿（不标记外发）", "action": "draft_report_only"},
+            {"key": "C", "label": "暂缓报告生成", "action": "hold_report"},
+        ],
+        "default": str(hitl_cfg.get("default_report_publish") or "B"),
+        "context": {"outdir": state.get("outdir")},
+    }
+
+
 def register_critical_gates(state: dict[str, Any]) -> dict[str, Any]:
-    """Merge assembly + OTU gates into hitl_options / hitl_pending (idempotent by id)."""
+    """Merge critical gates into hitl_options / hitl_pending (idempotent by id)."""
     arts = dict(state.get("artifacts") or {})
     options = list(arts.get("hitl_options") or [])
     pending = list(state.get("hitl_pending") or [])
     existing = {o.get("id") for o in options}
     registered = []
 
-    for builder in (build_assembly_gate, build_otu_filter_gate):
+    for builder in (
+        build_assembly_gate,
+        build_otu_filter_gate,
+        build_database_gate,
+        build_report_publish_gate,
+    ):
         gate = builder(state)
         if not gate or gate["id"] in existing:
             continue
@@ -164,7 +231,7 @@ def register_critical_gates(state: dict[str, Any]) -> dict[str, Any]:
         existing.add(gate["id"])
 
     arts["hitl_options"] = options
-    arts["hitl_critical_gates"] = registered
+    arts["hitl_critical_gates"] = list(dict.fromkeys(list(arts.get("hitl_critical_gates") or []) + registered))
     return {
         "artifacts": arts,
         "hitl_pending": pending,

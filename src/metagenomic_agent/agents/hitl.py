@@ -125,6 +125,34 @@ def _apply_action(state: AgentState, action: str) -> dict[str, Any]:
             f"(prevalence≥{cfg['statistics']['min_prevalence']}, "
             f"rel_ab≥{cfg['statistics']['min_rel_abundance']})"
         )
+    elif action == "confirm_databases":
+        arts["databases_confirmed"] = True
+        messages.append("HITL: reference databases confirmed ready")
+    elif action == "databases_partial":
+        arts["databases_confirmed"] = True
+        arts["databases_partial"] = True
+        messages.append("HITL: proceed with partial databases; missing-DB steps may self-heal/skip")
+    elif action == "abort_for_databases":
+        return {
+            "hitl_resolved": False,
+            "error": "Aborted at HITL: configure/download paths.kraken2_db|gtdb|host_index first",
+            "messages": state.get("messages", []) + ["HITL: abort for databases"],
+            "dag": [],
+        }
+    elif action == "publish_report":
+        arts["report_publish_confirmed"] = True
+        arts["report_shareable"] = True
+        cfg.setdefault("report", {})["shareable"] = True
+        messages.append("HITL: final report marked shareable / publishable")
+    elif action == "draft_report_only":
+        arts["report_publish_confirmed"] = True
+        arts["report_shareable"] = False
+        cfg.setdefault("report", {})["shareable"] = False
+        messages.append("HITL: internal draft report only (not marked for external share)")
+    elif action == "hold_report":
+        arts["report_publish_confirmed"] = False
+        arts["hold_report"] = True
+        messages.append("HITL: report generation held — analyst deferred publish")
 
     arts["bio_reasoning"] = bio
     arts.setdefault("hitl_decisions", []).append(action)
@@ -141,9 +169,32 @@ def hitl_checkpoint(state: AgentState) -> dict[str, Any]:
     pending = list(state.get("hitl_pending") or [])
     options = list((state.get("artifacts") or {}).get("hitl_options") or [])
     auto = bool(state.get("hitl_auto_confirm"))
+    hitl_cfg = (state.get("config") or {}).get("hitl") or {}
+    async_mode = str(hitl_cfg.get("mode") or "").lower() == "async" or bool(state.get("hitl_async"))
 
     if not pending and not options:
-        return {"hitl_resolved": True, "hitl_pending": []}
+        return {"hitl_resolved": True, "hitl_pending": [], "hitl_awaiting": False}
+
+    # Async API/Web: park session for external approval (no Rich prompt)
+    if async_mode and not auto and (options or pending):
+        from metagenomic_agent.agents.hitl_async import write_awaiting_session
+
+        session = write_awaiting_session(state)
+        msg = emit("hitl", "api", "hitl", {"action": "awaiting", "run_id": state.get("run_id")})
+        n_gates = len(options) or len(pending)
+        return {
+            "hitl_resolved": False,
+            "hitl_awaiting": True,
+            "hitl_pending": pending,
+            "error": None,
+            "artifacts": {
+                **(state.get("artifacts") or {}),
+                "hitl_async_session": session,
+            },
+            "messages": state.get("messages", [])
+            + [f"HITL awaiting async approval ({n_gates} gate(s)); see hitl/async/"],
+            "agent_messages": append_msg(state.get("agent_messages"), msg),
+        }
 
     if auto:
         decisions = []

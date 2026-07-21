@@ -365,24 +365,49 @@ def run(state: dict[str, Any], node: dict[str, Any] | None = None) -> dict[str, 
     from metagenomic_agent.coordinator.summary import write_pipeline_summary
     from metagenomic_agent.report.reproducibility import write_reproducibility_bundle
 
+    arts0 = dict(state.get("artifacts") or {})
+    if arts0.get("hold_report") or arts0.get("report_publish_confirmed") is False:
+        hold_note = Path(state["outdir"]) / "report" / "HELD.md"
+        hold_note.parent.mkdir(parents=True, exist_ok=True)
+        hold_note.write_text(
+            "# Report held by HITL\n\n"
+            "Analyst chose to defer final report generation (`hold_report`).\n"
+            "Resume after approving `confirm_report_publish` (A=shareable or B=draft).\n",
+            encoding="utf-8",
+        )
+        return {
+            "report_path": None,
+            "artifacts": {**arts0, "report_held": str(hold_note)},
+            "messages": state.get("messages", [])
+            + [f"Report held by HITL — see {hold_note}"],
+        }
+
     # Ensure latest metadata summary before packaging
     if ((state.get("config") or {}).get("summary") or {}).get("enabled", True):
         summary_full = write_pipeline_summary(state)
         llm_ctx = summary_full.pop("_llm_context", "")
-        arts0 = dict(state.get("artifacts") or {})
         arts0["pipeline_summary"] = {k: v for k, v in summary_full.items() if not k.startswith("_")}
         arts0["llm_context"] = llm_ctx
         state = {**state, "artifacts": arts0}
 
     paths = generate(state)
     bundle = write_reproducibility_bundle(state)
-    arts = {**state.get("artifacts", {}), "report": paths, "reproducibility": bundle}
+    shareable = bool(arts0.get("report_shareable")) or bool(
+        ((state.get("config") or {}).get("report") or {}).get("shareable")
+    )
+    arts = {
+        **state.get("artifacts", {}),
+        "report": paths,
+        "reproducibility": bundle,
+        "report_shareable": shareable,
+    }
+    share_msg = "shareable" if shareable else "internal draft (not marked for external share)"
     return {
         "report_path": paths["html"],
         "artifacts": arts,
         "messages": state.get("messages", [])
         + [
-            f"Report written to {paths['html']}",
+            f"Report written to {paths['html']} ({share_msg})",
             f"Reproducibility bundle: {bundle.get('manifest')}",
             f"Workflows: {bundle.get('reproducible_nf')} / {bundle.get('reproducible_smk')} seed={bundle.get('run_seed')}",
         ],

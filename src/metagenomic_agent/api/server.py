@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import uuid
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -10,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from metagenomic_agent import __version__
 from metagenomic_agent.config_loader import load_config
-from metagenomic_agent.graph import run_pipeline
+from metagenomic_agent.graph import resume_pipeline, run_pipeline
 from metagenomic_agent.state import AgentState
 
 app = FastAPI(
@@ -30,6 +32,10 @@ class AnalyzeRequest(BaseModel):
     mode: Literal["mock", "local", "conda", "docker", "apptainer"] = "mock"
     metadata_path: Optional[str] = None
     config_path: Optional[str] = None
+    hitl_mode: Literal["auto", "sync", "async"] = Field(
+        "auto",
+        description="auto=auto-confirm gates; async=park for Web approval; sync=CLI prompts (not for API)",
+    )
 
 
 class AnalyzeResponse(BaseModel):
@@ -38,27 +44,51 @@ class AnalyzeResponse(BaseModel):
     messages: list[str]
     artifacts_keys: list[str]
     paths: dict[str, Any]
+    run_id: Optional[str] = None
+    status: str = "completed"
+    hitl_awaiting: bool = False
+    hitl_session: Optional[dict[str, Any]] = None
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+class HitlDecision(BaseModel):
+    id: str = Field(..., description="Gate option id, e.g. confirm_assembly")
+    key: str = Field(..., description="Choice key A/B/C/…")
+    action: Optional[str] = None
 
 
-@app.post("/analyze", response_model=AnalyzeResponse)
-def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
-    input_path = Path(req.input_path).expanduser()
-    if not input_path.exists():
-        raise HTTPException(status_code=400, detail=f"input_path not found: {req.input_path}")
+class HitlDecideRequest(BaseModel):
+    outdir: str = Field(..., description="Run output directory (contains hitl/async/)")
+    decisions: list[HitlDecision]
+    resume: bool = Field(True, description="Continue pipeline after applying decisions")
 
-    outdir = Path(req.outdir).expanduser()
-    outdir.mkdir(parents=True, exist_ok=True)
-    cfg = load_config(req.config_path, overrides={"mode": req.mode})
-    cfg.setdefault("hitl", {})["auto_confirm"] = True
 
-    import uuid
+class HitlDecideResponse(BaseModel):
+    status: str
+    run_id: Optional[str] = None
+    report_path: Optional[str] = None
+    messages: list[str] = Field(default_factory=list)
+    hitl_awaiting: bool = False
 
-    initial: AgentState = {
+
+def _build_initial(req: AnalyzeRequest, outdir: Path, input_path: Path, cfg: dict[str, Any]) -> AgentState:
+    hitl_mode = req.hitl_mode
+    if hitl_mode == "auto":
+        cfg.setdefault("hitl", {})["auto_confirm"] = True
+        cfg["hitl"]["mode"] = "sync"
+        hitl_auto = True
+        hitl_async = False
+    elif hitl_mode == "async":
+        cfg.setdefault("hitl", {})["auto_confirm"] = False
+        cfg["hitl"]["mode"] = "async"
+        hitl_auto = False
+        hitl_async = True
+    else:
+        cfg.setdefault("hitl", {})["auto_confirm"] = False
+        cfg["hitl"]["mode"] = "sync"
+        hitl_auto = False
+        hitl_async = False
+
+    return {
         "user_query": req.query,
         "input_path": str(input_path.resolve()),
         "outdir": str(outdir.resolve()),
@@ -78,12 +108,32 @@ def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
         "retry_count": 0,
         "max_retries": int(cfg.get("max_retries", 2)),
         "hitl_pending": [],
-        "hitl_auto_confirm": True,
+        "hitl_auto_confirm": hitl_auto,
+        "hitl_async": hitl_async,
+        "hitl_awaiting": False,
         "hitl_resolved": False,
         "report_path": None,
         "error": None,
         "run_id": str(uuid.uuid4())[:8],
     }
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok", "version": __version__}
+
+
+@app.post("/analyze", response_model=AnalyzeResponse)
+def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
+    input_path = Path(req.input_path).expanduser()
+    if not input_path.exists():
+        raise HTTPException(status_code=400, detail=f"input_path not found: {req.input_path}")
+
+    outdir = Path(req.outdir).expanduser()
+    outdir.mkdir(parents=True, exist_ok=True)
+    cfg = load_config(req.config_path, overrides={"mode": req.mode})
+    initial = _build_initial(req, outdir, input_path, cfg)
+
     try:
         final = run_pipeline(initial)
     except Exception as exc:  # noqa: BLE001
@@ -92,15 +142,101 @@ def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
     paths_file = outdir / "paths.json"
     paths: dict[str, Any] = {}
     if paths_file.exists():
-        import json
-
         paths = json.loads(paths_file.read_text())
 
+    awaiting = bool(final.get("hitl_awaiting"))
+    session = (final.get("artifacts") or {}).get("hitl_async_session")
     critic = final.get("critic") or {}
     return AnalyzeResponse(
         report_path=final.get("report_path"),
-        critic_passed=bool(critic.get("passed", True)),
+        critic_passed=bool(critic.get("passed", True)) if not awaiting else True,
         messages=list(final.get("messages", []))[-30:],
         artifacts_keys=sorted(final.get("artifacts", {}).keys()),
         paths=paths,
+        run_id=final.get("run_id") or initial.get("run_id"),
+        status="awaiting_hitl" if awaiting else "completed",
+        hitl_awaiting=awaiting,
+        hitl_session=session,
+    )
+
+
+@app.get("/runs/{run_id}/hitl")
+def get_hitl(run_id: str, outdir: Optional[str] = None) -> dict[str, Any]:
+    """Fetch pending async HITL session. Prefer ?outdir=…; else scan common roots."""
+    from metagenomic_agent.agents.hitl_async import load_session, session_dir
+
+    candidates: list[Path] = []
+    if outdir:
+        candidates.append(Path(outdir).expanduser())
+    else:
+        # Best-effort: look under ./results and cwd for matching run_id
+        for root in (Path("results"), Path(".")):
+            if not root.exists():
+                continue
+            for sess in root.rglob("hitl/async/session.json"):
+                candidates.append(sess.parent.parent.parent)
+
+    for base in candidates:
+        sess = load_session(base)
+        if not sess:
+            continue
+        if sess.get("run_id") == run_id or outdir:
+            return {
+                "run_id": sess.get("run_id"),
+                "status": sess.get("status"),
+                "outdir": str(base),
+                "pending": sess.get("pending") or [],
+                "options": sess.get("options") or [],
+                "session_path": str(session_dir(base) / "session.json"),
+            }
+
+    raise HTTPException(status_code=404, detail=f"HITL session not found for run_id={run_id}")
+
+
+@app.post("/runs/{run_id}/hitl/decide", response_model=HitlDecideResponse)
+def decide_hitl(run_id: str, req: HitlDecideRequest) -> HitlDecideResponse:
+    """Apply async HITL decisions and optionally resume the pipeline."""
+    from metagenomic_agent.agents.hitl_async import apply_decisions_to_state, load_session, load_state
+
+    outdir = Path(req.outdir).expanduser()
+    sess = load_session(outdir)
+    if not sess:
+        raise HTTPException(status_code=404, detail=f"No HITL session under {outdir}")
+    if sess.get("run_id") and sess["run_id"] != run_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"run_id mismatch: path has {sess.get('run_id')}, request {run_id}",
+        )
+    if sess.get("status") == "decided" and not req.resume:
+        return HitlDecideResponse(status="already_decided", run_id=run_id, messages=["Session already decided"])
+
+    state = load_state(outdir)
+    if not state:
+        raise HTTPException(status_code=404, detail="Missing hitl/async/state.json")
+
+    decisions = [d.model_dump(exclude_none=True) for d in req.decisions]
+    patched = apply_decisions_to_state(state, decisions)
+    if patched.get("error"):
+        raise HTTPException(status_code=400, detail=str(patched["error"]))
+
+    if not req.resume:
+        return HitlDecideResponse(
+            status="decided",
+            run_id=run_id,
+            messages=list(patched.get("messages") or [])[-20:],
+            hitl_awaiting=False,
+        )
+
+    try:
+        final = resume_pipeline(patched)  # type: ignore[arg-type]
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    awaiting = bool(final.get("hitl_awaiting"))
+    return HitlDecideResponse(
+        status="awaiting_hitl" if awaiting else "completed",
+        run_id=run_id,
+        report_path=final.get("report_path"),
+        messages=list(final.get("messages") or [])[-30:],
+        hitl_awaiting=awaiting,
     )

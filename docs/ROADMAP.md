@@ -1,17 +1,26 @@
-# 开发者路线图（对照建议）
+# 能力对照（v0.20）
 
-对照开发者建议与当前 **v0.19**。状态：`Done` / `Partial` / `Planned`。
+状态：`Done` / `Partial` / `Planned`。
 
 ## Human-in-the-Loop
 
-| 建议 | 状态 | 现状 |
-|------|------|------|
-| Assembly 高算力提交前确认 | **Done** | `confirm_assembly` 门控 + 资源预估展示 |
-| 极低频 OTU/ASV 阈值确认 | **Done** | 四档 prevalence/abundance 预设 |
+| 项 | 状态 | 说明 |
+|----|------|------|
+| Assembly 算力确认 | **Done** | `confirm_assembly` |
+| OTU/ASV 阈值确认 | **Done** | 四档 prevalence/abundance |
 | 审计轨迹 | **Done** | `hitl/critical_gates.json` |
-| Web/API 异步审批 | Planned | 现为 CLI Rich Prompt |
-| 更多门控（数据库下载、外发报告） | Partial | 可扩 `hitl_gates` |
+| Web/API 异步审批 | **Done** | `hitl.mode=async` + `/runs/{id}/hitl` |
+| 数据库 / 报告外发门控 | **Done** | `confirm_databases`、`confirm_report_publish` |
 
-## 既有能力
+## 平台能力
 
-QC 链 / 表绑定抗幻觉 (v0.18) · HPC 容器与 Checkpoint (v0.17) · Planner/Executor (v0.16)
+| 项 | 状态 |
+|----|------|
+| Planner / Executor / QC-Critic / Reporter | **Done** |
+| BioContainers + Apptainer；SLURM/PBS/SGE | **Done** |
+| CheckM2 HQ + unclassified QC；表绑定抗幻觉 | **Done** |
+| Schema 化 `params.yaml` + 自愈改参 | **Done** |
+| 全量 CAMI 基准 | Partial |
+| 向量化项目 Memory | Partial |
+
+用法见 [USAGE.md](USAGE.md)，架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。

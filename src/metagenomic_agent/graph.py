@@ -43,10 +43,20 @@ from metagenomic_agent.validators.loop import validate
 from metagenomic_agent.validators.recovery import apply_recovery, plan_recovery
 
 
-def _route_after_hitl(state: AgentState) -> Literal["execute_swarm", "report"]:
+def _route_after_hitl(state: AgentState) -> Literal["execute_swarm", "report", "awaiting"]:
+    if state.get("hitl_awaiting"):
+        return "awaiting"
     if state.get("error") or state.get("hitl_resolved") is False:
         return "report"
     return "execute_swarm"
+
+
+def _awaiting_end(state: AgentState) -> dict:
+    """Park pipeline for async HITL — no final report yet."""
+    return {
+        "messages": state.get("messages", []) + ["Pipeline paused: awaiting HITL API decisions"],
+        "report_path": None,
+    }
 
 
 def _route_after_validate(state: AgentState) -> Literal["self_heal", "critic"]:
@@ -254,6 +264,7 @@ def build_graph():
     g.add_node("workflow_agent", workflow_agent.run)
     g.add_node("contract_check", contract_check)
     g.add_node("hitl", hitl_checkpoint)
+    g.add_node("awaiting_hitl", _awaiting_end)
     # Executor wraps swarm + HPC/K8s specs (role: Executor/Bioinfo)
     g.add_node("execute_swarm", executor_agent.run)
     g.add_node("validate", validate)
@@ -279,7 +290,47 @@ def build_graph():
     g.add_edge("export_dag", "workflow_agent")
     g.add_edge("workflow_agent", "contract_check")
     g.add_edge("contract_check", "hitl")
-    g.add_conditional_edges("hitl", _route_after_hitl, {"execute_swarm": "execute_swarm", "report": "report"})
+    g.add_conditional_edges(
+        "hitl",
+        _route_after_hitl,
+        {"execute_swarm": "execute_swarm", "report": "report", "awaiting": "awaiting_hitl"},
+    )
+    g.add_edge("awaiting_hitl", END)
+    g.add_edge("execute_swarm", "validate")
+    g.add_edge("validate", "quality_scores")
+    g.add_edge("quality_scores", "hitl_runtime")
+    g.add_conditional_edges(
+        "hitl_runtime", _route_after_validate, {"self_heal": "self_heal", "critic": "critic"}
+    )
+    g.add_edge("self_heal", "execute_swarm")
+    g.add_conditional_edges("critic", _route_after_critic, {"self_heal": "self_heal", "literature": "literature"})
+    g.add_edge("literature", "pi_review")
+    g.add_conditional_edges(
+        "pi_review", _route_after_pi, {"self_heal": "self_heal", "visualization": "visualization"}
+    )
+    g.add_edge("visualization", "reporter")
+    g.add_edge("reporter", "xai")
+    g.add_edge("xai", "report")
+    g.add_edge("report", END)
+    return g.compile()
+
+
+def build_resume_graph():
+    """Tail graph after async HITL decisions — starts at execute_swarm."""
+    g = StateGraph(AgentState)
+    g.add_node("execute_swarm", executor_agent.run)
+    g.add_node("validate", validate)
+    g.add_node("quality_scores", _quality_scores)
+    g.add_node("hitl_runtime", hitl_checkpoint)
+    g.add_node("self_heal", _self_heal)
+    g.add_node("critic", critic_agent.run)
+    g.add_node("literature", literature_agent.run)
+    g.add_node("pi_review", pi_agent.run)
+    g.add_node("visualization", visualization_agent.run)
+    g.add_node("reporter", reporter_agent.run)
+    g.add_node("xai", _xai)
+    g.add_node("report", report_agent.run)
+    g.set_entry_point("execute_swarm")
     g.add_edge("execute_swarm", "validate")
     g.add_edge("validate", "quality_scores")
     g.add_edge("quality_scores", "hitl_runtime")
@@ -301,3 +352,8 @@ def build_graph():
 
 def run_pipeline(initial: AgentState) -> AgentState:
     return build_graph().invoke(initial)
+
+
+def resume_pipeline(state: AgentState) -> AgentState:
+    """Continue after async HITL approval."""
+    return build_resume_graph().invoke(state)
