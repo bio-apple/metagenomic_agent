@@ -1,3 +1,5 @@
+> 中文版: [README.zh-CN.md](README.zh-CN.md)
+
 # Metagenomic Research Agent
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -89,13 +91,15 @@ Web UI: `meta-agent serve --host 127.0.0.1 --port 8000` → http://127.0.0.1:800
 
 | Document | Contents |
 |----------|----------|
-| [docs/USAGE.md](docs/USAGE.md) | CLI, API, configuration, outputs |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agents, grounding, HITL, evaluation |
-| [docs/SELF_HEAL.md](docs/SELF_HEAL.md) | Self-heal FPR analysis and HITL policy |
-| [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md) | Linux ≥256 GB / HPC deployment |
-| [database/README.md](database/README.md) | Reference database layout and **build steps** |
-| [docs/manuscript/application_note.md](docs/manuscript/application_note.md) | **Application Note** manuscript draft |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [docs/USAGE.md](docs/USAGE.md) ([中文](docs/USAGE.zh-CN.md)) | CLI, API, configuration, outputs |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ([中文](docs/ARCHITECTURE.zh-CN.md)) | Agents, grounding, HITL, evaluation |
+| [docs/SELF_HEAL.md](docs/SELF_HEAL.md) ([中文](docs/SELF_HEAL.zh-CN.md)) | Self-heal FPR analysis and HITL policy |
+| [docs/DEPLOY_LINUX.md](docs/DEPLOY_LINUX.md) ([中文](docs/DEPLOY_LINUX.zh-CN.md)) | Linux ≥256 GB / HPC deployment |
+| [database/README.md](database/README.md) ([中文](database/README.zh-CN.md)) | Reference database layout and **build steps** |
+| [examples/demo_data/README.md](examples/demo_data/README.md) ([中文](examples/demo_data/README.zh-CN.md)) | Reviewer demo data |
+| [docs/manuscript/README.md](docs/manuscript/README.md) ([中文](docs/manuscript/README.zh-CN.md)) | Manuscript drafts index |
+| [docs/manuscript/application_note.md](docs/manuscript/application_note.md) | **Application Note** manuscript draft (English only) |
+| [CHANGELOG.md](CHANGELOG.md) | Version history (English only) |
 
 ## Citation
 

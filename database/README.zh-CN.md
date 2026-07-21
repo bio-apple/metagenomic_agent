@@ -1,22 +1,22 @@
-> 中文版: [README.zh-CN.md](README.zh-CN.md)
+> English: [README.md](README.md)
 
-# Reference Databases: Directory Contract and Build Guide
+# 参考数据库：目录约定与构建指南
 
-The repository `database/` directory holds **full reference databases** (or symlinks).  
-The in-package RAG stub (`src/metagenomic_agent/rag/data/curated_bio_index.json`) is for interpretation / anti-hallucination retrieval only and **cannot replace** runtime libraries such as Kraken2 / GTDB-Tk.
+仓库 `database/` 目录存放**完整参考数据库**（或符号链接）。  
+包内 RAG 桩（`src/metagenomic_agent/rag/data/curated_bio_index.json`）仅用于解读 / 抗幻觉检索，**不能替代** Kraken2 / GTDB-Tk 等运行时库。
 
 | Mode | Requires this directory? |
 |------|--------------------------|
-| `mock` | No |
-| `local` / `conda` / `docker` / `apptainer` | Yes (at least taxonomy + host; functional/ARG as needed) |
+| `mock` | 否 |
+| `local` / `conda` / `docker` / `apptainer` | 是（至少分类 + 宿主；功能/ARG 按需） |
 
-Skeleton helper script: [scripts/build_databases.sh](../scripts/build_databases.sh) (you must provide network and disk).
+骨架辅助脚本：[scripts/build_databases.sh](../scripts/build_databases.sh)（需自行提供网络与磁盘）。
 
 ---
 
-## 1. Recommended layout and config mapping
+## 1. 推荐布局与配置映射
 
-Create under the repository root or `/ref/databases`:
+在仓库根目录或 `/ref/databases` 下创建：
 
 ```text
 database/                         # or /ref/databases → wired into config paths.*
@@ -40,7 +40,7 @@ database/                         # or /ref/databases → wired into config path
 └── literature/                   # optional: local PMID JSON cache
 ```
 
-In `config/default.yaml` or `config/site.yaml`:
+在 `config/default.yaml` 或 `config/site.yaml` 中：
 
 ```yaml
 paths:
@@ -52,28 +52,28 @@ paths:
   diamond_db: "/ref/databases/diamond/nr.dmnd"  # or uniref90.dmnd
 ```
 
-Relative paths are resolved against the **runtime cwd**; use **absolute paths** in production.
+相对路径相对**运行时 cwd** 解析；生产请使用**绝对路径**。
 
-Rough disk estimates (SSD/parallel FS; avoid slow NFS on hot paths):
+粗略磁盘估算（SSD/并行文件系统；热路径避免慢 NFS）：
 
 | Database | Approx. size |
 |----------|--------------|
 | Host hg38 Bowtie2 | ~4–8 GB |
-| Kraken2 Standard | ~50–100 GB+ (version-dependent) |
+| Kraken2 Standard | ~50–100 GB+（视版本） |
 | MetaPhlAn | ~5–15 GB |
 | GTDB-Tk r214+ | ~50–80 GB |
 | eggNOG | ~50 GB+ |
-| DIAMOND UniRef | 20–200 GB depending on DB |
+| DIAMOND UniRef | 20–200 GB（视库而定） |
 | CARD | <1 GB |
 
 ---
 
-## 2. Build steps (by priority)
+## 2. 构建步骤（按优先级）
 
-Run the following on Linux x86_64 with the corresponding tools or BioContainers installed.  
-Example `DB_ROOT`: `export DB_ROOT=/ref/databases` or `$(pwd)/database`.
+在已安装对应工具或 BioContainers 的 Linux x86_64 上运行。  
+示例 `DB_ROOT`：`export DB_ROOT=/ref/databases` 或 `$(pwd)/database`。
 
-### 2.1 Host decontamination index (`paths.host_index`) — **strongly recommended**
+### 2.1 宿主去污染索引（`paths.host_index`）——**强烈推荐**
 
 ```bash
 export DB_ROOT=/ref/databases
@@ -88,16 +88,16 @@ bowtie2-build --threads 16 hg38.fa hg38
 # Products: hg38.1.bt2 … → paths.host_index: "$DB_ROOT/host/hg38"
 ```
 
-Container example:
+容器示例：
 
 ```bash
 apptainer exec docker://quay.io/biocontainers/bowtie2:2.5.3--py39hd2f008b_0 \
   bowtie2-build --threads 16 hg38.fa hg38
 ```
 
-### 2.2 Kraken2 (`paths.kraken2_db`) — **required for taxonomy**
+### 2.2 Kraken2（`paths.kraken2_db`）——**分类必需**
 
-**Option A: download official prebuilt Standard (recommended)**
+**选项 A：下载官方预构建 Standard（推荐）**
 
 ```bash
 mkdir -p "$DB_ROOT/kraken_db" && cd "$DB_ROOT/kraken_db"
@@ -108,7 +108,7 @@ mkdir -p "$DB_ROOT/kraken_db" && cd "$DB_ROOT/kraken_db"
 # After extract the directory should contain: hash.k2d  opts.k2d  taxo.k2d
 ```
 
-**Option B: build with `kraken2-build`**
+**选项 B：用 `kraken2-build` 构建**
 
 ```bash
 DB="$DB_ROOT/kraken_db"
@@ -121,16 +121,16 @@ kraken2-build --build --db "$DB" --threads 32
 # Optional: bracken-build -d "$DB" -t 32 -k 35 -l 150
 ```
 
-Validate:
+校验：
 
 ```bash
 ls "$DB_ROOT/kraken_db"/hash.k2d "$DB_ROOT/kraken_db"/taxo.k2d
 kraken2 --db "$DB_ROOT/kraken_db" --threads 4 --paired R1.fq R2.fq --report /tmp/t.kreport >/dev/null
 ```
 
-Config: `paths.kraken2_db: "$DB_ROOT/kraken_db"`.
+配置：`paths.kraken2_db: "$DB_ROOT/kraken_db"`。
 
-### 2.3 MetaPhlAn (`paths.metaphlan_db`)
+### 2.3 MetaPhlAn（`paths.metaphlan_db`）
 
 ```bash
 mkdir -p "$DB_ROOT/metaphlan_db"
@@ -140,9 +140,9 @@ metaphlan --install --bowtie2db "$DB_ROOT/metaphlan_db"
 # metaphlan --install --index mpa_vOct22_CHOCOPhlAnSGB_202212 --bowtie2db "$DB_ROOT/metaphlan_db"
 ```
 
-Config: `paths.metaphlan_db: "$DB_ROOT/metaphlan_db"`.
+配置：`paths.metaphlan_db: "$DB_ROOT/metaphlan_db"`。
 
-### 2.4 GTDB-Tk (`paths.gtdb`) — **MAG taxonomy**
+### 2.4 GTDB-Tk（`paths.gtdb`）——**MAG 分类**
 
 ```bash
 mkdir -p "$DB_ROOT/gtdb" && cd "$DB_ROOT/gtdb"
@@ -154,9 +154,9 @@ mkdir -p "$DB_ROOT/gtdb" && cd "$DB_ROOT/gtdb"
 export GTDBTK_DATA_PATH="$DB_ROOT/gtdb"   # or the release subdirectory
 ```
 
-Config: `paths.gtdb: "$DB_ROOT/gtdb"` (must match `GTDBTK_DATA_PATH`).
+配置：`paths.gtdb: "$DB_ROOT/gtdb"`（须与 `GTDBTK_DATA_PATH` 一致）。
 
-### 2.5 eggNOG (`paths.eggnog`) — **functional annotation**
+### 2.5 eggNOG（`paths.eggnog`）——**功能注释**
 
 ```bash
 mkdir -p "$DB_ROOT/eggnog" && cd "$DB_ROOT/eggnog"
@@ -165,9 +165,9 @@ download_eggnog_data.py -y --data_dir "$DB_ROOT/eggnog"
 # Or follow http://eggnog5.embl.de for diamond DB + annotations
 ```
 
-Config: `paths.eggnog: "$DB_ROOT/eggnog"`.
+配置：`paths.eggnog: "$DB_ROOT/eggnog"`。
 
-### 2.6 DIAMOND (`paths.diamond_db`)
+### 2.6 DIAMOND（`paths.diamond_db`）
 
 ```bash
 mkdir -p "$DB_ROOT/diamond" && cd "$DB_ROOT/diamond"
@@ -177,9 +177,9 @@ diamond makedb --in uniref90.fa --db uniref90 --threads 32
 # Product: uniref90.dmnd
 ```
 
-Config: `paths.diamond_db: "$DB_ROOT/diamond/uniref90.dmnd"`.
+配置：`paths.diamond_db: "$DB_ROOT/diamond/uniref90.dmnd"`。
 
-### 2.7 CARD / RGI (`database/arg/card`)
+### 2.7 CARD / RGI（`database/arg/card`）
 
 ```bash
 mkdir -p "$DB_ROOT/arg/card" && cd "$DB_ROOT/arg/card"
@@ -188,9 +188,9 @@ mkdir -p "$DB_ROOT/arg/card" && cd "$DB_ROOT/arg/card"
 # Or: rgi auto_load  (follow RGI version docs)
 ```
 
-When `pipeline.enable_arg: true`, the Agent uses RGI/DeepARG; DBs must be on container-accessible paths.
+当 `pipeline.enable_arg: true` 时，Agent 使用 RGI/DeepARG；库须在容器可访问路径上。
 
-### 2.8 VFDB (`database/virulence/vfdb`)
+### 2.8 VFDB（`database/virulence/vfdb`）
 
 ```bash
 mkdir -p "$DB_ROOT/virulence/vfdb" && cd "$DB_ROOT/virulence/vfdb"
@@ -198,9 +198,9 @@ mkdir -p "$DB_ROOT/virulence/vfdb" && cd "$DB_ROOT/virulence/vfdb"
 # diamond makedb --in VFDB_setA_pro.fas --db vfdb
 ```
 
-Optional: point custom config at `vfdb.dmnd` or mount it on the functional annotation volume.
+可选：在自定义配置中指向 `vfdb.dmnd`，或挂载到功能注释卷。
 
-### 2.9 HUMAnN (optional, `database/humann`)
+### 2.9 HUMAnN（可选，`database/humann`）
 
 ```bash
 mkdir -p "$DB_ROOT/humann"
@@ -209,16 +209,16 @@ humann_databases --download uniref uniref90_diamond "$DB_ROOT/humann"
 # Configure HUMAnN env vars or wrappers to the directories above
 ```
 
-### 2.10 RAG / KG (no need to download full DBs)
+### 2.10 RAG / KG（无需下载完整库）
 
-The interpretation layer defaults to the in-package curated index. To replace with full authority DBs for RAG:
+解读层默认使用包内 curated 索引。若要用完整权威库替换 RAG：
 
-1. Export JSON matching the `curated_bio_index.json` schema; or  
-2. Use full DB paths for tools only, and keep RAG on the stub + PubMed.
+1. 导出符合 `curated_bio_index.json` schema 的 JSON；或  
+2. 仅将完整库路径用于工具，RAG 仍用桩 + PubMed。
 
 ---
 
-## 3. Integrate with the Agent
+## 3. 与 Agent 集成
 
 ```bash
 # 1) Write site config
@@ -234,7 +234,7 @@ meta-agent run -i tests/fixtures/fastq -o /tmp/db_smoke \
 #    Keep hitl.require_database_confirm: true (default)
 ```
 
-Apptainer must be able to bind the DB directories, for example:
+Apptainer 必须能 bind 数据库目录，例如：
 
 ```bash
 # Tools mount path parents via volumes; ensure DB_ROOT is readable on compute nodes
@@ -243,7 +243,7 @@ ls "$DB_ROOT/kraken_db/hash.k2d"
 
 ---
 
-## 4. Validation checklist
+## 4. 校验清单
 
 ```bash
 # Host
@@ -264,21 +264,21 @@ test -f "$DB_ROOT/diamond/"*.dmnd && echo OK_diamond
 
 ---
 
-## 5. Common issues
+## 5. 常见问题
 
 | Symptom | Remedy |
 |---------|--------|
-| HITL stuck on database confirm | Complete `paths.*` or temporarily set `require_database_confirm: false` |
-| Kraken extremely slow | Place DB on local NVMe/scratch; avoid cross-site NFS |
-| GTDB-Tk cannot find data | `export GTDBTK_DATA_PATH=...` matching `paths.gtdb` |
-| RGI no hits | CARD not loaded via `rgi load`; check card.json |
-| Disk full | Start with Standard Kraken + GTDB; install DIAMOND/HUMAnN later |
-| ARM hosts | Most BioContainers are amd64; use `platform: linux/amd64` or x86 nodes |
+| HITL 卡在数据库确认 | 补全 `paths.*`，或临时设 `require_database_confirm: false` |
+| Kraken 极慢 | 将库放本地 NVMe/scratch；避免跨站 NFS |
+| GTDB-Tk 找不到数据 | `export GTDBTK_DATA_PATH=...` 与 `paths.gtdb` 一致 |
+| RGI 无命中 | 未通过 `rgi load` 加载 CARD；检查 card.json |
+| 磁盘满 | 先装 Standard Kraken + GTDB；稍后装 DIAMOND/HUMAnN |
+| ARM 主机 | 多数 BioContainers 为 amd64；用 `platform: linux/amd64` 或 x86 节点 |
 
 ---
 
-## 6. Cross-references
+## 6. 交叉引用
 
-- Usage: [docs/USAGE.md](../docs/USAGE.md)  
-- Architecture: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)  
-- Large-memory deployment: [docs/DEPLOY_LINUX.md](../docs/DEPLOY_LINUX.md)
+- 用法：[docs/USAGE.md](../docs/USAGE.md)  
+- 架构：[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)  
+- 大内存部署：[docs/DEPLOY_LINUX.md](../docs/DEPLOY_LINUX.md)

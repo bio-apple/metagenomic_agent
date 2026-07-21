@@ -6,6 +6,7 @@
 - README: journal-style polish + graphical abstract [`docs/figures/overview.svg`](docs/figures/overview.svg)
 - Application Note manuscript draft: [`docs/manuscript/application_note.md`](docs/manuscript/application_note.md)
 - Project language: documentation, HITL/UI/reports, and user-facing strings standardized to **English** (Chinese query-keyword aliases retained for routing only)
+- Chinese documentation mirrors (same directories): `*.zh-CN.md` + root [`README.zh-CN.md`](README.zh-CN.md)
 
 ## 0.23.0
 

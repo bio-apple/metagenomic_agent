@@ -1,23 +1,23 @@
-> 中文版: [DEPLOY_LINUX.zh-CN.md](DEPLOY_LINUX.zh-CN.md)
+> English: [DEPLOY_LINUX.md](DEPLOY_LINUX.md)
 
-# Linux Large-Memory Server Deployment Guide (RAM ≥ 256 GB)
+# Linux 大内存服务器部署指南（RAM ≥ 256 GB）
 
-For single-node or HPC login/compute nodes with **≥256 GB** RAM running Metagenomic Research Agent (v0.20+) in production. The default `linux.max_memory_gb: 256` caps resources; large-memory machines **must** raise this ceiling via the overlay config below.
+适用于在**≥256 GB** RAM 的单节点或 HPC 登录/计算节点上生产运行 Metagenomic Research Agent（v0.20+）。默认 `linux.max_memory_gb: 256` 会限制资源；大内存机器**必须**通过下方叠加配置抬高此上限。
 
-Companion file: [config/linux_server_gt256gb.yaml](../config/linux_server_gt256gb.yaml)
+配套文件：[config/linux_server_gt256gb.yaml](../config/linux_server_gt256gb.yaml)
 
-## 1. Target topology
+## 1. 目标拓扑
 
 
 | Component | Recommendation |
 | --------- | -------------- |
-| OS | Ubuntu 22.04+/RHEL 8+, x86_64 |
-| Memory | ≥256 GB (512 GB+ recommended for assembly/binning) |
-| CPU | ≥32 physical cores; configure threads ≤ `nproc - 4` |
-| Disk | Data volume ≥4 TB NVMe/parallel FS; separate disks for DBs and results |
-| Containers | **Apptainer** (HPC) or Docker (single-node with root) |
-| Scheduler | Single-node `local`; cluster `slurm` / `pbs` / `sge` |
-| Python | 3.10–3.12, dedicated venv |
+| OS | Ubuntu 22.04+/RHEL 8+，x86_64 |
+| Memory | ≥256 GB（组装/分箱推荐 512 GB+） |
+| CPU | ≥32 物理核；配置线程 ≤ `nproc - 4` |
+| Disk | 数据盘 ≥4 TB NVMe/并行文件系统；库与结果分盘 |
+| Containers | **Apptainer**（HPC）或 Docker（有 root 的单节点） |
+| Scheduler | 单节点 `local`；集群 `slurm` / `pbs` / `sge` |
+| Python | 3.10–3.12，独立 venv |
 
 
 ```
@@ -28,7 +28,7 @@ Companion file: [config/linux_server_gt256gb.yaml](../config/linux_server_gt256g
 /results/$PROJECT/       # final products (optional backup to object storage)
 ```
 
-## 2. System preparation
+## 2. 系统准备
 
 ```bash
 # Confirm resources
@@ -48,26 +48,26 @@ apptainer --version || singularity --version
 # docker version
 ```
 
-Recommended kernel/IO settings:
+推荐内核/IO 设置：
 
-- `vm.swappiness=10` (avoid large jobs thrashing on swap)
-- Place work directories on local NVMe or Lustre/GPFS scratch; **do not** run Kraken hot paths from slow NFS
-- Large DBs may be staged under `/dev/shm` (see `linux.prefer_shm`); on ≥256 GB nodes reserve 80–120 GB shm for Kraken2 without filling it
+- `vm.swappiness=10`（避免大作业在 swap 上颠簸）
+- 工作目录放在本地 NVMe 或 Lustre/GPFS scratch；**不要**从慢 NFS 跑 Kraken 热路径
+- 大库可暂存至 `/dev/shm`（见 `linux.prefer_shm`）；≥256 GB 节点可为 Kraken2 预留 80–120 GB shm，但勿撑满
 
 ```bash
 # Example: expand shm to 120G (may not survive reboot; follow site fstab policy)
 # sudo mount -o remount,size=120G /dev/shm
 ```
 
-## 3. How to deploy the software stack (two layers)
+## 3. 如何部署软件栈（两层）
 
-**Do not** install Kraken2/MEGAHIT into the Agent Python environment. Use two layers:
+**不要**把 Kraken2/MEGAHIT 装进 Agent 的 Python 环境。使用两层：
 
 
 | Layer | What to install | Recommended approach |
 | ----- | --------------- | -------------------- |
-| **A. Orchestration** | `meta-agent`, LangGraph, FastAPI… | Python **venv + pip** |
-| **B. Bioinformatics tools** | fastp, Kraken2, MEGAHIT, CheckM2… | **Apptainer/Docker (BioContainers)** |
+| **A. Orchestration** | `meta-agent`、LangGraph、FastAPI… | Python **venv + pip** |
+| **B. Bioinformatics tools** | fastp、Kraken2、MEGAHIT、CheckM2… | **Apptainer/Docker（BioContainers）** |
 
 
 ```
@@ -78,16 +78,16 @@ venv (meta-agent) ──schedules──► BioContainers tools in Apptainer/Dock
 
 | `mode` | Where tools come from | Suitable for |
 | ------ | --------------------- | ------------ |
-| `mock` | No real tools | CI / smoke |
-| `apptainer` | SIF (recommended on HPC) | Servers without Docker root |
-| `docker` | BioContainers images | Single node with Docker |
-| `conda` | Host conda env | Existing bioconda environments |
-| `local` | Host PATH binaries | Not recommended for production |
+| `mock` | 无真实工具 | CI / smoke |
+| `apptainer` | SIF（HPC 推荐） | 无 Docker root 的服务器 |
+| `docker` | BioContainers 镜像 | 有 Docker 的单节点 |
+| `conda` | 宿主 conda 环境 | 已有 bioconda 环境 |
+| `local` | 宿主 PATH 二进制 | 生产不推荐 |
 
 
-Production large-memory hosts: **A = venv, B = `apptainer` (or `docker`)**.
+生产大内存主机：**A = venv，B = `apptainer`（或 `docker`）**。
 
-### 3.1 Layer A: install the Agent (venv)
+### 3.1 层 A：安装 Agent（venv）
 
 ```bash
 # System dependencies (Ubuntu/Debian)
@@ -110,14 +110,14 @@ meta-agent version               # ≥ 0.20.0
 pytest -q                        # optional smoke
 ```
 
-On each login:
+每次登录：
 
 ```bash
 cd /path/to/metagenomic_agent
 source .venv/bin/activate
 ```
 
-LLM (optional; mock / local RAG work without it):
+LLM（可选；mock / 本地 RAG 可不需要）：
 
 ```bash
 export OPENAI_API_KEY=...
@@ -126,7 +126,7 @@ export OPENAI_MODEL=deepseek-chat
 # Air-gapped: set literature.online: false in config
 ```
 
-### 3.2 Layer B (recommended): Apptainer + BioContainers
+### 3.2 层 B（推荐）：Apptainer + BioContainers
 
 ```bash
 # Confirm runtime
@@ -140,7 +140,7 @@ mkdir -p "$APPTAINER_CACHEDIR"
 # Also set apptainer.sif_dir in config/site.yaml
 ```
 
-First runs pull on demand; you may also pre-pull common images (pins in `tools/context.py` → `DEFAULT_IMAGES`):
+首次运行按需拉取；也可预拉常用镜像（钉扎在 `tools/context.py` → `DEFAULT_IMAGES`）：
 
 ```bash
 SIF=$APPTAINER_CACHEDIR
@@ -152,7 +152,7 @@ apptainer pull "$SIF/checkm2.sif"    docker://quay.io/biocontainers/checkm2:1.0.
 # Pull as needed: spades / metabat2 / gtdbtk / humann …
 ```
 
-Run analysis:
+运行分析：
 
 ```bash
 meta-agent run -i /data/fastq -o /results/run1 -m apptainer \
@@ -160,7 +160,7 @@ meta-agent run -i /data/fastq -o /results/run1 -m apptainer \
   -q "cohort shotgun analysis"
 ```
 
-**Docker single-node** (with root / docker group):
+**Docker 单节点**（有 root / docker 组）：
 
 ```bash
 sudo usermod -aG docker $USER   # re-login to take effect
@@ -169,9 +169,9 @@ docker pull quay.io/biocontainers/kraken2:2.1.3--pl5321hdcf5f25_0
 meta-agent run … -m docker -c config/site.yaml
 ```
 
-### 3.3 Layer B (alternative): Conda / Bioconda
+### 3.3 层 B（备选）：Conda / Bioconda
 
-Use only when the cluster already maintains bioconda centrally, or containers are disallowed.
+仅当集群已集中维护 bioconda，或禁止容器时使用。
 
 ```bash
 # Example: Miniforge
@@ -188,7 +188,7 @@ conda create -y -n gtdbtk -c bioconda -c conda-forge gtdbtk
 meta-agent run … -m conda -c config/site.yaml
 ```
 
-`config/default.yaml`:
+`config/default.yaml`：
 
 ```yaml
 linux:
@@ -198,7 +198,7 @@ linux:
     metagenomics: metagenomics
 ```
 
-### 3.4 One-shot self-check
+### 3.4 一键自检
 
 ```bash
 source .venv/bin/activate
@@ -210,9 +210,9 @@ meta-agent run -i tests/fixtures/fastq -o /tmp/meta-smoke --mode mock --yes \
   -q "smoke test"
 ```
 
-## 4. Landing reference databases
+## 4. 落地参考数据库
 
-**Build following [database/README.md](../database/README.md)**; do not create empty directories only. Summary:
+**按 [database/README.md](../database/README.md) 构建**；不要只建空目录。摘要：
 
 ```bash
 export DB_ROOT=/ref/databases
@@ -227,44 +227,44 @@ bash scripts/build_databases.sh --check
 
 | Config key | Suggested absolute path | Notes |
 |------------|-------------------------|-------|
-| `paths.kraken2_db` | `/ref/databases/kraken_db` | Standard ~tens of GB; put large DBs on fastest disk |
-| `paths.gtdb` | `/ref/databases/gtdb` | GTDB-Tk data |
+| `paths.kraken2_db` | `/ref/databases/kraken_db` | 标准库约数十 GB；大库放最快盘 |
+| `paths.gtdb` | `/ref/databases/gtdb` | GTDB-Tk 数据 |
 | `paths.metaphlan_db` | `/ref/databases/metaphlan_db` | |
-| `paths.host_index` | `/ref/databases/host/hg38` | Bowtie2 prefix |
-| `paths.eggnog` | `/ref/databases/eggnog` | Functional annotation |
+| `paths.host_index` | `/ref/databases/host/hg38` | Bowtie2 前缀 |
+| `paths.eggnog` | `/ref/databases/eggnog` | 功能注释 |
 
-DB paths must exist and be bind-mountable (Apptainer `--bind` / Docker `-v`).  
-Before production, keep the HITL database gate: `hitl.require_database_confirm: true` (stops when non-mock and paths are missing).
+数据库路径必须存在且可 bind-mount（Apptainer `--bind` / Docker `-v`）。  
+投产前保持 HITL 数据库门控：`hitl.require_database_confirm: true`（非 mock 且路径缺失时停止）。
 
-## 5. Large-memory overlay config
+## 5. 大内存叠加配置
 
-Copy and adjust paths for your site:
+复制并按站点调整路径：
 
 ```bash
 cp config/linux_server_gt256gb.yaml config/site.yaml
 # Edit paths.*, slurm_*, apptainer.sif_dir
 ```
 
-Key points (already in `linux_server_gt256gb.yaml`):
+要点（已在 `linux_server_gt256gb.yaml` 中）：
 
 
 | Key | ≥256 GB node suggestion | Why |
 | --- | ----------------------- | --- |
-| `mode` | `apptainer` or `docker` | Reproducible; fewer host dependency traps |
-| `linux.memory_gb` | 240–400 | Per-job declared memory (leave OS/cache headroom) |
-| `linux.max_memory_gb` | **≥ physical RAM − 32** | Otherwise cluster sense caps at 256 |
-| `linux.threads` / `max_threads` | 32–64 / ≤ nproc−4 | Parallel assembly and taxonomy |
-| `linux.prefer_shm` | `true` | Faster DB hot reads |
-| `pipeline.enable_assembly` | `true` as needed | Large RAM is suitable for metaSPAdes |
+| `mode` | `apptainer` 或 `docker` | 可重复；减少宿主依赖陷阱 |
+| `linux.memory_gb` | 240–400 | 每作业声明内存（留 OS/缓存余量） |
+| `linux.max_memory_gb` | **≥ 物理 RAM − 32** | 否则 cluster sense 会封顶 256 |
+| `linux.threads` / `max_threads` | 32–64 / ≤ nproc−4 | 并行组装与分类 |
+| `linux.prefer_shm` | `true` | 更快的库热读 |
+| `pipeline.enable_assembly` | 按需 `true` | 大内存适合 metaSPAdes |
 | `sandbox.prefer_container` | `true` | |
-| `apptainer.sif_dir` | `/scratch/$USER/containers` | Avoid filling home quota |
-| `hitl.auto_confirm` | Interactive `false`; batch `true` | Confirm critical steps in production |
-| `hitl.mode` | Batch `sync`+`--yes`; service `async` | |
+| `apptainer.sif_dir` | `/scratch/$USER/containers` | 避免撑爆 home 配额 |
+| `hitl.auto_confirm` | 交互 `false`；批处理 `true` | 生产中确认关键步骤 |
+| `hitl.mode` | 批处理 `sync`+`--yes`；服务 `async` | |
 
 
-## 6. How to run
+## 6. 如何运行
 
-### 6.1 Interactive / login-node pilot
+### 6.1 交互 / 登录节点试跑
 
 ```bash
 source .venv/bin/activate
@@ -278,9 +278,9 @@ meta-agent run \
 # Do not add --yes when confirming production gates; add -y for CI/nightly
 ```
 
-### 6.2 SLURM batch job
+### 6.2 SLURM 批作业
 
-The Agent writes `executor/submit.slurm` (resources capped by cluster sense). You may also hand-write:
+Agent 会写出 `executor/submit.slurm`（资源受 cluster sense 限制）。也可手写：
 
 ```bash
 #!/bin/bash
@@ -304,7 +304,7 @@ meta-agent run \
   -q "cohort shotgun analysis"
 ```
 
-In `config/site.yaml`:
+在 `config/site.yaml` 中：
 
 ```yaml
 linux:
@@ -315,9 +315,9 @@ linux:
   slurm_time: "48:00:00"
 ```
 
-### 6.3 API + async HITL (Web approval)
+### 6.3 API + 异步 HITL（Web 审批）
 
-Suitable for a always-on gateway node (do not run interactive Prompts headless on compute nodes):
+适合常开网关节点（勿在计算节点无头跑交互 Prompt）：
 
 ```bash
 # systemd or screen/tmux
@@ -335,47 +335,47 @@ curl -X POST http://SERVER:8000/analyze -H 'Content-Type: application/json' -d '
 # Approve: GET/POST /runs/{run_id}/hitl?outdir=/results/run1
 ```
 
-Open the firewall only on the intranet; place a reverse proxy and auth in front.
+仅在内网开放防火墙；前置反向代理与鉴权。
 
-## 7. Resource heuristics (RAM ≥ 256 GB)
+## 7. 资源启发式（RAM ≥ 256 GB）
 
 
 | Stage | Threads | Memory scale | Notes |
 | ----- | ------- | ------------ | ----- |
 | QC / host filter | 8–16 | 16–64 GB | |
-| Kraken2 standard DB | 16–32 | 80–120 GB | Larger DBs need more; prefer local disk/shm |
-| MEGAHIT | 24–48 | 64–200 GB | Default assembler |
-| metaSPAdes | 32–48 | **≥250 GB** | Enable only on large-memory machines |
+| Kraken2 standard DB | 16–32 | 80–120 GB | 更大库需更多；优先本地盘/shm |
+| MEGAHIT | 24–48 | 64–200 GB | 默认组装器 |
+| metaSPAdes | 32–48 | **≥250 GB** | 仅在大内存机器启用 |
 | MetaBAT2 / CheckM2 | 16–32 | 64–128 GB | |
-| HUMAnN3 | 16–32 | 64–128 GB | Enable `enable_humann` as needed |
+| HUMAnN3 | 16–32 | 64–128 GB | 按需启用 `enable_humann` |
 
 
-Rule of thumb: **declared memory = peak × 1.1, and ≤ physical RAM − 32 GB**; cut further under multi-job queue policy.
+经验法则：**声明内存 = 峰值 × 1.1，且 ≤ 物理 RAM − 32 GB**；多作业队列策略下再进一步削减。
 
-## 8. Production checklist
+## 8. 生产检查清单
 
-1. `free -h` ≥ 256 GB; `linux.max_memory_gb` raised
-2. Absolute `paths.*` exist; non-mock runs pass the database gate
-3. Apptainer/Docker can pull BioContainers; `sif_dir` on scratch
-4. Metadata includes `sample_id` + `group`
-5. Validate with a small queue (2–4 samples) before scaling
-6. Enable `cache.enabled` / `cache.per_sample_assembly` for checkpoint resume
-7. Critical steps: interactive → disable `auto_confirm`; batch → `--yes`; remote → `hitl_mode=async`
-8. Confirm `confirm_report_publish` before release (shareable vs internal draft)
-9. Back up `/results/*/reproducibility/` and `workflow/params.yaml`
+1. `free -h` ≥ 256 GB；已抬高 `linux.max_memory_gb`
+2. 绝对路径 `paths.*` 存在；非 mock 运行通过数据库门控
+3. Apptainer/Docker 可拉 BioContainers；`sif_dir` 在 scratch
+4. 元数据含 `sample_id` + `group`
+5. 先用小队列（2–4 样本）验证再扩规模
+6. 启用 `cache.enabled` / `cache.per_sample_assembly` 以支持 checkpoint 续跑
+7. 关键步骤：交互 → 关闭 `auto_confirm`；批处理 → `--yes`；远程 → `hitl_mode=async`
+8. 发布前确认 `confirm_report_publish`（可分享 vs 内部草稿）
+9. 备份 `/results/*/reproducibility/` 与 `workflow/params.yaml`
 
-## 9. Troubleshooting
+## 9. 故障排查
 
 
 | Symptom | Remedy |
 | ------- | ------ |
-| Memory capped at 256 GB | Raise `linux.max_memory_gb` and re-run |
-| OOM / exit 137 | Lower `threads`; switch assembly to MEGAHIT; check co-node contention |
-| Apptainer cannot find DBs | Bind absolute paths; check SELinux/AppArmor |
-| Home directory full | Point `APPTAINER_CACHEDIR` to scratch |
-| HITL stuck without TTY | `--yes` or API `async` |
-| Literature API timeout | `literature.online: false` |
-| Kraken extremely slow on NFS | Copy DB to local/scratch or shm |
+| 内存封顶在 256 GB | 抬高 `linux.max_memory_gb` 后重跑 |
+| OOM / exit 137 | 降低 `threads`；组装改 MEGAHIT；检查同节点争用 |
+| Apptainer 找不到库 | Bind 绝对路径；检查 SELinux/AppArmor |
+| Home 目录满 | 将 `APPTAINER_CACHEDIR` 指到 scratch |
+| 无 TTY 时 HITL 卡住 | `--yes` 或 API `async` |
+| 文献 API 超时 | `literature.online: false` |
+| Kraken 在 NFS 上极慢 | 将库拷到本地/scratch 或 shm |
 
 
-More CLI/output detail: [USAGE.md](USAGE.md).
+更多 CLI/输出细节：[USAGE.zh-CN.md](USAGE.zh-CN.md)。
