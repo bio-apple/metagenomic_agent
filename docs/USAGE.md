@@ -1,8 +1,8 @@
-# 使用指南（v0.7）
+# 使用指南（v0.8）
 
 ## CLI
 
-入口：`meta-agent`（`pyproject.toml` → `[project.scripts]`）。
+入口：`meta-agent`。
 
 ### `meta-agent run`
 
@@ -11,54 +11,58 @@
 | `-i / --input` | 必填 | FASTQ 文件或目录 |
 | `-o / --outdir` | `./results` | 输出目录 |
 | `-m / --mode` | `mock` | `mock` \| `local` \| `conda` \| `docker` |
-| `-q / --query` | 通用分析句 | 自然语言问题（影响剧本、生物验证、文献） |
-| `--metadata` | 无 | `sample_id,group` 的 TSV/CSV |
+| `-q / --query` | 通用分析句 | 驱动 Router 意图与领域路由 |
+| `--metadata` | 无 | `sample_id,group` 的 TSV/CSV（差异分析推荐） |
 | `-c / --config` | `config/default.yaml` | YAML 覆盖 |
-| `-y / --yes` | false | 强制自动确认 HITL |
+| `-y / --yes` | false | 强制自动确认 HITL（含 Plan Validator 追问） |
 
 ```bash
 # 演示
 meta-agent run -i tests/fixtures/fastq -o ./results --mode mock --yes \
   -q "IBD gut microbiome biomarker discovery"
 
-# 真实数据
+# 真实数据（建议提供分组）
 meta-agent run -i /data/fastq -o /data/out --mode local \
   -c config/default.yaml --metadata /data/meta.tsv \
   -q "IBD vs healthy biomarker discovery"
 ```
 
-### `meta-agent serve`
+### `meta-agent serve` / `version`
 
 ```bash
-meta-agent serve --host 127.0.0.1 --port 8000
-# GET  /health
-# POST /analyze
+meta-agent serve --host 127.0.0.1 --port 8000   # GET /health  POST /analyze
+meta-agent version
 ```
-
-### `meta-agent version`
-
-打印当前版本。
 
 ## 配置要点（`config/default.yaml`）
 
 | 段 | 作用 |
 |------|------|
 | `routing.*` | gLM / 双路 / ε-greedy |
-| `paths.*` | 数据库、`glm_weights`、`glm_inference_cmd` |
-| `pipeline.*` | 是否组装、分类工具列表 |
+| `paths.*` | 数据库、`glm_weights`、`glm_inference_cmd`、`host_index` |
+| `pipeline.*` | 组装开关、分类工具列表 |
 | `validation.plan_validator_hard_fail` | 领域约束缺失时是否硬阻断 |
 | `validation.contract_hard_fail` | 契约 ERROR 时是否中止 swarm |
 | `literature.*` | PubMed / Europe PMC / OpenAlex / Semantic Scholar |
-| `statistics.lefse_like` / `ancom_like` | 近似差异方法开关 |
-| `rag.mode` | `keyword` \| `semantic`（TF-IDF） |
-| `pi.max_replans` | PI Agent 最多复盘次数 |
-| `report.manuscript_template` | Nature / Cell / ISME / Microbiome / Gut Microbes |
-| `hitl.auto_confirm` | 非交互默认；生产建议 `false` |
-| `project.*` | Memory 中的 host/platform 等 |
+| `statistics.lefse_like` / `ancom_like` | 近似差异方法 |
+| `rag.mode` | `keyword` \| `semantic` |
+| `pi.max_replans` | PI 复盘次数 |
+| `project.*` | Memory：`host`、`host_genome_version`、`coordinate_system`、`target_domain` |
+| `hitl.auto_confirm` | CI/演示可 `true`；生产交互建议 `false` |
 
-环境变量：`.env` 中 `OPENAI_API_KEY`、`OPENAI_BASE_URL`（DeepSeek / vLLM / Ollama）。
+环境变量：`OPENAI_API_KEY`、`OPENAI_BASE_URL`。
 
-## 元数据
+## 多智能体相关产物
+
+| 文件 | 说明 |
+|------|------|
+| `router_decision.json` | 主意图、领域、推荐工具 |
+| `tool_specialist/tool_commands.md` | 各工具命令模板 |
+| `plan_validation.json` | 是否通过；缺失元数据追问列表 |
+| `workflow/generated.nf` | Nextflow 草稿（RAG） |
+| `xai/feature_importance.md` | 标志物驱动解释 |
+
+## 元数据示例
 
 ```tsv
 sample_id	group
@@ -66,36 +70,14 @@ S1	IBD
 S2	Control
 ```
 
-无分组时，mock/`demo_mode` 可能使用合成对照——Methods 须说明。
-
-## 推荐流程
-
-1. `mock` + `pytest -q` 冒烟  
-2. 小规模 `local`/`conda`，`enable_assembly: false`  
-3. 需要 MAGs 时打开组装并确认内存  
-4. 长读长：读长 ≥5000 bp 走 gLM 路由；配置权重后再解读  
-5. 投稿：提交 `methods.md`、`reproduce.sh`、`reproducibility/`、`evidence/`、`workflow/dag.json`
-
-## 外部工作流
-
-```bash
-# Snakemake（委托 meta-agent）
-snakemake -j 4 --configfile config/default.yaml \
-  --config input_dir=tests/fixtures/fastq outdir=results mode=mock
-
-# Nextflow
-nextflow run workflow/nextflow/main.nf --input tests/fixtures/fastq --outdir results --mode mock
-```
-
 ## 排障
 
 | 现象 | 处理 |
 |------|------|
+| Plan Validator 追问宿主基因组 | 设置 `paths.host_index` 或 `project.host_genome_version`，或 mock/`--yes` |
+| 缺分组无法做差异 | 提供 `--metadata`，或 `statistics.demo_mode: true` |
 | HITL 卡住 | `--yes` 或 `hitl.auto_confirm: true` |
-| 契约硬失败 | 检查 FASTQ/契约；或设 `contract_hard_fail: false` |
-| 分类率低 | Critic 会建议 MetaPhlAn/gLM；检查 DB 路径 |
-| OOM / 137 | Self-heal 降参数或降级 assembler |
-| 文献为空 | mock 下用 curated；在线需网络且 `literature.online: true` |
+| 病毒工具未安装 | Specialist 仍会写出命令；安装 ViWrap/PhaBOX 或保持 mock |
 | gLM 未生效 | 配置 `glm_weights` 与可选 `glm_inference_cmd` |
 
-架构细节见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。

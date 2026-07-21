@@ -2,19 +2,20 @@
 
 ## 0.8.0
 
-- Multi-agent specialization: Router, Tool Specialist, Plan Validator
-- Domain tool KB (virus/prokaryote/MAG/AMR) with ask-don’t-guess constraints
-- Workflow RAG (nf-core/Snakemake snippets) + error reflection
-- XAI feature-importance explanations for biomarkers
+- 专业化多智能体：Router、Tool Specialist、Plan Validator
+- 领域工具 KB 与 ask-don’t-guess 约束
+- 工作流 RAG（nf-core/Snakemake）与报错反思
+- 标志物 XAI 特征归因
+- 文档收敛为 README / USAGE / ARCHITECTURE / METHODS
 
 ## 0.7.0
 
-- PCoA/Spearman/LEfSe-like/ANCOM-like, TF-IDF RAG, PI, contract hard-fail, gLM hook
+- 真实 PCoA/共现、LEfSe-like/ANCOM-like、TF-IDF RAG、PI、契约硬失败、gLM 钩子
 
 ## 0.6.0
 
-- Bio-RAG, Evidence Table, DAG export, quality scores, manuscript/viz skeletons
+- 生物库 RAG、Evidence Table、DAG 导出、质量评分、手稿/可视化骨架
 
 ## 0.5.0 – 0.1.x
 
-- Contracts, gLM routing, biology validation, Linux production, LangGraph MVP
+- 契约/gLM 路由、生物学验证、Linux 生产路径、LangGraph MVP

@@ -1,25 +1,16 @@
 # Gut shotgun metagenomics — best-practice notes
 
-Used by the Supervisor Agent when drafting analysis plans.
+Consumed by the Supervisor when drafting plans (runtime KB, not end-user docs).
 
 ## Typical pipeline
 
-1. QC with fastp (adapters, Q20, length ≥ 36, optional dedup).
-2. Host removal (Bowtie2/Kneaddata vs HG38) for human gut samples.
-3. Taxonomy: Kraken2+Bracken and/or MetaPhlAn; long reads → gLM when configured.
-4. Function: HUMAnN when pathways needed; else DIAMOND vs UniRef/nr.
-5. Assembly/binning only when MAG recovery is an explicit goal and depth is sufficient.
+1. QC with fastp; host removal when human gut samples and index are available.  
+2. Taxonomy via domain routing (prokaryote → Kraken2/MetaPhlAn; virus → ViWrap/PhaBOX when relevant; long reads → gLM).  
+3. Function / AMR via DIAMOND or labeled profiles when requested.  
+4. Assembly–binning only for explicit MAG goals.  
+5. Differential stats + Evidence Table + XAI before strong biological claims.
 
-## Decision heuristics
+## Safety
 
-- Illumina PE ~150 bp gut → fastp → host filter → Kraken2±MetaPhlAn → optional DIAMOND.
-- Low memory → prefer Kraken2; high accuracy / small cohort → MetaPhlAn.
-- Host fraction > 80% after filtering → warn / strengthen host removal.
-- Skip assembly for profiling-only queries unless user confirms.
-- Long reads (≥5000 bp) → microCafe / MicroRAG routing.
-
-## Validation
-
-- Technical: read retention, non-empty taxonomy, CheckM for bins.
-- Biological (gut): expect Bacteroides / Faecalibacterium / Prevotella / Bifidobacterium among top genera when community is gut-like.
-- Evidence: link differential taxa to curated PMIDs / online literature before strong claims.
+- Do not invent host genome versions, coordinate systems, or sample groups — escalate to Plan Validator / HITL.  
+- Prefer multi-tool consensus for taxonomy when compute allows.

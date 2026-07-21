@@ -1,23 +1,38 @@
-# Methods note（v0.8）
+# Methods note for manuscripts（v0.8）
 
-## Multi-agent system
+用法见 [USAGE.md](USAGE.md)，架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
-Orchestration uses specialized agents: **Router** (intent/domain), **Tool Specialist** (command/params from a domain tool KB), **Plan Validator** (completeness + ask-don’t-guess constraints), execution swarm, **Workflow Agent** (RAG over nf-core/Snakemake snippets with error reflection), and **XAI** (leave-one-feature importance for biomarker drivers).
+## Multi-agent orchestration
 
-Pipeline:
+Analysis is coordinated by specialized agents rather than a single monolithic prompt:
+
+1. **Router** — classifies intent (taxonomy, MAG, virus, biomarker, …) and scientific domain.  
+2. **Tool Specialist** — emits tool-specific commands/parameters from a curated domain knowledge base.  
+3. **Plan Validator** — checks DAG completeness and required metadata; **asks instead of guessing** when host genome version, coordinate system, or sample groups are missing.  
+4. **Execution swarm** — QC, taxonomy, assembly/function, statistics under LangGraph.  
+5. **Workflow Agent** — RAG over nf-core/Snakemake-style snippets; records self-correction notes from runtime errors.  
+6. **Literature / Evidence** — curated bio-DB RAG + optional online literature APIs.  
+7. **XAI** — leave-one-feature group-separation attribution for biomarker drivers.  
+8. **Report** — HTML, manuscript sections, CWL reproducibility bundle.
+
+Pipeline graph:
 
 `parse → router → supervisor → tool_specialist → plan_validator → export_dag → workflow_agent → contract → HITL → swarm → validate → quality → self-heal* → critic → literature → pi_review* → visualization → xai → report`
 
-## Domain constraints
+## Bioinformatics methods
 
-Missing host genome version/index, coordinate system, or differential sample groups trigger validator questions rather than silent defaults (safety-first).
+| Module | Methods |
+|--------|---------|
+| QC / host | fastp; Bowtie2/Kneaddata when configured |
+| Taxonomy | Kraken2/MetaPhlAn; optional gLM; domain routing may prefer virus tools (ViWrap/PhaBOX) when relevant |
+| MAGs | MEGAHIT/metaSPAdes → MetaBAT2 → CheckM2 |
+| Statistics | Shannon; Bray–Curtis; MWU + BH-FDR; optional LEfSe-like / CLR–MWU |
+| Ordination | Classical MDS (PCoA); Spearman co-occurrence |
+| Interpretation | Evidence Table; XAI feature importance |
 
-## Bioinformatics & statistics
+## Limitations to disclose
 
-Unchanged core methods from v0.7 (Shannon, Bray–Curtis, MWU+BH-FDR, optional LEfSe-like/CLR–MWU, classical MDS PCoA). Tool routing additionally consults a curated domain KB (prokaryote vs virus vs MAG vs AMR).
-
-## Limitations
-
-- CAMITAX/TAMA/ViWrap/PhaBOX may be **routing-registered** without local binaries; mock mode records intended commands.
-- XAI is a transparent abundance-separation attribution, not full TreeSHAP/LIME on a trained classifier.
-- Workflow RAG uses curated nf-core-style snippets, not a live crawl of nf-co.re.
+1. Default differential tests are lightweight; LEfSe-like/ANCOM-like are Python approximations, not official packages.  
+2. Some routed tools (CAMITAX, TAMA, ViWrap, PhaBOX) may be registered without local installation.  
+3. XAI is transparent abundance-separation attribution, not TreeSHAP on a fitted classifier.  
+4. Workflow/bio RAG use curated corpora; mock mode is for software testing only.
