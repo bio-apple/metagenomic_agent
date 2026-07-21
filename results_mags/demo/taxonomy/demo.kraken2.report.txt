@@ -1,1 +1,0 @@
-mock kraken2 report for demo

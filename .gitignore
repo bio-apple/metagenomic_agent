@@ -13,6 +13,7 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 results/
+results_mags/
 workdir/
 *.fastq
 *.fastq.gz
